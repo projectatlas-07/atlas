@@ -5,34 +5,12 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { LogoutButton } from "@/features/auth/components/logout-button";
 import { resolveAuthenticatedFactoryId } from "@/features/auth/services/factory-access-service";
+import { buildProductionSavePayload, prepareProductionEntryState, type ActiveProductionLabourer, type ProductionSavePayload, type SavedProductionEntry } from "@/features/production/production-entry-model";
 import { productionRecordSchema } from "@/features/production/schemas/production-record-schema";
 import { getLocalDate } from "@/lib/local-date";
 import { supabase } from "@/lib/supabase/client";
 
 type EntryFormValues = Record<string, { quantity: string }>;
-
-type ActiveLabourer = {
-  id: string;
-  name: string;
-  brickTypeId: string;
-  brickTypeName: string;
-};
-
-type SavedProductionEntry = {
-  id: string;
-  brickTypeId: string;
-};
-
-type ProductionSavePayload = {
-  key: string;
-  factoryId: string;
-  labourerId: string;
-  brickTypeId: string;
-  productionDate: string;
-  quantity: number;
-  savedEntryId?: string;
-  newEntryId?: string;
-};
 
 type PendingSave = {
   payload: ProductionSavePayload;
@@ -111,7 +89,7 @@ export function ProductionEntryScreen() {
     message: "Loading factory access...",
   });
   const [factoryResolutionAttempt, setFactoryResolutionAttempt] = useState(0);
-  const [labourers, setLabourers] = useState<readonly ActiveLabourer[]>([]);
+  const [labourers, setLabourers] = useState<readonly ActiveProductionLabourer[]>([]);
   const [savedEntriesByLabourer, setSavedEntriesByLabourer] = useState<ReadonlyMap<string, SavedProductionEntry>>(() => new Map());
   const [savedLabourers, setSavedLabourers] = useState<ReadonlySet<string>>(() => new Set());
   const [recentlySavedLabourers, setRecentlySavedLabourers] = useState<ReadonlySet<string>>(() => new Set());
@@ -203,7 +181,6 @@ export function ProductionEntryScreen() {
         return;
       }
 
-      const brickTypesById = new Map((brickTypeRows ?? []).map((brickType) => [brickType.id, brickType]));
       const { data: productionEntries, error } = await supabase
         .from("production_entries")
         .select("id, labourer_id, brick_type_id, quantity")
@@ -221,32 +198,18 @@ export function ProductionEntryScreen() {
         return;
       }
 
-      const savedEntries = new Map<string, SavedProductionEntry>();
-      for (const entry of productionEntries) {
-        savedEntries.set(entry.labourer_id, { id: entry.id, brickTypeId: entry.brick_type_id });
-      }
-      const activeLabourers = (labourerRows ?? []).flatMap((labourer) => {
-        const savedEntry = savedEntries.get(labourer.id);
-        const brickType = brickTypesById.get(savedEntry?.brickTypeId ?? labourer.assigned_brick_type_id);
-        if (!brickType) return [];
-        return [{
-          id: labourer.id,
-          name: labourer.name,
-          brickTypeId: brickType.id,
-          brickTypeName: brickType.name,
-        }];
+      const preparedState = prepareProductionEntryState({
+        labourerRows: labourerRows ?? [],
+        brickTypeRows: brickTypeRows ?? [],
+        productionRows: productionEntries,
       });
-      setLabourers(activeLabourers);
-      setSavedEntriesByLabourer(savedEntries);
-
-      const activeLabourerIds = new Set(activeLabourers.map((labourer) => labourer.id));
-      const saved = new Set<string>();
-      for (const entry of productionEntries) {
-        if (!activeLabourerIds.has(entry.labourer_id)) continue;
-        setValue(`${entry.labourer_id}.quantity`, String(entry.quantity));
-        saved.add(entry.labourer_id);
+      setLabourers(preparedState.labourers);
+      setSavedEntriesByLabourer(preparedState.savedEntriesByLabourer);
+      for (const [labourerId, quantity] of preparedState.quantitiesByLabourer) {
+        if (!preparedState.savedLabourerIds.has(labourerId)) continue;
+        setValue(`${labourerId}.quantity`, quantity);
       }
-      setSavedLabourers(saved);
+      setSavedLabourers(preparedState.savedLabourerIds);
     });
   }, [factoryAccess, setValue]);
 
@@ -414,7 +377,7 @@ export function ProductionEntryScreen() {
 
   retryPendingSaveRef.current = (key) => { void runPendingSave(key, true); };
 
-  function save(labourer: ActiveLabourer) {
+  function save(labourer: ActiveProductionLabourer) {
     const rawQuantity = getValues(`${labourer.id}.quantity`);
     if (!/^\d+$/.test(rawQuantity)) return;
     const parsed = productionRecordSchema.safeParse({
@@ -435,16 +398,15 @@ export function ProductionEntryScreen() {
     const savedEntry = savedEntriesByLabourer.get(labourer.id);
     const key = `${factoryId}:${labourer.id}:${parsed.data.productionDate}`;
     const existingPendingSave = pendingSavesRef.current.get(key);
-    const payload: ProductionSavePayload = {
-      key,
+    const payload = buildProductionSavePayload({
       factoryId,
-      labourerId: labourer.id,
-      brickTypeId: labourer.brickTypeId,
+      labourer,
       productionDate: parsed.data.productionDate,
       quantity: parsed.data.quantity,
-      savedEntryId: savedEntry?.id,
-      newEntryId: savedEntry ? undefined : existingPendingSave?.payload.newEntryId ?? crypto.randomUUID(),
-    };
+      savedEntry,
+      pendingNewEntryId: existingPendingSave?.payload.newEntryId,
+      newEntryId: crypto.randomUUID(),
+    });
     if (existingPendingSave) {
       clearRetryTimer(payload.key);
       existingPendingSave.payload = payload;
