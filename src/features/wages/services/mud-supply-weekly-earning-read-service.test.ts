@@ -6,7 +6,7 @@ type EarningRow = {
   labour_group_id: string | null;
   week_start: string;
   quantity_used: number;
-  rate_used: number;
+  rate_used: number | null;
   amount: number;
   calculated_at: string;
 };
@@ -106,5 +106,22 @@ test("rejects a non-group earning response", async () => {
   await assert.rejects(
     () => getMudSupplyWeeklyEarning({ factoryId: "factory-a", weeklyEarningId: "earning-a", weekStart: "2026-08-03" }),
     /not a labour-group earning/,
+  );
+});
+
+test("rejects a group earning without its required legacy rate snapshot", async () => {
+  setResponse({
+    id: "earning-a",
+    labour_group_id: "group-a",
+    week_start: "2026-08-03",
+    quantity_used: 100000,
+    rate_used: null,
+    amount: 23000,
+    calculated_at: "2026-08-10T09:00:00Z",
+  });
+
+  await assert.rejects(
+    () => getMudSupplyWeeklyEarning({ factoryId: "factory-a", weeklyEarningId: "earning-a", weekStart: "2026-08-03" }),
+    /missing its rate snapshot/,
   );
 });

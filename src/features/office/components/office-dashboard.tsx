@@ -25,6 +25,10 @@ import { getMudSupplyWeeklyEarning, type MudSupplyWeeklyEarning } from "@/featur
 import { getLabourGroupAvailableBalance } from "@/features/wages/services/labour-group-available-balance-service";
 import { CreateLabourGroupWithdrawalError, createLabourGroupWithdrawal } from "@/features/wages/services/labour-group-withdrawal-create-service";
 import { getLabourGroupWithdrawalHistory } from "@/features/wages/services/labour-group-withdrawal-history-service";
+import { assignLabourerToProductionCrew, endLabourerProductionCrewAssignment, ProductionCrewAssignmentMutationError, type ProductionCrewAssignment } from "@/features/wages/services/production-crew-assignment-service";
+import { createProductionCrew, getCurrentProductionCrewAssignment, getProductionCrewAssignments, getProductionCrews, ProductionCrewMutationError, setProductionCrewActive, type ProductionCrew } from "@/features/wages/services/production-crew-service";
+import { CreateProductionWageRateError, createLabourerProductionWageRateOverride, createProductionCrewWageRate } from "@/features/wages/services/production-wage-rate-create-service";
+import { getCurrentCrewProductionWageRate, getCurrentLabourerProductionWageRateOverride, getProductionWageRatesForFactory, type ProductionWageRate } from "@/features/wages/services/production-wage-rate-read-service";
 import { getLocalDate } from "@/lib/local-date";
 import { supabase } from "@/lib/supabase/client";
 
@@ -351,6 +355,7 @@ export function OfficeDashboard() {
           updatingBrickTypeId={updatingBrickTypeId}
           onToggle={toggleBrickType}
         />
+        <ProductionCrewManagement factoryId={factoryId!} />
         <AddLabourerForm factoryId={factoryId!} brickTypes={activeBrickTypes} onAdded={loadLabourers} />
         <LabourerManagement
           factoryId={factoryId!}
@@ -440,7 +445,6 @@ function WageRatesSection({ factoryId, rates, isLoading, errorMessage, currentDa
 }>) {
   const productionHistory = rates.filter((rate) => rate.applies_to === "production");
   const mudSupplyHistory = rates.filter((rate) => rate.applies_to === "mud_supply");
-  const productionCurrentRate = resolveCurrentRate(productionHistory, "production", currentDate);
   const mudSupplyCurrentRate = resolveCurrentRate(mudSupplyHistory, "mud_supply", currentDate);
 
   return (
@@ -449,13 +453,13 @@ function WageRatesSection({ factoryId, rates, isLoading, errorMessage, currentDa
       {isLoading && <p className="mt-4 text-sm text-slate-500">Loading wage rates...</p>}
       {errorMessage && <p role="alert" className="mt-4 text-sm font-medium text-red-700">Could not load wage rates: {errorMessage}</p>}
       {!isLoading && !errorMessage && <>
-        <AddWageRateForm factoryId={factoryId} />
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <CurrentWageRateCard title="Production wage rate" missingMessage="No production wage rate configured for this week" currentRate={productionCurrentRate} />
+        <p className="mt-3 text-sm text-slate-600">New production wages use production crew defaults and optional individual overrides below. Legacy production rows remain read-only.</p>
+        <AddMudSupplyWageRateForm factoryId={factoryId} />
+        <div className="mt-5 max-w-xl">
           <CurrentWageRateCard title="Mud-supply wage rate" missingMessage="No mud-supply wage rate configured for this week" currentRate={mudSupplyCurrentRate} />
         </div>
         <div className="mt-8 grid gap-8 lg:grid-cols-2">
-          <WageRateHistory title="Production rate history" rates={productionHistory} currentDate={currentDate} />
+          <WageRateHistory title="Legacy production rate history (read-only)" rates={productionHistory} currentDate={currentDate} />
           <WageRateHistory title="Mud-supply rate history" rates={mudSupplyHistory} currentDate={currentDate} />
         </div>
       </>}
@@ -463,9 +467,8 @@ function WageRatesSection({ factoryId, rates, isLoading, errorMessage, currentDa
   );
 }
 
-function AddWageRateForm({ factoryId }: Readonly<{ factoryId: string }>) {
+function AddMudSupplyWageRateForm({ factoryId }: Readonly<{ factoryId: string }>) {
   const queryClient = useQueryClient();
-  const [appliesTo, setAppliesTo] = useState<WageRateAppliesTo>("production");
   const [ratePer1000Bricks, setRatePer1000Bricks] = useState("");
   const [effectiveFrom, setEffectiveFrom] = useState("");
   const [submitError, setSubmitError] = useState("");
@@ -496,7 +499,7 @@ function AddWageRateForm({ factoryId }: Readonly<{ factoryId: string }>) {
     setSubmitError("");
     setIsSaved(false);
     try {
-      await createWageRate({ factoryId, appliesTo, ratePer1000Bricks: rate, effectiveFrom });
+      await createWageRate({ factoryId, appliesTo: "mud_supply", ratePer1000Bricks: rate, effectiveFrom });
       await queryClient.invalidateQueries({ queryKey: ["office-wage-rates", factoryId] });
       setRatePer1000Bricks("");
       setEffectiveFrom("");
@@ -513,14 +516,7 @@ function AddWageRateForm({ factoryId }: Readonly<{ factoryId: string }>) {
   }
 
   return (
-    <form className="mt-5 grid gap-4 rounded-lg border border-slate-200 p-4 md:grid-cols-4 md:items-end" onSubmit={(event) => void submit(event)}>
-      <label className="block text-sm font-medium text-slate-700">
-        Rate type
-        <select value={appliesTo} onChange={(event) => { setAppliesTo(event.target.value as WageRateAppliesTo); setIsSaved(false); setSubmitError(""); }} className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-950">
-          <option value="production">Production</option>
-          <option value="mud_supply">Mud supply</option>
-        </select>
-      </label>
+    <form className="mt-5 grid gap-4 rounded-lg border border-slate-200 p-4 md:grid-cols-3 md:items-end" onSubmit={(event) => void submit(event)}>
       <label className="block text-sm font-medium text-slate-700">
         Rate per 1,000 bricks
         <input type="number" min="0" step="any" value={ratePer1000Bricks} onChange={(event) => { setRatePer1000Bricks(event.target.value); setIsSaved(false); setSubmitError(""); }} required className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950" />
@@ -529,9 +525,9 @@ function AddWageRateForm({ factoryId }: Readonly<{ factoryId: string }>) {
         Effective from
         <input type="date" value={effectiveFrom} onChange={(event) => { setEffectiveFrom(event.target.value); setIsSaved(false); setSubmitError(""); }} required className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950" />
       </label>
-      <button type="submit" disabled={isSubmitting} className="h-11 rounded-lg bg-slate-950 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Adding..." : "Add Wage Rate"}</button>
-      {submitError && <p role="alert" className="text-sm font-medium text-red-700 md:col-span-4">{submitError}</p>}
-      {isSaved && <p role="status" className="text-sm font-medium text-emerald-700 md:col-span-4">Wage rate added.</p>}
+      <button type="submit" disabled={isSubmitting} className="h-11 rounded-lg bg-slate-950 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Adding..." : "Add Mud-Supply Rate"}</button>
+      {submitError && <p role="alert" className="text-sm font-medium text-red-700 md:col-span-3">{submitError}</p>}
+      {isSaved && <p role="status" className="text-sm font-medium text-emerald-700 md:col-span-3">Mud-supply wage rate added.</p>}
     </form>
   );
 }
@@ -621,6 +617,219 @@ function getMondayWeekStart(localDate: string) {
   const mondayMonth = String(date.getMonth() + 1).padStart(2, "0");
   const mondayDay = String(date.getDate()).padStart(2, "0");
   return `${mondayYear}-${mondayMonth}-${mondayDay}`;
+}
+
+function ProductionCrewManagement({ factoryId }: Readonly<{ factoryId: string }>) {
+  const queryClient = useQueryClient();
+  const { data: crews = [], error, isLoading } = useQuery({
+    queryKey: ["office-production-crews", factoryId],
+    queryFn: () => getProductionCrews(factoryId),
+  });
+  const { data: productionRates = [], error: productionRatesError, isLoading: isLoadingProductionRates } = useQuery({
+    queryKey: ["office-production-wage-rates", factoryId],
+    queryFn: () => getProductionWageRatesForFactory(factoryId),
+  });
+  const [name, setName] = useState("");
+  const [mutationError, setMutationError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [updatingCrewId, setUpdatingCrewId] = useState("");
+  const [historyCrewId, setHistoryCrewId] = useState("");
+
+  function clearFeedback() {
+    setMutationError("");
+    setSuccessMessage("");
+  }
+
+  function mutationErrorMessage(caught: unknown, fallback: string) {
+    if (caught instanceof ProductionCrewMutationError) return caught.message;
+    return caught instanceof Error ? caught.message : fallback;
+  }
+
+  async function addCrew(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isSubmitting) return;
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setMutationError("Crew name is required.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    clearFeedback();
+    try {
+      await createProductionCrew({ factoryId, name: trimmedName });
+      setName("");
+      setSuccessMessage("Production crew added.");
+      await queryClient.invalidateQueries({ queryKey: ["office-production-crews", factoryId] });
+    } catch (caught) {
+      setMutationError(mutationErrorMessage(caught, "Could not add production crew."));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function toggleCrew(crew: ProductionCrew) {
+    if (updatingCrewId) return;
+
+    setUpdatingCrewId(crew.id);
+    clearFeedback();
+    try {
+      await setProductionCrewActive({ factoryId, crewId: crew.id, isActive: !crew.isActive });
+      setSuccessMessage(crew.isActive ? "Production crew deactivated." : "Production crew reactivated.");
+      await queryClient.invalidateQueries({ queryKey: ["office-production-crews", factoryId] });
+    } catch (caught) {
+      setMutationError(mutationErrorMessage(caught, "Could not update production crew."));
+    } finally {
+      setUpdatingCrewId("");
+    }
+  }
+
+  const loadErrorMessage = error instanceof Error ? error.message : "Could not load production crews.";
+  const productionRatesErrorMessage = productionRatesError instanceof Error ? productionRatesError.message : "Could not load production wage rates.";
+  const activeCrews = crews.filter((crew) => crew.isActive);
+  const historyCrew = crews.find((crew) => crew.id === historyCrewId) ?? null;
+  const historyRates = productionRates.filter((rate) => rate.productionCrewId === historyCrewId && rate.labourerId === null);
+  const today = getLocalDate();
+
+  return (
+    <section className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 className="text-xl font-bold">Production Crews</h2>
+      <form className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end" onSubmit={(event) => void addCrew(event)}>
+        <label className="block flex-1 text-sm font-medium text-slate-700">
+          Crew name
+          <input value={name} onChange={(event) => { setName(event.target.value); clearFeedback(); }} required disabled={isSubmitting} className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
+        </label>
+        <button type="submit" disabled={isSubmitting} className="h-11 rounded-lg bg-slate-950 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Adding..." : "Add Production Crew"}</button>
+      </form>
+      {mutationError && <p role="alert" className="mt-3 text-sm font-medium text-red-700">{mutationError}</p>}
+      {successMessage && <p role="status" className="mt-3 text-sm font-medium text-emerald-700">{successMessage}</p>}
+
+      {!isLoading && !error && !isLoadingProductionRates && !productionRatesError && crews.length > 0 && <ProductionCrewRateForm factoryId={factoryId} activeCrews={activeCrews} />}
+      {isLoadingProductionRates && <p className="mt-5 text-sm text-slate-500">Loading production crew rates...</p>}
+      {productionRatesError && <p role="alert" className="mt-5 text-sm font-medium text-red-700">Could not load production wage rates: {productionRatesErrorMessage}</p>}
+
+      {isLoading && <p className="mt-5 text-sm text-slate-500">Loading production crews...</p>}
+      {error && <p role="alert" className="mt-5 text-sm font-medium text-red-700">Could not load production crews: {loadErrorMessage}</p>}
+      {!isLoading && !error && crews.length === 0 && <p className="mt-5 text-sm text-slate-500">No production crews configured.</p>}
+      {!isLoading && !error && crews.length > 0 && <div className="mt-5 space-y-3">
+        {crews.map((crew) => {
+          const isUpdating = updatingCrewId === crew.id;
+          const currentRate = getCurrentCrewProductionWageRate(productionRates, crew.id, today);
+          return <article key={crew.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="font-semibold">{crew.name}</h3>
+              <p className="mt-1 text-sm text-slate-600">{isLoadingProductionRates ? "Rate: Loading..." : productionRatesError ? "Rate unavailable" : currentRate ? formatWageRate(currentRate.ratePer1000Bricks) : "Rate not set"}</p>
+              <p className={`mt-1 text-sm font-medium ${crew.isActive ? "text-emerald-700" : "text-slate-500"}`}>{crew.isActive ? "Active" : "Inactive"}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={isLoadingProductionRates || Boolean(productionRatesError)} onClick={() => setHistoryCrewId((current) => current === crew.id ? "" : crew.id)} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-60">{historyCrewId === crew.id ? "Hide Rate History" : "View Rate History"}</button>
+              <button type="button" disabled={Boolean(updatingCrewId)} onClick={() => void toggleCrew(crew)} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-60">
+                {isUpdating ? "Updating..." : crew.isActive ? "Deactivate" : "Reactivate"}
+              </button>
+            </div>
+          </article>;
+        })}
+      </div>}
+      {historyCrew && <div className="mt-5 border-t border-slate-200 pt-5">
+        <ProductionRateHistory title={`${historyCrew.name} rate history`} rates={historyRates} asOfDate={today} />
+      </div>}
+    </section>
+  );
+}
+
+function ProductionCrewRateForm({ factoryId, activeCrews }: Readonly<{ factoryId: string; activeCrews: readonly ProductionCrew[] }>) {
+  const queryClient = useQueryClient();
+  const [crewId, setCrewId] = useState("");
+  const [ratePer1000Bricks, setRatePer1000Bricks] = useState("");
+  const [effectiveFrom, setEffectiveFrom] = useState(() => getLocalDate());
+  const [submitError, setSubmitError] = useState("");
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  function clearFeedback() {
+    setSubmitError("");
+    setIsSaved(false);
+  }
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isSubmitting) return;
+
+    const rate = Number(ratePer1000Bricks);
+    if (!activeCrews.some((crew) => crew.id === crewId)) {
+      setSubmitError("Choose an active production crew.");
+      return;
+    }
+    if (!ratePer1000Bricks || !Number.isFinite(rate) || rate <= 0) {
+      setSubmitError("Rate per 1,000 bricks must be greater than zero.");
+      return;
+    }
+    if (!effectiveFrom) {
+      setSubmitError("Effective-from date is required.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    clearFeedback();
+    try {
+      await createProductionCrewWageRate({ factoryId, productionCrewId: crewId, ratePer1000Bricks: rate, effectiveFrom });
+      setRatePer1000Bricks("");
+      setIsSaved(true);
+      await queryClient.invalidateQueries({ queryKey: ["office-production-wage-rates", factoryId] });
+    } catch (caught) {
+      setSubmitError(caught instanceof CreateProductionWageRateError ? caught.message : caught instanceof Error ? caught.message : "Could not save production crew rate.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <form className="mt-6 grid gap-4 rounded-lg border border-slate-200 p-4 md:grid-cols-4 md:items-end" onSubmit={(event) => void submit(event)}>
+      <label className="block text-sm font-medium text-slate-700">
+        Active production crew
+        <select value={crewId} onChange={(event) => { setCrewId(event.target.value); clearFeedback(); }} required disabled={isSubmitting || activeCrews.length === 0} className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100">
+          <option value="" disabled>Select a crew</option>
+          {activeCrews.map((crew) => <option key={crew.id} value={crew.id}>{crew.name}</option>)}
+        </select>
+      </label>
+      <label className="block text-sm font-medium text-slate-700">
+        Rate per 1,000 bricks
+        <input type="number" min="0" step="any" value={ratePer1000Bricks} onChange={(event) => { setRatePer1000Bricks(event.target.value); clearFeedback(); }} required disabled={isSubmitting} className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
+      </label>
+      <label className="block text-sm font-medium text-slate-700">
+        Effective from
+        <input type="date" value={effectiveFrom} onChange={(event) => { setEffectiveFrom(event.target.value); clearFeedback(); }} required disabled={isSubmitting} className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
+      </label>
+      <button type="submit" disabled={isSubmitting || activeCrews.length === 0} className="h-11 rounded-lg bg-slate-950 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Saving..." : "Set Crew Rate"}</button>
+      {activeCrews.length === 0 && <p className="text-sm text-slate-500 md:col-span-4">No active production crew is available.</p>}
+      {submitError && <p role="alert" className="text-sm font-medium text-red-700 md:col-span-4">{submitError}</p>}
+      {isSaved && <p role="status" className="text-sm font-medium text-emerald-700 md:col-span-4">Production crew rate saved.</p>}
+    </form>
+  );
+}
+
+function ProductionRateHistory({ title, rates, asOfDate }: Readonly<{ title: string; rates: readonly ProductionWageRate[]; asOfDate: string }>) {
+  return (
+    <div>
+      <h4 className="font-semibold">{title}</h4>
+      {rates.length === 0 ? <p className="mt-2 text-sm text-slate-500">No production rates recorded.</p> : <ul className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200">
+        {rates.map((rate) => {
+          const isCurrent = rate.effectiveFrom <= asOfDate && (rate.effectiveTo === null || rate.effectiveTo >= asOfDate);
+          const period = isCurrent
+            ? `Current · from ${formatDate(rate.effectiveFrom)}`
+            : rate.effectiveFrom > asOfDate
+              ? `Future · from ${formatDate(rate.effectiveFrom)}`
+              : `${formatDate(rate.effectiveFrom)} — ${formatDate(rate.effectiveTo!)}`;
+          return <li key={rate.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+            <span className="font-semibold tabular-nums">{formatWageRate(rate.ratePer1000Bricks)}</span>
+            <span className="text-right text-slate-600">{period}</span>
+          </li>;
+        })}
+      </ul>}
+    </div>
+  );
 }
 
 function LabourGroupManagement({ factoryId }: Readonly<{ factoryId: string }>) {
@@ -1137,12 +1346,41 @@ function LabourerManagement({ factoryId, labourers, isLoading, error, updatingLa
   onSaveName: (labourer: ManagedLabourer, name: string) => Promise<void>;
   onCancelNameEdit: () => void;
 }>) {
+  const queryClient = useQueryClient();
+  const asOfDate = getLocalDate();
+  const { data: productionCrews = [], error: productionCrewsError, isLoading: isLoadingProductionCrews } = useQuery({
+    queryKey: ["office-production-crews", factoryId],
+    queryFn: () => getProductionCrews(factoryId),
+  });
+  const { data: crewAssignments = [], error: crewAssignmentsError, isLoading: isLoadingCrewAssignments } = useQuery({
+    queryKey: ["office-production-crew-assignments", factoryId],
+    queryFn: () => getProductionCrewAssignments(factoryId),
+  });
+  const { data: productionWageRates = [], error: productionWageRatesError, isLoading: isLoadingProductionWageRates } = useQuery({
+    queryKey: ["office-production-wage-rates", factoryId],
+    queryFn: () => getProductionWageRatesForFactory(factoryId),
+  });
   const [earningsLabourerId, setEarningsLabourerId] = useState("");
+  const [crewLabourerId, setCrewLabourerId] = useState("");
+  const [overrideLabourerId, setOverrideLabourerId] = useState("");
+  const activeProductionCrews = productionCrews.filter((crew) => crew.isActive);
+  const productionCrewsById = new Map(productionCrews.map((crew) => [crew.id, crew]));
+  const productionCrewsErrorMessage = productionCrewsError instanceof Error ? productionCrewsError.message : "Could not load production crews.";
+  const crewAssignmentsErrorMessage = crewAssignmentsError instanceof Error ? crewAssignmentsError.message : "Could not load production crew assignments.";
+  const productionWageRatesErrorMessage = productionWageRatesError instanceof Error ? productionWageRatesError.message : "Could not load production wage rates.";
+
+  async function refreshCrewAssignments() {
+    await queryClient.invalidateQueries({ queryKey: ["office-production-crew-assignments", factoryId] });
+  }
 
   return (
     <section className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <h2 className="text-xl font-bold">Labourers</h2>
       {error && <p role="alert" className="mt-3 text-sm font-medium text-red-700">{error}</p>}
+      {productionCrewsError && <p role="alert" className="mt-3 text-sm font-medium text-red-700">Could not load production crews: {productionCrewsErrorMessage}</p>}
+      {crewAssignmentsError && <p role="alert" className="mt-3 text-sm font-medium text-red-700">Could not load production crew assignments: {crewAssignmentsErrorMessage}</p>}
+      {productionWageRatesError && <p role="alert" className="mt-3 text-sm font-medium text-red-700">Could not load production wage rates: {productionWageRatesErrorMessage}</p>}
+      <p className="mt-3 text-sm text-slate-600">Individual override takes priority over the crew rate.</p>
       {activeBrickTypes.length === 0 && <p className="mt-3 text-sm text-slate-500">No active brick types available — activate one first.</p>}
       {isLoading ? <p className="mt-4 text-sm text-slate-500">Loading labourers...</p> : (
         <div className="mt-4 space-y-3">
@@ -1151,11 +1389,20 @@ function LabourerManagement({ factoryId, labourers, isLoading, error, updatingLa
             const isEditingBrickType = editingLabourerId === labourer.id;
             const isEditingName = editingLabourerNameId === labourer.id;
             const isCurrentBrickTypeActive = activeBrickTypes.some((brickType) => brickType.id === labourer.brickTypeId);
+            const currentCrewAssignment = getCurrentProductionCrewAssignment(crewAssignments, labourer.id, asOfDate);
+            const openCrewAssignment = crewAssignments.find((assignment) => assignment.labourerId === labourer.id && assignment.effectiveTo === null) ?? null;
+            const currentCrew = currentCrewAssignment ? productionCrewsById.get(currentCrewAssignment.productionCrewId) : null;
+            const currentCrewLabel = currentCrew ? `${currentCrew.name}${currentCrew.isActive ? "" : " (Inactive)"}` : currentCrewAssignment ? "Unknown crew" : "Not assigned";
+            const isLoadingCrewState = isLoadingProductionCrews || isLoadingCrewAssignments;
+            const currentOverride = getCurrentLabourerProductionWageRateOverride(productionWageRates, labourer.id, asOfDate);
+            const labourerOverrideHistory = productionWageRates.filter((rate) => rate.labourerId === labourer.id && rate.productionCrewId === null);
             return (
-              <article key={labourer.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <article key={labourer.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 <div>
                   <h3 className="font-semibold">{labourer.name}</h3>
                   <p className="text-sm text-slate-600">{labourer.brickTypeName}</p>
+                  <p className="mt-1 text-sm text-slate-600">Production Crew: {isLoadingCrewState ? "Loading..." : currentCrewLabel}</p>
+                  <p className="mt-1 text-sm text-slate-600">Production Rate: {isLoadingProductionWageRates ? "Loading..." : productionWageRatesError ? "Unavailable" : currentOverride ? `Override ${formatWageRate(currentOverride.ratePer1000Bricks)}` : "Uses crew rate"}</p>
                   <p className={`mt-1 text-sm font-medium ${labourer.isActive ? "text-emerald-700" : "text-slate-500"}`}>{labourer.isActive ? "Active" : "Inactive"}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -1164,8 +1411,25 @@ function LabourerManagement({ factoryId, labourers, isLoading, error, updatingLa
                   </button>
                   {!isEditingBrickType && !isEditingName && <button type="button" disabled={isUpdating} onClick={() => onOpenNameEdit(labourer)} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-60">Edit Name</button>}
                   {!isEditingBrickType && !isEditingName && <button type="button" disabled={isUpdating || activeBrickTypes.length === 0} onClick={() => onOpenBrickTypeChange(labourer)} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-60">Change Brick Type</button>}
+                  {!isEditingBrickType && !isEditingName && <button type="button" disabled={isUpdating || isLoadingCrewState || Boolean(productionCrewsError) || Boolean(crewAssignmentsError)} onClick={() => setCrewLabourerId((current) => current === labourer.id ? "" : labourer.id)} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-60">{crewLabourerId === labourer.id ? "Hide Crew" : "Manage Crew"}</button>}
+                  {!isEditingBrickType && !isEditingName && <button type="button" disabled={isUpdating || isLoadingProductionWageRates || Boolean(productionWageRatesError)} onClick={() => setOverrideLabourerId((current) => current === labourer.id ? "" : labourer.id)} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-60">{overrideLabourerId === labourer.id ? "Hide Override" : "Manage Override"}</button>}
                   {!isEditingBrickType && !isEditingName && <button type="button" disabled={isUpdating} onClick={() => setEarningsLabourerId((current) => current === labourer.id ? "" : labourer.id)} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-60">{earningsLabourerId === labourer.id ? "Hide Earnings" : "View Earnings"}</button>}
                 </div>
+                {crewLabourerId === labourer.id && <LabourerCrewAssignmentControls
+                  factoryId={factoryId}
+                  labourer={labourer}
+                  currentAssignment={currentCrewAssignment}
+                  openAssignment={openCrewAssignment}
+                  openCrewName={openCrewAssignment ? productionCrewsById.get(openCrewAssignment.productionCrewId)?.name ?? "Unknown crew" : ""}
+                  activeCrews={activeProductionCrews}
+                  onChanged={refreshCrewAssignments}
+                />}
+                {overrideLabourerId === labourer.id && <LabourerProductionRateOverrideControls
+                  factoryId={factoryId}
+                  labourer={labourer}
+                  history={labourerOverrideHistory}
+                  asOfDate={asOfDate}
+                />}
                 {earningsLabourerId === labourer.id && <LabourerEarningsHistory factoryId={factoryId} labourerId={labourer.id} />}
                 {isEditingName && <EditLabourerNameForm labourer={labourer} isUpdating={isUpdating} onSave={onSaveName} onCancel={onCancelNameEdit} />}
                 {isEditingBrickType && (
@@ -1190,6 +1454,187 @@ function LabourerManagement({ factoryId, labourers, isLoading, error, updatingLa
         </div>
       )}
     </section>
+  );
+}
+
+function LabourerProductionRateOverrideControls({ factoryId, labourer, history, asOfDate }: Readonly<{
+  factoryId: string;
+  labourer: ManagedLabourer;
+  history: readonly ProductionWageRate[];
+  asOfDate: string;
+}>) {
+  const queryClient = useQueryClient();
+  const [ratePer1000Bricks, setRatePer1000Bricks] = useState("");
+  const [effectiveFrom, setEffectiveFrom] = useState(() => getLocalDate());
+  const [submitError, setSubmitError] = useState("");
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  function clearFeedback() {
+    setSubmitError("");
+    setIsSaved(false);
+  }
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isSubmitting) return;
+
+    const rate = Number(ratePer1000Bricks);
+    if (!ratePer1000Bricks || !Number.isFinite(rate) || rate <= 0) {
+      setSubmitError("Override rate per 1,000 bricks must be greater than zero.");
+      return;
+    }
+    if (!effectiveFrom) {
+      setSubmitError("Effective-from date is required.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    clearFeedback();
+    try {
+      await createLabourerProductionWageRateOverride({ factoryId, labourerId: labourer.id, ratePer1000Bricks: rate, effectiveFrom });
+      setRatePer1000Bricks("");
+      setIsSaved(true);
+      await queryClient.invalidateQueries({ queryKey: ["office-production-wage-rates", factoryId] });
+    } catch (caught) {
+      setSubmitError(caught instanceof CreateProductionWageRateError ? caught.message : caught instanceof Error ? caught.message : "Could not save individual override.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="w-full border-t border-slate-200 pt-4">
+      <h4 className="font-semibold">Individual Production-Rate Override</h4>
+      <p className="mt-1 text-sm text-slate-600">Leave this unset to use the production crew rate.</p>
+      <form className="mt-3 grid gap-3 md:grid-cols-3 md:items-end" onSubmit={(event) => void submit(event)}>
+        <label className="block text-sm font-medium text-slate-700">
+          Override per 1,000 bricks
+          <input type="number" min="0" step="any" value={ratePer1000Bricks} onChange={(event) => { setRatePer1000Bricks(event.target.value); clearFeedback(); }} required disabled={isSubmitting} className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
+        </label>
+        <label className="block text-sm font-medium text-slate-700">
+          Effective from
+          <input type="date" value={effectiveFrom} onChange={(event) => { setEffectiveFrom(event.target.value); clearFeedback(); }} required disabled={isSubmitting} className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
+        </label>
+        <button type="submit" disabled={isSubmitting} className="h-10 rounded-lg bg-slate-950 px-4 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Saving..." : "Set Override"}</button>
+        {submitError && <p role="alert" className="text-sm font-medium text-red-700 md:col-span-3">{submitError}</p>}
+        {isSaved && <p role="status" className="text-sm font-medium text-emerald-700 md:col-span-3">Individual override saved.</p>}
+      </form>
+      <div className="mt-4">
+        <ProductionRateHistory title={`${labourer.name} override history`} rates={history} asOfDate={asOfDate} />
+      </div>
+    </div>
+  );
+}
+
+function LabourerCrewAssignmentControls({ factoryId, labourer, currentAssignment, openAssignment, openCrewName, activeCrews, onChanged }: Readonly<{
+  factoryId: string;
+  labourer: ManagedLabourer;
+  currentAssignment: ProductionCrewAssignment | null;
+  openAssignment: ProductionCrewAssignment | null;
+  openCrewName: string;
+  activeCrews: readonly ProductionCrew[];
+  onChanged: () => Promise<void>;
+}>) {
+  const today = getLocalDate();
+  const [selectedCrewId, setSelectedCrewId] = useState("");
+  const [effectiveFrom, setEffectiveFrom] = useState(today);
+  const [effectiveTo, setEffectiveTo] = useState(() => openAssignment && openAssignment.effectiveFrom > today ? openAssignment.effectiveFrom : today);
+  const [submitError, setSubmitError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [activeMutation, setActiveMutation] = useState<"assign" | "end" | null>(null);
+  const unavailableCrewId = openAssignment?.productionCrewId ?? currentAssignment?.productionCrewId;
+  const availableCrews = activeCrews.filter((crew) => crew.id !== unavailableCrewId);
+  const isMove = currentAssignment !== null || openAssignment !== null;
+
+  function clearFeedback() {
+    setSubmitError("");
+    setSuccessMessage("");
+  }
+
+  function assignmentErrorMessage(caught: unknown, fallback: string) {
+    if (caught instanceof ProductionCrewAssignmentMutationError) return caught.message;
+    return caught instanceof Error ? caught.message : fallback;
+  }
+
+  async function assignCrew(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (activeMutation) return;
+    if (!selectedCrewId) {
+      setSubmitError("Choose an active production crew.");
+      return;
+    }
+    if (!effectiveFrom) {
+      setSubmitError("Effective-from date is required.");
+      return;
+    }
+
+    setActiveMutation("assign");
+    clearFeedback();
+    try {
+      await assignLabourerToProductionCrew({ factoryId, labourerId: labourer.id, productionCrewId: selectedCrewId, effectiveFrom });
+      setSelectedCrewId("");
+      setEffectiveTo(effectiveFrom > today ? effectiveFrom : today);
+      setSuccessMessage(isMove ? "Production crew move saved." : "Production crew assignment saved.");
+      await onChanged();
+    } catch (caught) {
+      setSubmitError(assignmentErrorMessage(caught, "Could not save production crew assignment."));
+    } finally {
+      setActiveMutation(null);
+    }
+  }
+
+  async function endAssignment(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (activeMutation) return;
+    if (!effectiveTo) {
+      setSubmitError("Final assigned date is required.");
+      return;
+    }
+
+    setActiveMutation("end");
+    clearFeedback();
+    try {
+      await endLabourerProductionCrewAssignment({ factoryId, labourerId: labourer.id, effectiveTo });
+      setSuccessMessage("Production crew assignment ended.");
+      await onChanged();
+    } catch (caught) {
+      setSubmitError(assignmentErrorMessage(caught, "Could not end production crew assignment."));
+    } finally {
+      setActiveMutation(null);
+    }
+  }
+
+  return (
+    <div className="w-full border-t border-slate-200 pt-4">
+      <h4 className="font-semibold">{isMove ? "Move Production Crew" : "Assign Production Crew"}</h4>
+      <form className="mt-3 grid gap-3 md:grid-cols-3 md:items-end" onSubmit={(event) => void assignCrew(event)}>
+        <label className="block text-sm font-medium text-slate-700">
+          Active production crew
+          <select value={selectedCrewId} onChange={(event) => { setSelectedCrewId(event.target.value); clearFeedback(); }} required disabled={Boolean(activeMutation) || availableCrews.length === 0} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100">
+            <option value="" disabled>Select a crew</option>
+            {availableCrews.map((crew) => <option key={crew.id} value={crew.id}>{crew.name}</option>)}
+          </select>
+        </label>
+        <label className="block text-sm font-medium text-slate-700">
+          {isMove ? "Move effective date" : "Effective from"}
+          <input type="date" value={effectiveFrom} onChange={(event) => { setEffectiveFrom(event.target.value); clearFeedback(); }} required disabled={Boolean(activeMutation)} className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
+        </label>
+        <button type="submit" disabled={Boolean(activeMutation) || !selectedCrewId || availableCrews.length === 0} className="h-10 rounded-lg bg-slate-950 px-4 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{activeMutation === "assign" ? "Saving..." : isMove ? "Move Crew" : "Assign Crew"}</button>
+      </form>
+      {availableCrews.length === 0 && <p className="mt-2 text-sm text-slate-500">{isMove ? "No other active production crew is available." : "No active production crew is available."}</p>}
+
+      {openAssignment && <form className="mt-4 grid gap-3 border-t border-slate-100 pt-4 md:grid-cols-[1fr_auto] md:items-end" onSubmit={(event) => void endAssignment(event)}>
+        <label className="block text-sm font-medium text-slate-700">
+          Final assigned date for {openCrewName}
+          <input type="date" value={effectiveTo} onChange={(event) => { setEffectiveTo(event.target.value); clearFeedback(); }} required disabled={Boolean(activeMutation)} className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
+        </label>
+        <button type="submit" disabled={Boolean(activeMutation)} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-60">{activeMutation === "end" ? "Ending..." : "Leave Crew"}</button>
+      </form>}
+
+      {submitError && <p role="alert" className="mt-3 text-sm font-medium text-red-700">{submitError}</p>}
+      {successMessage && <p role="status" className="mt-3 text-sm font-medium text-emerald-700">{successMessage}</p>}
+    </div>
   );
 }
 
@@ -1255,7 +1700,7 @@ function LabourerEarningsHistory({ factoryId, labourerId }: Readonly<{ factoryId
             {earnings.map((earning) => <tr key={earning.id}>
               <td className="px-4 py-3 font-medium">{formatDate(earning.week_start)}</td>
               <td className="px-4 py-3 text-right tabular-nums">{formatStoredNumber(earning.quantity_used)}</td>
-              <td className="px-4 py-3 text-right tabular-nums">₹{formatStoredNumber(earning.rate_used)}</td>
+              <td className="px-4 py-3 text-right tabular-nums">{earning.rate_used === null ? "Multiple rates" : `₹${formatStoredNumber(earning.rate_used)}`}</td>
               <td className="px-4 py-3 text-right font-semibold tabular-nums">₹{formatStoredNumber(earning.amount)}</td>
             </tr>)}
           </tbody>

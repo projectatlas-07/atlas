@@ -4,8 +4,8 @@ export type LabourerEarningsHistoryEntry = {
   id: string;
   week_start: string;
   quantity_used: number;
-  wage_rate_id: string;
-  rate_used: number;
+  wage_rate_id: string | null;
+  rate_used: number | null;
   amount: number;
   calculated_at: string;
 };

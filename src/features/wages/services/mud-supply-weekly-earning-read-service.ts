@@ -29,6 +29,7 @@ export async function getMudSupplyWeeklyEarning({
 
   if (error) throw new Error(error.message);
   if (!data.labour_group_id) throw new Error("Stored earning is not a labour-group earning.");
+  if (data.rate_used === null) throw new Error("Stored labour-group earning is missing its rate snapshot.");
 
   return {
     id: data.id,

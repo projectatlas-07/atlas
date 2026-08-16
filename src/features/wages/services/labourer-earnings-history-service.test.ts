@@ -5,8 +5,8 @@ type EarningsRow = {
   id: string;
   week_start: string;
   quantity_used: number;
-  wage_rate_id: string;
-  rate_used: number;
+  wage_rate_id: string | null;
+  rate_used: number | null;
   amount: number;
   calculated_at: string;
 };
@@ -47,7 +47,7 @@ function setResponse(data: EarningsRow[] | null, error: { message: string } | nu
 
 test("filters by factory and labourer, orders newest week first, and preserves stored snapshots", async () => {
   const lockedEntries: EarningsRow[] = [
-    { id: "earning-new", week_start: "2026-08-03", quantity_used: 1500, wage_rate_id: "rate-530", rate_used: 530, amount: 795, calculated_at: "2026-08-10T09:00:00Z" },
+    { id: "earning-new", week_start: "2026-08-03", quantity_used: 1500, wage_rate_id: null, rate_used: null, amount: 795, calculated_at: "2026-08-10T09:00:00Z" },
     { id: "earning-old", week_start: "2026-07-27", quantity_used: 1000, wage_rate_id: "rate-520", rate_used: 520, amount: 520, calculated_at: "2026-08-03T09:00:00Z" },
   ];
   setResponse(lockedEntries);
