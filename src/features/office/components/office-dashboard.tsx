@@ -8,6 +8,7 @@ import { z } from "zod";
 import { LogoutButton } from "@/features/auth/components/logout-button";
 import { resolveAuthenticatedFactoryId } from "@/features/auth/services/factory-access-service";
 import { getTodaysProduction, type TodayProductionRow } from "@/features/office/services/todays-production-service";
+import { TransportOfficeSection } from "@/features/office/components/transport-office-section";
 import { CreateWageRateError, createWageRate } from "@/features/wages/services/wage-rate-create-service";
 import { getWageRatesForFactory } from "@/features/wages/services/wage-rate-read-service";
 import { assertMondayWeekStart, getActiveRate, getWageRateHistoryStatus, WageRateResolutionError, type WageRate, type WageRateAppliesTo, type WageRateHistory } from "@/features/wages/services/wage-rate-service";
@@ -377,6 +378,7 @@ export function OfficeDashboard() {
           onCancelNameEdit={() => { setEditingLabourerNameId(""); setLabourersError(""); }}
         />
         <LabourGroupManagement factoryId={factoryId!} />
+        <TransportOfficeSection factoryId={factoryId!} />
       </div>
     </main>
   );

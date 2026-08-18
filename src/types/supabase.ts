@@ -56,6 +56,109 @@ type ProductionCrewRow = {
   updated_at: string;
 };
 
+type TransportWorkerRow = {
+  id: string;
+  factory_id: string;
+  name: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+type TransportCrewRow = {
+  id: string;
+  factory_id: string;
+  name: string;
+  work_direction: "FIELD_TO_KILN" | "KILN_TO_FIELD";
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+type TransportCrewMembershipRow = {
+  id: string;
+  factory_id: string;
+  transport_worker_id: string;
+  transport_crew_id: string;
+  effective_from: string;
+  effective_to: string | null;
+  created_at: string;
+};
+
+type TransportCrewAssignmentRow = {
+  id: string;
+  factory_id: string;
+  transport_worker_id: string;
+  transport_crew_id: string;
+  created_at: string;
+};
+
+type TransportDailyEntryRow = {
+  id: string;
+  factory_id: string;
+  transport_crew_id: string;
+  work_date: string;
+  paya_quantity: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type TransportDailyAttendanceRow = {
+  id: string;
+  factory_id: string;
+  transport_daily_entry_id: string;
+  transport_crew_id: string;
+  transport_worker_id: string;
+  work_date: string;
+  created_at: string;
+};
+
+type TransportCrewWageRateRow = {
+  id: string;
+  factory_id: string;
+  transport_crew_id: string;
+  rate_per_paya: number;
+  effective_from: string;
+  effective_to: string | null;
+  created_at: string;
+};
+
+type TransportWeeklyEarningRow = {
+  id: string;
+  factory_id: string;
+  transport_worker_id: string;
+  week_start: string;
+  total_amount: number;
+  created_at: string;
+};
+
+type TransportWeeklyEarningDetailRow = {
+  id: string;
+  factory_id: string;
+  transport_weekly_earning_id: string;
+  transport_worker_id: string;
+  week_start: string;
+  transport_daily_entry_id: string;
+  transport_crew_id: string;
+  work_date: string;
+  transport_crew_wage_rate_id: string;
+  rate_per_paya_snapshot: number;
+  paya_quantity_snapshot: number;
+  attendance_count_snapshot: number;
+  daily_crew_pool_snapshot: number;
+  worker_daily_share_snapshot: number;
+  created_at: string;
+};
+
+type TransportWithdrawalRow = {
+  id: string;
+  factory_id: string;
+  transport_worker_id: string;
+  withdrawal_date: string;
+  amount: number;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -100,6 +203,95 @@ export type Database = {
           { foreignKeyName: "production_crew_assignments_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
           { foreignKeyName: "production_crew_assignments_labourer_factory_fkey"; columns: ["labourer_id", "factory_id"]; isOneToOne: false; referencedRelation: "labourers"; referencedColumns: ["id", "factory_id"] },
           { foreignKeyName: "production_crew_assignments_crew_factory_fkey"; columns: ["production_crew_id", "factory_id"]; isOneToOne: false; referencedRelation: "production_crews"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      transport_workers: {
+        Row: TransportWorkerRow;
+        Insert: { id?: string; factory_id: string; name: string; is_active?: boolean; created_at?: string; updated_at?: string };
+        Update: { id?: string; factory_id?: string; name?: string; is_active?: boolean; created_at?: string; updated_at?: string };
+        Relationships: [{ foreignKeyName: "transport_workers_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] }];
+      };
+      transport_crews: {
+        Row: TransportCrewRow;
+        Insert: { id?: string; factory_id: string; name: string; work_direction: "FIELD_TO_KILN" | "KILN_TO_FIELD"; is_active?: boolean; created_at?: string; updated_at?: string };
+        Update: { id?: string; factory_id?: string; name?: string; work_direction?: "FIELD_TO_KILN" | "KILN_TO_FIELD"; is_active?: boolean; created_at?: string; updated_at?: string };
+        Relationships: [{ foreignKeyName: "transport_crews_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] }];
+      };
+      transport_crew_memberships: {
+        Row: TransportCrewMembershipRow;
+        Insert: { id?: string; factory_id: string; transport_worker_id: string; transport_crew_id: string; effective_from: string; effective_to?: string | null; created_at?: string };
+        Update: { id?: string; factory_id?: string; transport_worker_id?: string; transport_crew_id?: string; effective_from?: string; effective_to?: string | null; created_at?: string };
+        Relationships: [
+          { foreignKeyName: "transport_crew_memberships_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "transport_crew_memberships_worker_factory_fkey"; columns: ["transport_worker_id", "factory_id"]; isOneToOne: false; referencedRelation: "transport_workers"; referencedColumns: ["id", "factory_id"] },
+          { foreignKeyName: "transport_crew_memberships_crew_factory_fkey"; columns: ["transport_crew_id", "factory_id"]; isOneToOne: false; referencedRelation: "transport_crews"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      transport_crew_assignments: {
+        Row: TransportCrewAssignmentRow;
+        Insert: { id?: string; factory_id: string; transport_worker_id: string; transport_crew_id: string; created_at?: string };
+        Update: { id?: string; factory_id?: string; transport_worker_id?: string; transport_crew_id?: string; created_at?: string };
+        Relationships: [
+          { foreignKeyName: "transport_crew_assignments_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "transport_crew_assignments_worker_factory_fkey"; columns: ["transport_worker_id", "factory_id"]; isOneToOne: false; referencedRelation: "transport_workers"; referencedColumns: ["id", "factory_id"] },
+          { foreignKeyName: "transport_crew_assignments_crew_factory_fkey"; columns: ["transport_crew_id", "factory_id"]; isOneToOne: false; referencedRelation: "transport_crews"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      transport_daily_entries: {
+        Row: TransportDailyEntryRow;
+        Insert: { id?: string; factory_id: string; transport_crew_id: string; work_date: string; paya_quantity: number; created_at?: string; updated_at?: string };
+        Update: { id?: string; factory_id?: string; transport_crew_id?: string; work_date?: string; paya_quantity?: number; created_at?: string; updated_at?: string };
+        Relationships: [
+          { foreignKeyName: "transport_daily_entries_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "transport_daily_entries_crew_factory_fkey"; columns: ["transport_crew_id", "factory_id"]; isOneToOne: false; referencedRelation: "transport_crews"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      transport_daily_attendance: {
+        Row: TransportDailyAttendanceRow;
+        Insert: { id?: string; factory_id: string; transport_daily_entry_id: string; transport_crew_id: string; transport_worker_id: string; work_date: string; created_at?: string };
+        Update: { id?: string; factory_id?: string; transport_daily_entry_id?: string; transport_crew_id?: string; transport_worker_id?: string; work_date?: string; created_at?: string };
+        Relationships: [
+          { foreignKeyName: "transport_daily_attendance_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "transport_daily_attendance_parent_fkey"; columns: ["transport_daily_entry_id", "factory_id", "transport_crew_id", "work_date"]; isOneToOne: false; referencedRelation: "transport_daily_entries"; referencedColumns: ["id", "factory_id", "transport_crew_id", "work_date"] },
+          { foreignKeyName: "transport_daily_attendance_worker_factory_fkey"; columns: ["transport_worker_id", "factory_id"]; isOneToOne: false; referencedRelation: "transport_workers"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      transport_crew_wage_rates: {
+        Row: TransportCrewWageRateRow;
+        Insert: { id?: string; factory_id: string; transport_crew_id: string; rate_per_paya: number; effective_from: string; effective_to?: string | null; created_at?: string };
+        Update: { id?: string; factory_id?: string; transport_crew_id?: string; rate_per_paya?: number; effective_from?: string; effective_to?: string | null; created_at?: string };
+        Relationships: [
+          { foreignKeyName: "transport_crew_wage_rates_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "transport_crew_wage_rates_crew_factory_fkey"; columns: ["transport_crew_id", "factory_id"]; isOneToOne: false; referencedRelation: "transport_crews"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      transport_weekly_earnings: {
+        Row: TransportWeeklyEarningRow;
+        Insert: { id?: string; factory_id: string; transport_worker_id: string; week_start: string; total_amount: number; created_at?: string };
+        Update: { id?: string; factory_id?: string; transport_worker_id?: string; week_start?: string; total_amount?: number; created_at?: string };
+        Relationships: [
+          { foreignKeyName: "transport_weekly_earnings_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "transport_weekly_earnings_worker_factory_fkey"; columns: ["transport_worker_id", "factory_id"]; isOneToOne: false; referencedRelation: "transport_workers"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      transport_weekly_earning_details: {
+        Row: TransportWeeklyEarningDetailRow;
+        Insert: { id?: string; factory_id: string; transport_weekly_earning_id: string; transport_worker_id: string; week_start: string; transport_daily_entry_id: string; transport_crew_id: string; work_date: string; transport_crew_wage_rate_id: string; rate_per_paya_snapshot: number; paya_quantity_snapshot: number; attendance_count_snapshot: number; daily_crew_pool_snapshot: number; worker_daily_share_snapshot: number; created_at?: string };
+        Update: { id?: string; factory_id?: string; transport_weekly_earning_id?: string; transport_worker_id?: string; week_start?: string; transport_daily_entry_id?: string; transport_crew_id?: string; work_date?: string; transport_crew_wage_rate_id?: string; rate_per_paya_snapshot?: number; paya_quantity_snapshot?: number; attendance_count_snapshot?: number; daily_crew_pool_snapshot?: number; worker_daily_share_snapshot?: number; created_at?: string };
+        Relationships: [
+          { foreignKeyName: "transport_weekly_earning_details_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "transport_weekly_earning_details_parent_identity_fkey"; columns: ["transport_weekly_earning_id", "factory_id", "transport_worker_id", "week_start"]; isOneToOne: false; referencedRelation: "transport_weekly_earnings"; referencedColumns: ["id", "factory_id", "transport_worker_id", "week_start"] },
+          { foreignKeyName: "transport_weekly_earning_details_daily_entry_fkey"; columns: ["transport_daily_entry_id", "factory_id", "transport_crew_id", "work_date"]; isOneToOne: false; referencedRelation: "transport_daily_entries"; referencedColumns: ["id", "factory_id", "transport_crew_id", "work_date"] },
+          { foreignKeyName: "transport_weekly_earning_details_rate_factory_fkey"; columns: ["transport_crew_wage_rate_id", "factory_id"]; isOneToOne: false; referencedRelation: "transport_crew_wage_rates"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      transport_withdrawals: {
+        Row: TransportWithdrawalRow;
+        Insert: { id?: string; factory_id: string; transport_worker_id: string; withdrawal_date: string; amount: number; created_at?: string };
+        Update: { id?: string; factory_id?: string; transport_worker_id?: string; withdrawal_date?: string; amount?: number; created_at?: string };
+        Relationships: [
+          { foreignKeyName: "transport_withdrawals_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "transport_withdrawals_worker_factory_fkey"; columns: ["transport_worker_id", "factory_id"]; isOneToOne: false; referencedRelation: "transport_workers"; referencedColumns: ["id", "factory_id"] }
         ];
       };
       production_wage_rates: {
@@ -211,9 +403,37 @@ export type Database = {
         Args: { p_factory_id: string; p_labourer_id: string; p_rate_per_1000_bricks: number; p_effective_from: string };
         Returns: ProductionWageRateRow;
       };
+      create_transport_crew_wage_rate: {
+        Args: { p_factory_id: string; p_transport_crew_id: string; p_effective_from: string; p_rate_per_paya: number };
+        Returns: TransportCrewWageRateRow;
+      };
       calculate_production_wages: {
         Args: { p_factory_id: string; p_week_start: string };
         Returns: { labourers_calculated: number; rows_skipped: number }[];
+      };
+      calculate_transport_weekly_wages: {
+        Args: { p_factory_id: string; p_week_start: string };
+        Returns: { workers_calculated: number; detail_rows_created: number; rows_skipped: number }[];
+      };
+      save_transport_daily_entry: {
+        Args: { p_factory_id: string; p_transport_crew_id: string; p_work_date: string; p_paya_quantity: number; p_transport_worker_ids: string[] };
+        Returns: { daily_entry_id: string; attendance_count: number; saved_paya_quantity: number }[];
+      };
+      get_transport_worker_available_balance: {
+        Args: { p_factory_id: string; p_transport_worker_id: string; p_as_of_date: string };
+        Returns: { total_earned: number; total_withdrawn: number; available_balance: number }[];
+      };
+      create_transport_worker_withdrawal: {
+        Args: { p_factory_id: string; p_transport_worker_id: string; p_withdrawal_date: string; p_amount: number };
+        Returns: {
+          withdrawal_id: string;
+          withdrawal_factory_id: string;
+          withdrawal_transport_worker_id: string;
+          withdrawal_date: string;
+          withdrawal_amount: number;
+          created_at: string;
+          available_balance: number;
+        }[];
       };
       calculate_mud_supply_wages: {
         Args: { p_factory_id: string; p_labour_group_id: string; p_week_start: string };
