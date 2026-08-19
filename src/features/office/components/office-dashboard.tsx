@@ -9,6 +9,8 @@ import { LogoutButton } from "@/features/auth/components/logout-button";
 import { resolveAuthenticatedFactoryId } from "@/features/auth/services/factory-access-service";
 import { getTodaysProduction, type TodayProductionRow } from "@/features/office/services/todays-production-service";
 import { TransportOfficeSection } from "@/features/office/components/transport-office-section";
+import { listTransportDailyOperations } from "@/features/transport/services/transport-daily-operations-service";
+import type { TransportDailyOperationsEntry } from "@/features/transport/types";
 import { CreateWageRateError, createWageRate } from "@/features/wages/services/wage-rate-create-service";
 import { getWageRatesForFactory } from "@/features/wages/services/wage-rate-read-service";
 import { assertMondayWeekStart, getActiveRate, getWageRateHistoryStatus, WageRateResolutionError, type WageRate, type WageRateAppliesTo, type WageRateHistory } from "@/features/wages/services/wage-rate-service";
@@ -58,9 +60,23 @@ export function OfficeDashboard() {
   const [factoryAccessMessage, setFactoryAccessMessage] = useState("");
   const [factoryResolutionAttempt, setFactoryResolutionAttempt] = useState(0);
   const [selectedProductionDate, setSelectedProductionDate] = useState(() => getLocalDate());
+  const [selectedTransportDate, setSelectedTransportDate] = useState(() => getLocalDate());
   const { data = [], error: productionError, isLoading: isLoadingProduction } = useQuery({
     queryKey: ["office-production", factoryId, selectedProductionDate],
     queryFn: () => getTodaysProduction(factoryId!, selectedProductionDate),
+    enabled: factoryId !== null,
+    refetchInterval: 30_000,
+  });
+  const {
+    data: transportDailyOperations = [],
+    error: transportDailyOperationsError,
+    isLoading: isLoadingTransportDailyOperations,
+  } = useQuery({
+    queryKey: ["office-transport-daily-operations", factoryId, selectedTransportDate],
+    queryFn: () => listTransportDailyOperations({
+      factoryId: factoryId!,
+      workDate: selectedTransportDate,
+    }),
     enabled: factoryId !== null,
     refetchInterval: 30_000,
   });
@@ -338,6 +354,14 @@ export function OfficeDashboard() {
             </ul>
           </div>}
         </section>
+
+        <TransportDailyOperationsSection
+          selectedDate={selectedTransportDate}
+          onSelectedDateChange={setSelectedTransportDate}
+          entries={transportDailyOperations}
+          isLoading={isLoadingTransportDailyOperations}
+          error={transportDailyOperationsError}
+        />
 
         <WageRatesSection
           factoryId={factoryId!}
@@ -1822,6 +1846,100 @@ function SummaryCard({ label, value }: Readonly<{ label: string; value: string }
 
 function ProductionRow({ row }: Readonly<{ row: TodayProductionRow }>) {
   return <tr className="text-base"><td className="px-6 py-5 font-medium">{row.labourerName}</td><td className="px-6 py-5 text-right font-semibold tabular-nums">{row.quantity.toLocaleString("en-IN")}</td></tr>;
+}
+
+function TransportDailyOperationsSection({
+  selectedDate,
+  onSelectedDateChange,
+  entries,
+  isLoading,
+  error,
+}: Readonly<{
+  selectedDate: string;
+  onSelectedDateChange: (date: string) => void;
+  entries: readonly TransportDailyOperationsEntry[];
+  isLoading: boolean;
+  error: Error | null;
+}>) {
+  const totalPaya = entries.reduce((total, entry) => total + entry.payaQuantity, 0);
+
+  return (
+    <section aria-labelledby="daily-chamber-transport-heading" className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <h2 id="daily-chamber-transport-heading" className="text-lg font-bold">
+          Chamber Transport for {formatDate(selectedDate)}
+        </h2>
+        <label className="text-sm font-medium text-slate-700">
+          <span className="sr-only">Chamber Transport date</span>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(event) => onSelectedDateChange(event.target.value)}
+            className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-slate-950"
+          />
+        </label>
+      </div>
+
+      {isLoading && <p className="px-6 py-10 text-center text-slate-500">Loading chamber transport...</p>}
+      {error && (
+        <p role="alert" className="px-6 py-10 text-center font-medium text-red-700">
+          Could not load chamber transport: {error.message}
+        </p>
+      )}
+      {!isLoading && !error && entries.length === 0 && (
+        <p className="px-6 py-10 text-center text-slate-500">No chamber transport recorded for this date.</p>
+      )}
+      {!isLoading && !error && entries.length > 0 && (
+        <>
+          <div className="grid gap-3 border-b border-slate-200 px-6 py-5 sm:grid-cols-2">
+            <div className="rounded-lg bg-slate-50 p-4">
+              <p className="text-sm text-slate-500">Total crews recorded</p>
+              <p className="mt-1 text-xl font-bold tabular-nums">{entries.length.toLocaleString("en-IN")}</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 p-4">
+              <p className="text-sm text-slate-500">Total paya</p>
+              <p className="mt-1 text-xl font-bold tabular-nums">{formatTransportPaya(totalPaya)}</p>
+            </div>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {entries.map((entry) => (
+              <article key={entry.dailyEntryId} className="px-6 py-5">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="font-semibold">{entry.transportCrewName}</h3>
+                    <p className="mt-1 text-sm text-slate-600">
+                      {entry.transportCrewWorkDirection === "FIELD_TO_KILN" ? "Field → Kiln" : "Kiln → Field"}
+                    </p>
+                  </div>
+                  <div className="text-sm sm:text-right">
+                    <p className="font-semibold tabular-nums">{formatTransportPaya(entry.payaQuantity)} paya</p>
+                    <p className="mt-1 text-slate-600">
+                      {entry.attendanceCount.toLocaleString("en-IN")} {entry.attendanceCount === 1 ? "worker" : "workers"} present
+                    </p>
+                  </div>
+                </div>
+                <details className="mt-4 rounded-lg border border-slate-200 px-4 py-3">
+                  <summary className="cursor-pointer font-medium">Saved attendance</summary>
+                  <ul className="mt-3 space-y-2 text-sm">
+                    {entry.attendanceWorkers.map((worker) => (
+                      <li key={worker.transportWorkerId} className="flex items-center justify-between gap-4">
+                        <span>{worker.transportWorkerName}</span>
+                        {!worker.transportWorkerIsActive && <span className="text-slate-500">Inactive</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </article>
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function formatTransportPaya(value: number): string {
+  return value.toLocaleString("en-IN", { maximumFractionDigits: 20 });
 }
 
 function formatDate(date: string) {

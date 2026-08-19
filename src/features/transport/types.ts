@@ -57,6 +57,13 @@ export type TransportDailyEntryWithAttendance = TransportDailyEntry & {
   attendanceWorkers: TransportDailyAttendanceWorker[];
 };
 
+export type TransportDailyOperationsEntry = TransportDailyEntry & {
+  transportCrewName: string;
+  transportCrewWorkDirection: TransportWorkDirection;
+  attendanceCount: number;
+  attendanceWorkers: TransportDailyAttendanceWorker[];
+};
+
 export type SaveTransportDailyEntryInput = {
   factoryId: string;
   transportCrewId: string;
