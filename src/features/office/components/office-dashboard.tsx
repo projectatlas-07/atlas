@@ -9,6 +9,7 @@ import { LogoutButton } from "@/features/auth/components/logout-button";
 import { resolveAuthenticatedFactoryId } from "@/features/auth/services/factory-access-service";
 import { getTodaysProduction, type TodayProductionRow } from "@/features/office/services/todays-production-service";
 import { TransportOfficeSection } from "@/features/office/components/transport-office-section";
+import { StaffOfficeSection } from "@/features/office/components/staff-office-section";
 import { listTransportDailyOperations } from "@/features/transport/services/transport-daily-operations-service";
 import type { TransportDailyOperationsEntry } from "@/features/transport/types";
 import { CreateWageRateError, createWageRate } from "@/features/wages/services/wage-rate-create-service";
@@ -402,6 +403,7 @@ export function OfficeDashboard() {
           onCancelNameEdit={() => { setEditingLabourerNameId(""); setLabourersError(""); }}
         />
         <LabourGroupManagement factoryId={factoryId!} />
+        <StaffOfficeSection factoryId={factoryId!} />
         <TransportOfficeSection factoryId={factoryId!} />
       </div>
     </main>

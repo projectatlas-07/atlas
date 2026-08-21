@@ -159,6 +159,81 @@ type TransportWithdrawalRow = {
   created_at: string;
 };
 
+type StaffCategoryRow = {
+  id: string;
+  factory_id: string;
+  name: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+type StaffWorkerRow = {
+  id: string;
+  factory_id: string;
+  name: string;
+  staff_category_id: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+type StaffMonthlySalaryRateRow = {
+  id: string;
+  factory_id: string;
+  staff_category_id: string | null;
+  staff_worker_id: string | null;
+  monthly_salary: number;
+  effective_from: string;
+  effective_to: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type StaffSalaryEligibilityPeriodRow = {
+  id: string;
+  factory_id: string;
+  staff_worker_id: string;
+  effective_from_month: string;
+  effective_to_month: string | null;
+  first_month_custom_salary: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type StaffMonthlyEarningRow = {
+  id: string;
+  factory_id: string;
+  staff_worker_id: string;
+  salary_month: string;
+  credited_amount: number;
+  salary_configuration_id: string;
+  resolved_monthly_salary_snapshot: number;
+  salary_source_snapshot: "CATEGORY_DEFAULT" | "STAFF_OVERRIDE";
+  credit_source: "NORMAL_SALARY" | "FIRST_MONTH_CUSTOM";
+  staff_category_id_snapshot: string;
+  created_at: string;
+};
+
+type StaffWithdrawalRow = {
+  id: string;
+  factory_id: string;
+  staff_worker_id: string;
+  withdrawal_date: string;
+  amount: number;
+  created_at: string;
+};
+
+type StaffSalaryDeductionRow = {
+  id: string;
+  factory_id: string;
+  staff_worker_id: string;
+  deduction_date: string;
+  amount: number;
+  reason: string | null;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -294,6 +369,69 @@ export type Database = {
           { foreignKeyName: "transport_withdrawals_worker_factory_fkey"; columns: ["transport_worker_id", "factory_id"]; isOneToOne: false; referencedRelation: "transport_workers"; referencedColumns: ["id", "factory_id"] }
         ];
       };
+      staff_categories: {
+        Row: StaffCategoryRow;
+        Insert: { id?: string; factory_id: string; name: string; is_active?: boolean; created_at?: string; updated_at?: string };
+        Update: { id?: string; factory_id?: string; name?: string; is_active?: boolean; created_at?: string; updated_at?: string };
+        Relationships: [{ foreignKeyName: "staff_categories_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] }];
+      };
+      staff_workers: {
+        Row: StaffWorkerRow;
+        Insert: { id?: string; factory_id: string; name: string; staff_category_id: string; is_active?: boolean; created_at?: string; updated_at?: string };
+        Update: { id?: string; factory_id?: string; name?: string; staff_category_id?: string; is_active?: boolean; created_at?: string; updated_at?: string };
+        Relationships: [
+          { foreignKeyName: "staff_workers_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "staff_workers_category_factory_fkey"; columns: ["staff_category_id", "factory_id"]; isOneToOne: false; referencedRelation: "staff_categories"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      staff_monthly_salary_rates: {
+        Row: StaffMonthlySalaryRateRow;
+        Insert: { id?: string; factory_id: string; staff_category_id?: string | null; staff_worker_id?: string | null; monthly_salary: number; effective_from: string; effective_to?: string | null; created_at?: string; updated_at?: string };
+        Update: { id?: string; factory_id?: string; staff_category_id?: string | null; staff_worker_id?: string | null; monthly_salary?: number; effective_from?: string; effective_to?: string | null; created_at?: string; updated_at?: string };
+        Relationships: [
+          { foreignKeyName: "staff_monthly_salary_rates_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "staff_monthly_salary_rates_category_factory_fkey"; columns: ["staff_category_id", "factory_id"]; isOneToOne: false; referencedRelation: "staff_categories"; referencedColumns: ["id", "factory_id"] },
+          { foreignKeyName: "staff_monthly_salary_rates_worker_factory_fkey"; columns: ["staff_worker_id", "factory_id"]; isOneToOne: false; referencedRelation: "staff_workers"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      staff_salary_eligibility_periods: {
+        Row: StaffSalaryEligibilityPeriodRow;
+        Insert: { id?: string; factory_id: string; staff_worker_id: string; effective_from_month: string; effective_to_month?: string | null; first_month_custom_salary?: number | null; created_at?: string; updated_at?: string };
+        Update: { id?: string; factory_id?: string; staff_worker_id?: string; effective_from_month?: string; effective_to_month?: string | null; first_month_custom_salary?: number | null; created_at?: string; updated_at?: string };
+        Relationships: [
+          { foreignKeyName: "staff_salary_eligibility_periods_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "staff_salary_eligibility_periods_worker_factory_fkey"; columns: ["staff_worker_id", "factory_id"]; isOneToOne: false; referencedRelation: "staff_workers"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      staff_monthly_earnings: {
+        Row: StaffMonthlyEarningRow;
+        Insert: { id?: string; factory_id: string; staff_worker_id: string; salary_month: string; credited_amount: number; salary_configuration_id: string; resolved_monthly_salary_snapshot: number; salary_source_snapshot: "CATEGORY_DEFAULT" | "STAFF_OVERRIDE"; credit_source: "NORMAL_SALARY" | "FIRST_MONTH_CUSTOM"; staff_category_id_snapshot: string; created_at?: string };
+        Update: { id?: string; factory_id?: string; staff_worker_id?: string; salary_month?: string; credited_amount?: number; salary_configuration_id?: string; resolved_monthly_salary_snapshot?: number; salary_source_snapshot?: "CATEGORY_DEFAULT" | "STAFF_OVERRIDE"; credit_source?: "NORMAL_SALARY" | "FIRST_MONTH_CUSTOM"; staff_category_id_snapshot?: string; created_at?: string };
+        Relationships: [
+          { foreignKeyName: "staff_monthly_earnings_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "staff_monthly_earnings_worker_factory_fkey"; columns: ["staff_worker_id", "factory_id"]; isOneToOne: false; referencedRelation: "staff_workers"; referencedColumns: ["id", "factory_id"] },
+          { foreignKeyName: "staff_monthly_earnings_configuration_factory_fkey"; columns: ["salary_configuration_id", "factory_id"]; isOneToOne: false; referencedRelation: "staff_monthly_salary_rates"; referencedColumns: ["id", "factory_id"] },
+          { foreignKeyName: "staff_monthly_earnings_category_factory_fkey"; columns: ["staff_category_id_snapshot", "factory_id"]; isOneToOne: false; referencedRelation: "staff_categories"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      staff_withdrawals: {
+        Row: StaffWithdrawalRow;
+        Insert: { id?: string; factory_id: string; staff_worker_id: string; withdrawal_date: string; amount: number; created_at?: string };
+        Update: { id?: string; factory_id?: string; staff_worker_id?: string; withdrawal_date?: string; amount?: number; created_at?: string };
+        Relationships: [
+          { foreignKeyName: "staff_withdrawals_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "staff_withdrawals_worker_factory_fkey"; columns: ["staff_worker_id", "factory_id"]; isOneToOne: false; referencedRelation: "staff_workers"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      staff_salary_deductions: {
+        Row: StaffSalaryDeductionRow;
+        Insert: { id?: string; factory_id: string; staff_worker_id: string; deduction_date: string; amount: number; reason?: string | null; created_at?: string };
+        Update: { id?: string; factory_id?: string; staff_worker_id?: string; deduction_date?: string; amount?: number; reason?: string | null; created_at?: string };
+        Relationships: [
+          { foreignKeyName: "staff_salary_deductions_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "staff_salary_deductions_worker_factory_fkey"; columns: ["staff_worker_id", "factory_id"]; isOneToOne: false; referencedRelation: "staff_workers"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
       production_wage_rates: {
         Row: ProductionWageRateRow;
         Insert: { id?: string; factory_id: string; production_crew_id?: string | null; labourer_id?: string | null; rate_per_1000_bricks: number; effective_from: string; effective_to?: string | null; created_at?: string; updated_at?: string };
@@ -406,6 +544,73 @@ export type Database = {
       create_transport_crew_wage_rate: {
         Args: { p_factory_id: string; p_transport_crew_id: string; p_effective_from: string; p_rate_per_paya: number };
         Returns: TransportCrewWageRateRow;
+      };
+      create_staff_category_monthly_salary: {
+        Args: { p_factory_id: string; p_staff_category_id: string; p_monthly_salary: number; p_effective_from: string };
+        Returns: StaffMonthlySalaryRateRow;
+      };
+      create_staff_worker: {
+        Args: { p_factory_id: string; p_name: string; p_staff_category_id: string; p_salary_start_month: string; p_first_month_custom_salary: number | null };
+        Returns: StaffWorkerRow;
+      };
+      deactivate_staff_worker: {
+        Args: { p_factory_id: string; p_staff_worker_id: string; p_deactivation_month: string };
+        Returns: StaffWorkerRow;
+      };
+      delete_staff_worker: {
+        Args: { p_factory_id: string; p_staff_worker_id: string };
+        Returns: string;
+      };
+      reactivate_staff_worker: {
+        Args: { p_factory_id: string; p_staff_worker_id: string; p_salary_restart_month: string };
+        Returns: StaffWorkerRow;
+      };
+      ensure_staff_monthly_earnings: {
+        Args: { p_factory_id: string; p_staff_worker_id: string; p_through_month: string };
+        Returns: { earnings_created: number; first_created_month: string | null; last_created_month: string | null }[];
+      };
+      get_staff_financial_summary: {
+        Args: { p_factory_id: string; p_staff_worker_id: string };
+        Returns: { total_earnings: number; total_deductions: number; total_withdrawn: number; available_balance: number }[];
+      };
+      create_staff_withdrawal: {
+        Args: { p_factory_id: string; p_staff_worker_id: string; p_withdrawal_date: string; p_amount: number };
+        Returns: {
+          withdrawal_id: string;
+          withdrawal_factory_id: string;
+          withdrawal_staff_worker_id: string;
+          withdrawal_date: string;
+          withdrawal_amount: number;
+          created_at: string;
+          total_earnings: number;
+          total_deductions: number;
+          total_withdrawn: number;
+          available_balance: number;
+        }[];
+      };
+      create_staff_salary_deduction: {
+        Args: { p_factory_id: string; p_staff_worker_id: string; p_deduction_date: string; p_amount: number; p_reason: string | null };
+        Returns: {
+          deduction_id: string;
+          deduction_factory_id: string;
+          deduction_staff_worker_id: string;
+          deduction_date: string;
+          deduction_amount: number;
+          deduction_reason: string | null;
+          created_at: string;
+          total_earnings: number;
+          total_deductions: number;
+          total_withdrawn: number;
+          available_balance: number;
+        }[];
+      };
+      create_staff_monthly_salary_override: {
+        Args: { p_factory_id: string; p_staff_worker_id: string; p_monthly_salary: number; p_effective_from: string };
+        Returns: StaffMonthlySalaryRateRow;
+      };
+      resolve_staff_monthly_salary: {
+        Args: { p_factory_id: string; p_staff_id: string; p_effective_date: string };
+        Returns: { salary_configuration_id: string; monthly_salary: number; source: "STAFF_OVERRIDE" | "CATEGORY_DEFAULT"; staff_category_id: string }[];
       };
       calculate_production_wages: {
         Args: { p_factory_id: string; p_week_start: string };
