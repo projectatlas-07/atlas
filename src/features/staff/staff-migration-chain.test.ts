@@ -6,149 +6,184 @@ const migration = (name: string) => readFileSync(
   new URL(`../../../supabase/migrations/${name}`, import.meta.url),
   "utf8",
 );
-const verifier = (name: string) => readFileSync(
-  new URL(`../../../supabase/${name}`, import.meta.url),
-  "utf8",
-);
 
 const foundation = migration("20260820000000_create_staff_salary_foundation.sql");
 const entitlements = migration("20260820000001_create_staff_monthly_entitlements.sql");
-const withdrawals = migration("20260820000002_create_staff_withdrawals.sql");
-const deductions = migration("20260820000003_create_staff_salary_deductions.sql");
-const boundaryRepair = migration("20260820000004_repair_staff_salary_rate_boundaries.sql");
-const workerDelete = migration("20260820000005_create_staff_worker_delete.sql");
-const workerStartValidation = migration("20260820000006_validate_staff_worker_salary_start.sql");
+const payments = migration("20260820000007_create_staff_payments.sql");
+const referenceRuntime = migration(
+  "20260820000008_create_staff_reference_salary_runtime.sql",
+);
+const archiveRuntime = migration(
+  "20260820000009_create_staff_archive_runtime.sql",
+);
+const cleanup = migration(
+  "20260820000010_remove_legacy_staff_salary_engine.sql",
+);
+const categoryManagement = migration(
+  "20260820000011_create_staff_category_management.sql",
+);
+const categoryStateCleanup = migration(
+  "20260820000012_finalize_staff_runtime_schema.sql",
+);
+const verifier = readFileSync(
+  new URL("../../../supabase/verify_staff_runtime_final.sql", import.meta.url),
+  "utf8",
+);
 
-test("S2 canonical migration owns every entitlement table and lifecycle RPC", () => {
+const legacyTables = [
+  "staff_monthly_salary_rates",
+  "staff_salary_eligibility_periods",
+  "staff_monthly_earnings",
+  "staff_withdrawals",
+  "staff_salary_deductions",
+] as const;
+
+const legacyFunctions = [
+  "create_staff_category_monthly_salary",
+  "create_staff_monthly_salary_override",
+  "resolve_staff_monthly_salary",
+  "ensure_staff_monthly_earnings",
+  "get_staff_financial_summary",
+  "create_staff_withdrawal",
+  "create_staff_salary_deduction",
+  "deactivate_staff_worker",
+  "reactivate_staff_worker",
+] as const;
+
+test("historical Staff migrations remain intact before the replacement cutover", () => {
+  assert.match(foundation, /create table public\.staff_monthly_salary_rates/i);
+  assert.match(entitlements, /create table public\.staff_salary_eligibility_periods/i);
+  assert.match(entitlements, /create table public\.staff_monthly_earnings/i);
+  assert.match(entitlements, /create or replace function public\.create_staff_worker\s*\(/i);
+  assert.match(entitlements, /create or replace function public\.deactivate_staff_worker/i);
+  assert.match(entitlements, /create or replace function public\.reactivate_staff_worker/i);
+});
+
+test("S1 through S4 establish the authoritative replacement Staff runtime", () => {
   for (const pattern of [
-    /create table public\.staff_salary_eligibility_periods/i,
-    /create table public\.staff_monthly_earnings/i,
-    /create or replace function public\.create_staff_worker\s*\(/i,
-    /create or replace function public\.deactivate_staff_worker\s*\(/i,
-    /create or replace function public\.reactivate_staff_worker\s*\(/i,
-    /create or replace function public\.ensure_staff_monthly_earnings\s*\(/i,
-  ]) assert.match(entitlements, pattern);
+    /add column reference_salary numeric/i,
+    /create table public\.staff_payments/i,
+    /Staff payments are immutable/i,
+    /create or replace function public\.record_staff_payment/i,
+    /create or replace function public\.get_staff_payment_summary/i,
+  ]) assert.match(payments, pattern);
 
-  assert.doesNotMatch(foundation, /create table public\.staff_(salary_eligibility_periods|monthly_earnings)/i);
-  assert.doesNotMatch(withdrawals, /create table public\.staff_(salary_eligibility_periods|monthly_earnings)/i);
-  assert.doesNotMatch(deductions, /create table public\.staff_(salary_eligibility_periods|monthly_earnings)/i);
-});
-
-test("S2 tables are created before functions that depend on them", () => {
-  const eligibilityTable = entitlements.indexOf("create table public.staff_salary_eligibility_periods");
-  const earningsTable = entitlements.indexOf("create table public.staff_monthly_earnings");
-  const createWorker = entitlements.indexOf("create or replace function public.create_staff_worker");
-  const ensureEarnings = entitlements.indexOf("create or replace function public.ensure_staff_monthly_earnings");
-  assert.ok(eligibilityTable >= 0 && earningsTable > eligibilityTable);
-  assert.ok(createWorker > earningsTable && ensureEarnings > createWorker);
-});
-
-test("S2 retains lifecycle, immutability, idempotency, and security guards", () => {
   for (const pattern of [
-    /first_month_custom_salary > 0/i,
-    /staff_salary_eligibility_periods_no_overlap/i,
-    /unique \(factory_id, staff_worker_id, salary_month\)/i,
-    /Staff monthly earnings are immutable/i,
-    /salary_month = date_trunc\('month', salary_month\)::date/i,
-    /generated\.salary_month::date = eligibility\.effective_from_month/i,
-    /p_through_month > business_month/i,
-    /pg_advisory_xact_lock/i,
-    /not exists \([\s\S]*staff_monthly_earnings/i,
-    /enable row level security/i,
-    /revoke all on public\.staff_salary_eligibility_periods/i,
-  ]) assert.match(entitlements, pattern);
+    /create or replace function public\.create_staff_worker_with_reference_salary/i,
+    /create or replace function public\.update_staff_reference_salary/i,
+  ]) assert.match(referenceRuntime, pattern);
+
+  for (const pattern of [
+    /create or replace function public\.archive_staff_worker/i,
+    /create or replace function public\.restore_staff_worker/i,
+    /Archived Staff members cannot receive new payments/i,
+    /payment history and cannot be deleted\. Archive them instead/i,
+  ]) assert.match(archiveRuntime, pattern);
 });
 
-test("S3 and S4 still consume the S2 earning source and shared worker lock", () => {
-  for (const sql of [withdrawals, deductions]) {
-    assert.match(sql, /public\.ensure_staff_monthly_earnings/i);
-    assert.match(sql, /from public\.staff_monthly_earnings/i);
-    assert.match(sql, /staff_salary_lifecycle:/i);
+test("S5 explicitly removes every legacy Staff table without CASCADE", () => {
+  for (const table of legacyTables) {
+    assert.match(cleanup, new RegExp(`drop table public\\.${table};`, "i"));
   }
-  assert.match(withdrawals, /create or replace function public\.get_staff_financial_summary/i);
-  assert.match(withdrawals, /create or replace function public\.create_staff_withdrawal/i);
-  assert.match(deductions, /create or replace function public\.create_staff_salary_deduction/i);
+  assert.doesNotMatch(cleanup, /\bcascade\b/i);
+
+  const deductions = cleanup.indexOf("drop table public.staff_salary_deductions");
+  const withdrawals = cleanup.indexOf("drop table public.staff_withdrawals");
+  const earnings = cleanup.indexOf("drop table public.staff_monthly_earnings");
+  const eligibility = cleanup.indexOf("drop table public.staff_salary_eligibility_periods");
+  const rates = cleanup.indexOf("drop table public.staff_monthly_salary_rates");
+  assert.ok(deductions >= 0 && withdrawals > deductions && earnings > withdrawals);
+  assert.ok(eligibility > earnings && rates > eligibility);
 });
 
-test("legacy salary boundary repair is narrow, locked, and immutable-history aware", () => {
-  for (const pattern of [
-    /create or replace function public\.create_staff_category_monthly_salary\s*\(/i,
-    /create or replace function public\.create_staff_monthly_salary_override\s*\(/i,
-    /order by effective_from, id[\s\S]*p_monthly_salary <> correction_rate\.monthly_salary/i,
-    /corrected category salary start would overlap/i,
-    /staff_category_id_snapshot = p_staff_category_id/i,
-    /staff override boundary correction would contradict immutable/i,
-    /staff_salary_lifecycle:/i,
-    /update public\.staff_monthly_salary_rates[\s\S]*set effective_from = p_effective_from/i,
-  ]) assert.match(boundaryRepair, pattern);
-
-  assert.doesNotMatch(boundaryRepair, /update public\.staff_monthly_earnings/i);
-  assert.doesNotMatch(boundaryRepair, /delete from public\.staff_monthly_earnings/i);
-});
-
-test("Staff delete removes setup only after checking every immutable financial source", () => {
-  for (const pattern of [
-    /create or replace function public\.delete_staff_worker\s*\(/i,
-    /staff_worker_monthly_salary:/i,
-    /staff_salary_lifecycle:/i,
-    /from public\.staff_monthly_earnings/i,
-    /from public\.staff_withdrawals/i,
-    /from public\.staff_salary_deductions/i,
-    /delete from public\.staff_monthly_salary_rates/i,
-    /delete from public\.staff_salary_eligibility_periods/i,
-    /delete from public\.staff_workers/i,
-    /cannot be deleted\. Deactivate them instead/i,
-    /revoke all on function public\.delete_staff_worker\(uuid, uuid\) from anon/i,
-  ]) assert.match(workerDelete, pattern);
-
-  for (const protectedTable of [
-    "staff_monthly_earnings", "staff_withdrawals", "staff_salary_deductions",
-  ]) {
-    assert.doesNotMatch(workerDelete, new RegExp(`delete from public\\.${protectedTable}`, "i"));
-    assert.doesNotMatch(workerDelete, new RegExp(`update public\\.${protectedTable}`, "i"));
+test("S5 removes obsolete RPCs and their trigger-only helpers", () => {
+  for (const functionName of legacyFunctions) {
+    assert.match(cleanup, new RegExp(`drop function public\\.${functionName}\\(`, "i"));
   }
+  assert.match(
+    cleanup,
+    /drop function public\.create_staff_worker\(uuid, text, uuid, date, numeric\)/i,
+  );
+  for (const helper of [
+    "prevent_staff_monthly_earning_mutation",
+    "prevent_staff_withdrawal_mutation",
+    "prevent_staff_salary_deduction_mutation",
+  ]) assert.match(cleanup, new RegExp(`drop function public\\.${helper}\\(\\);`, "i"));
 });
 
-test("Staff creation validates the exact start-month salary without touching finance logic", () => {
+test("S5 retains only the authoritative Staff domain and does not touch other wage systems", () => {
+  for (const retained of [
+    "staff_categories",
+    "staff_workers",
+    "staff_payments",
+    "create_staff_worker_with_reference_salary",
+    "update_staff_reference_salary",
+    "record_staff_payment",
+    "get_staff_payment_summary",
+    "archive_staff_worker",
+    "restore_staff_worker",
+    "delete_staff_worker",
+  ]) assert.doesNotMatch(cleanup, new RegExp(`drop (?:table|function) public\\.${retained}`, "i"));
+
+  assert.doesNotMatch(
+    cleanup,
+    /public\.(?:production_|transport_|labourers|labour_groups|weekly_earnings|wage_rates)/i,
+  );
+});
+
+test("S5.1 adds controlled category rename and concurrency-safe guarded deletion", () => {
   for (const pattern of [
-    /create or replace function public\.create_staff_worker\s*\(/i,
-    /staff_category_monthly_salary:/i,
-    /effective_from <= p_salary_start_month/i,
-    /effective_to >= p_salary_start_month/i,
-    /Salary not set for the Staff start month/i,
-    /using errcode = 'P2505'/i,
-  ]) assert.match(workerStartValidation, pattern);
+    /create or replace function public\.update_staff_category\s*\(/i,
+    /create or replace function public\.delete_staff_category\s*\(/i,
+    /security definer[\s\S]*set search_path = pg_catalog, public/i,
+    /normalized_name text := btrim\(p_name\)/i,
+    /Staff category name is required/i,
+    /from public\.staff_categories[\s\S]*for update/i,
+    /from public\.staff_workers/i,
+    /assigned to Staff members and cannot be deleted/i,
+    /revoke update on public\.staff_categories from authenticated/i,
+    /grant execute on function public\.update_staff_category\(uuid, uuid, text\)/i,
+    /grant execute on function public\.delete_staff_category\(uuid, uuid\)/i,
+  ]) assert.match(categoryManagement, pattern);
 
-  assert.doesNotMatch(workerStartValidation, /ensure_staff_monthly_earnings/i);
-  assert.doesNotMatch(workerStartValidation, /insert into public\.staff_monthly_earnings/i);
-  assert.doesNotMatch(workerStartValidation, /public\.staff_(withdrawals|salary_deductions)/i);
+  assert.doesNotMatch(categoryManagement, /cascade|reassign|archive_staff_category/i);
+  assert.doesNotMatch(
+    categoryManagement,
+    /public\.(?:production_|transport_|labourers|labour_groups|weekly_earnings|wage_rates)/i,
+  );
 });
 
-test("all Staff verifiers retain their milestone assertions", () => {
-  const foundationVerifier = verifier("verify_staff_salary_foundation.sql");
-  const entitlementVerifier = verifier("verify_staff_monthly_entitlements.sql");
-  const withdrawalVerifier = verifier("verify_staff_withdrawals.sql");
-  const deductionVerifier = verifier("verify_staff_salary_deductions.sql");
-  const repairVerifier = verifier("verify_staff_salary_rate_boundary_repair.sql");
-  const deleteVerifier = verifier("verify_staff_worker_delete.sql");
-  const consistencyVerifier = verifier("verify_staff_salary_month_start_consistency.sql");
-  assert.match(foundationVerifier, /Staff Salary foundation verifier completed/);
-  assert.match(entitlementVerifier, /Staff monthly entitlement verifier completed/);
-  assert.match(entitlementVerifier, /inactive gap received a salary earning/i);
-  assert.match(entitlementVerifier, /one earning maximum per Staff\/month/i);
-  assert.match(withdrawalVerifier, /Staff withdrawal verifier completed/);
-  assert.match(deductionVerifier, /Staff salary deduction verifier completed/);
-  assert.match(repairVerifier, /legacy August-20-style category rate safely moved to month start/i);
-  assert.match(repairVerifier, /immutable earning conflict rejects the correction without mutation/i);
-  assert.match(repairVerifier, /future-start Staff shows configured salary without early earnings/i);
-  assert.match(repairVerifier, /Staff salary rate boundary repair verifier completed/);
-  assert.match(deleteVerifier, /future-start no-history Staff setup deletes without generating salary/i);
-  assert.match(deleteVerifier, /earnings, withdrawals, and deductions each force deactivation instead/i);
-  assert.match(deleteVerifier, /direct and anonymous Staff deletion is denied/i);
-  assert.match(deleteVerifier, /Staff worker delete verifier completed/);
-  assert.match(consistencyVerifier, /current-month card resolution and entitlement share month-start salary/i);
-  assert.match(consistencyVerifier, /custom 9000 credit retains the normal 10500 monthly salary snapshot/i);
-  assert.match(consistencyVerifier, /future-start salary displays at its start month with zero current balance/i);
-  assert.match(consistencyVerifier, /missing start-month salary leaves no invalid worker or eligibility/i);
-  assert.match(consistencyVerifier, /Staff salary month-start consistency verifier completed/i);
+test("S6 removes the obsolete category archive state without touching other systems", () => {
+  assert.match(categoryStateCleanup, /every existing Staff worker needs a positive reference salary/i);
+  assert.match(categoryStateCleanup, /alter column reference_salary set not null/i);
+  assert.match(categoryStateCleanup, /drop index public\.staff_categories_factory_active_idx/i);
+  assert.match(categoryStateCleanup, /alter table public\.staff_categories[\s\S]*drop column is_active/i);
+  assert.match(categoryStateCleanup, /do not define salary or have an archive lifecycle/i);
+  assert.doesNotMatch(categoryStateCleanup, /\bcascade\b/i);
+  assert.doesNotMatch(
+    categoryStateCleanup,
+    /public\.(?:production_|transport_|labourers|labour_groups|weekly_earnings|wage_rates)/i,
+  );
+});
+
+test("the single S6 verifier covers the exact release flow, schema, races, and isolation", () => {
+  for (const pattern of [
+    /Staff A is created with ₹1,20,000 reference salary and ₹0 Total Paid/i,
+    /₹3,000 and ₹2,500 remain individually visible newest-first and Total Paid is ₹5,500/i,
+    /reference salary changes to ₹1,30,000 without changing payments or Total Paid/i,
+    /category rename preserves category UUID, Staff identity, salary, and payment history/i,
+    /category used by active Staff cannot be deleted/i,
+    /category referenced only by archived Staff cannot be deleted/i,
+    /restore requires no date, creates no finance, and payments resume at ₹9,500 Total Paid/i,
+    /paid Staff is protected and mistaken zero-payment Staff is permanently deleted/i,
+    /an unused category can be deleted/i,
+    /Factory A cannot view or mutate any Factory B Staff object/i,
+    /every final Staff worker must own a reference salary/i,
+    /all nine authoritative RPCs have safe definitions and locked-down grants/i,
+    /payment UPDATE remains immutable even for a privileged writer/i,
+    /payment, archive, restore, worker-delete, and category-delete races are serialized/i,
+    /legacy Staff salary, entitlement, balance, withdrawal, and deduction engine is absent/i,
+    /Production, Mud, and Chamber Transport architecture remains untouched/i,
+    /Atlas Staff S6 final release verifier completed/i,
+  ]) assert.match(verifier, pattern);
 });

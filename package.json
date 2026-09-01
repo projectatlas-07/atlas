@@ -7,7 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:sales-concurrency": "node --env-file-if-exists=.env.local scripts/verify-sales-s1-concurrency.mjs",
+    "verify:sales-payment-concurrency": "node --env-file-if-exists=.env.local scripts/verify-sales-s5a-concurrency.mjs",
+    "verify:vehicle-wage-concurrency": "node --env-file-if-exists=.env.local scripts/verify-vehicle-wage-v2-concurrency.mjs",
+    "verify:vehicle-wage-reversal-concurrency": "node --env-file-if-exists=.env.local scripts/verify-vehicle-wage-v4-concurrency.mjs",
+    "verify:expense-payment-concurrency": "node --env-file-if-exists=.env.local scripts/verify-expenses-s7a-concurrency.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

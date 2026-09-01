@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { ProductionEntryScreen } from "@/features/production/components/production-entry-screen";
+import { SoilDailyEntryScreen } from "@/features/soil/components/soil-daily-entry-screen";
 import { TransportDailyEntryScreen } from "@/features/transport/components/transport-daily-entry-screen";
 
-type ManagerWorkflow = "production" | "transport";
+type ManagerWorkflow = "production" | "soil" | "transport";
 
 export function ManagerEntryScreen() {
   const [workflow, setWorkflow] = useState<ManagerWorkflow>("production");
@@ -12,12 +13,18 @@ export function ManagerEntryScreen() {
   return (
     <div className="min-h-screen bg-stone-50">
       <nav aria-label="Manager entry workflow" className="mx-auto max-w-xl px-4 pt-4 sm:px-6">
-        <div className="grid grid-cols-2 rounded-xl bg-stone-200 p-1">
+        <div className="grid grid-cols-3 rounded-xl bg-stone-200 p-1">
           <WorkflowButton
             isSelected={workflow === "production"}
             onClick={() => setWorkflow("production")}
           >
             Production
+          </WorkflowButton>
+          <WorkflowButton
+            isSelected={workflow === "soil"}
+            onClick={() => setWorkflow("soil")}
+          >
+            Soil supply
           </WorkflowButton>
           <WorkflowButton
             isSelected={workflow === "transport"}
@@ -28,9 +35,9 @@ export function ManagerEntryScreen() {
         </div>
       </nav>
 
-      {workflow === "production"
-        ? <ProductionEntryScreen />
-        : <TransportDailyEntryScreen />}
+      {workflow === "production" && <ProductionEntryScreen />}
+      {workflow === "soil" && <SoilDailyEntryScreen />}
+      {workflow === "transport" && <TransportDailyEntryScreen />}
     </div>
   );
 }

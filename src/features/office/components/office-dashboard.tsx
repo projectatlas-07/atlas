@@ -10,6 +10,10 @@ import { resolveAuthenticatedFactoryId } from "@/features/auth/services/factory-
 import { getTodaysProduction, type TodayProductionRow } from "@/features/office/services/todays-production-service";
 import { TransportOfficeSection } from "@/features/office/components/transport-office-section";
 import { StaffOfficeSection } from "@/features/office/components/staff-office-section";
+import { SoilOfficeSection } from "@/features/office/components/soil-office-section";
+import { SalesOfficeSection } from "@/features/office/components/sales-office-section";
+import { ExpensesOfficeSection } from "@/features/office/components/expenses-office-section";
+import { CashBookOfficeSection } from "@/features/office/components/cash-book-office-section";
 import { listTransportDailyOperations } from "@/features/transport/services/transport-daily-operations-service";
 import type { TransportDailyOperationsEntry } from "@/features/transport/types";
 import { CreateWageRateError, createWageRate } from "@/features/wages/services/wage-rate-create-service";
@@ -364,6 +368,17 @@ export function OfficeDashboard() {
           error={transportDailyOperationsError}
         />
 
+        <SalesOfficeSection
+          factoryId={factoryId!}
+          brickTypes={brickTypes}
+          isLoadingBrickTypes={isLoadingLabourers}
+          brickTypesError={brickTypesError}
+        />
+
+        <ExpensesOfficeSection factoryId={factoryId!} />
+
+        <CashBookOfficeSection factoryId={factoryId!} />
+
         <WageRatesSection
           factoryId={factoryId!}
           rates={wageRates}
@@ -403,6 +418,7 @@ export function OfficeDashboard() {
           onCancelNameEdit={() => { setEditingLabourerNameId(""); setLabourersError(""); }}
         />
         <LabourGroupManagement factoryId={factoryId!} />
+        <SoilOfficeSection factoryId={factoryId!} />
         <StaffOfficeSection factoryId={factoryId!} />
         <TransportOfficeSection factoryId={factoryId!} />
       </div>

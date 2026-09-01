@@ -4,3 +4,6 @@ node_modules
 .env*.local
 *.tsbuildinfo
 .DS_Store
+.env.main.backup
+.env-backup/
+supabase/.temp/

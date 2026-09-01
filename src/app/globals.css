@@ -6,3 +6,49 @@
   html { -webkit-tap-highlight-color: transparent; }
   body { @apply min-h-screen bg-white text-slate-950 antialiased; }
 }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  html,
+  body {
+    min-height: auto !important;
+    background: white !important;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+
+  .challan-print-shell {
+    min-height: auto !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  .challan-print-page {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .challan-print-table thead {
+    display: table-header-group;
+  }
+
+  .challan-print-table tfoot {
+    display: table-row-group;
+  }
+
+  .challan-print-table tr,
+  .challan-signatures {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
