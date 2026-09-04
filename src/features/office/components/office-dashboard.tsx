@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { LogoutButton } from "@/features/auth/components/logout-button";
+import { DashboardFeature } from "@/features/dashboard/components/dashboard-feature";
 import { resolveAuthenticatedFactoryId } from "@/features/auth/services/factory-access-service";
 import { getTodaysProduction, type TodayProductionRow } from "@/features/office/services/todays-production-service";
 import { TransportOfficeSection } from "@/features/office/components/transport-office-section";
@@ -322,6 +323,7 @@ export function OfficeDashboard() {
             <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">Office</p>
             <h1 className="mt-1 text-3xl font-bold">Production</h1>
             <p className="mt-2 text-slate-600">{formatDate(selectedProductionDate)}</p>
+            <a href="#office-dashboard-feature" className="mt-3 inline-flex h-9 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700">Dashboard</a>
           </div>
           <LogoutButton />
         </header>
@@ -421,6 +423,9 @@ export function OfficeDashboard() {
         <SoilOfficeSection factoryId={factoryId!} />
         <StaffOfficeSection factoryId={factoryId!} />
         <TransportOfficeSection factoryId={factoryId!} />
+        <section id="office-dashboard-feature" aria-label="Dashboard" className="mt-8 scroll-mt-6">
+          <DashboardFeature factoryId={factoryId!} />
+        </section>
       </div>
     </main>
   );

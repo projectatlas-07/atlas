@@ -2,6 +2,9 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "../../../lib/supabase/client.ts";
 import { isLocalDate } from "../../../lib/local-date.ts";
 import { isNewCustomerPaymentMode } from "../../sales/types.ts";
+import { assertInclusiveBusinessDateRange } from "../../../lib/business-date-contract.ts";
+import { sumFiniteNumbers } from "../../../lib/numeric-total.ts";
+import { readAllKeysetPages } from "../../../lib/complete-paginated-read.ts";
 import type {
   CreateExpensePaymentInput,
   ExpensePayment,
@@ -205,6 +208,32 @@ export async function listExpenseRecords(
   });
   if (error) throw new ExpenseServiceError(error);
   return ((data ?? []) as ExpenseRecordRow[]).map(mapExpenseRecord);
+}
+
+export async function getRecordedExpenseTotal(
+  factoryId: string,
+  dateFrom: string,
+  dateTo: string,
+): Promise<number> {
+  assertInclusiveBusinessDateRange(factoryId, dateFrom, dateTo);
+  const data = await readAllKeysetPages(async (afterId, pageSize) => {
+    let query = supabase.from("expense_records")
+      .select("id, total_amount")
+      .eq("factory_id", factoryId)
+      .eq("status", "active")
+      .gte("business_date", dateFrom)
+      .lte("business_date", dateTo)
+      .order("id", { ascending: true })
+      .limit(pageSize);
+    if (afterId) query = query.gt("id", afterId);
+    const { data: page, error } = await query;
+    if (error) throw new ExpenseServiceError(error);
+    return page ?? [];
+  });
+  return sumFiniteNumbers(
+    data.map((record) => record.total_amount),
+    "Recorded Expense total",
+  );
 }
 
 export async function getExpenseRecordPaymentState(

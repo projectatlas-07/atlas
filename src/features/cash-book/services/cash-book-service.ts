@@ -7,9 +7,16 @@ import type {
   CashBookInitialization,
   CashBookManualEntry,
   CashBookMovement,
+  CashBookRangeTotals,
   CreateCashBookManualEntryInput,
   InitializeCashBookInput,
 } from "../types.ts";
+import {
+  assertBusinessDate,
+  assertFactoryId,
+  assertInclusiveBusinessDateRange,
+  inclusiveBusinessDates,
+} from "../../../lib/business-date-contract.ts";
 
 type InitializationRow = {
   factory_id: string;
@@ -146,25 +153,61 @@ export async function getCashBookDay(
   requireId(factoryId, "factoryId");
   assertCanonicalDate(businessDate, "businessDate");
   const [summaryResult, movementsResult] = await Promise.all([
-    supabase.rpc("get_cash_book_day_summary", {
-      p_factory_id: factoryId,
-      p_business_date: businessDate,
-    }),
+    loadCashBookDaySummary(factoryId, businessDate),
     supabase.rpc("list_cash_book_day_entries", {
       p_factory_id: factoryId,
       p_business_date: businessDate,
     }),
   ]);
-  if (summaryResult.error) throw new CashBookServiceError(summaryResult.error);
   if (movementsResult.error) throw new CashBookServiceError(movementsResult.error);
-  const summary = summaryResult.data?.[0] as SummaryRow | undefined;
-  if (!summary) throw new Error("get_cash_book_day_summary returned no summary.");
   const movements = ((movementsResult.data ?? []) as MovementRow[]).map(mapMovement);
   return {
-    summary: mapSummary(summary),
+    summary: summaryResult,
     moneyIn: movements.filter((movement) => movement.direction === "in"),
     moneyOut: movements.filter((movement) => movement.direction === "out"),
   };
+}
+
+// D1/D2 performance finding — future Cash Book range-summary RPC candidate.
+// V1 intentionally keeps the public contract stable while delegating every day
+// to the existing authoritative day-summary RPC.
+export async function getRangeTotals(
+  factoryId: string,
+  dateFrom: string,
+  dateTo: string,
+): Promise<CashBookRangeTotals> {
+  assertInclusiveBusinessDateRange(factoryId, dateFrom, dateTo);
+  let moneyIn = 0;
+  let moneyOut = 0;
+  for (const businessDate of inclusiveBusinessDates(dateFrom, dateTo)) {
+    const summary = await loadCashBookDaySummary(factoryId, businessDate);
+    moneyIn += summary.totalMoneyIn;
+    moneyOut += summary.totalMoneyOut;
+  }
+  return { moneyIn, moneyOut };
+}
+
+export async function getBalanceAsOf(
+  factoryId: string,
+  dateTo: string,
+): Promise<number> {
+  assertFactoryId(factoryId);
+  assertBusinessDate(dateTo, "dateTo");
+  return (await loadCashBookDaySummary(factoryId, dateTo)).closingBalance;
+}
+
+async function loadCashBookDaySummary(
+  factoryId: string,
+  businessDate: string,
+): Promise<CashBookDaySummary> {
+  const { data, error } = await supabase.rpc("get_cash_book_day_summary", {
+    p_factory_id: factoryId,
+    p_business_date: businessDate,
+  });
+  if (error) throw new CashBookServiceError(error);
+  const summary = data?.[0] as SummaryRow | undefined;
+  if (!summary) throw new Error("get_cash_book_day_summary returned no summary.");
+  return mapSummary(summary);
 }
 
 function mapInitialization(row: InitializationRow): CashBookInitialization {

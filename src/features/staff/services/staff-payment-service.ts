@@ -5,6 +5,9 @@ import type {
   StaffPayment,
   StaffPaymentSummary,
 } from "../types.ts";
+import { assertInclusiveBusinessDateRange } from "../../../lib/business-date-contract.ts";
+import { sumFiniteNumbers } from "../../../lib/numeric-total.ts";
+import { readAllKeysetPages } from "../../../lib/complete-paginated-read.ts";
 
 type PaymentRow = {
   id: string;
@@ -41,6 +44,31 @@ export class StaffPaymentServiceError extends Error {
     this.details = error.details;
     this.hint = error.hint;
   }
+}
+
+export async function getStaffPaidTotal(
+  factoryId: string,
+  dateFrom: string,
+  dateTo: string,
+): Promise<number> {
+  assertInclusiveBusinessDateRange(factoryId, dateFrom, dateTo);
+  const data = await readAllKeysetPages(async (afterId, pageSize) => {
+    let query = supabase.from("staff_payments")
+      .select("id, amount")
+      .eq("factory_id", factoryId)
+      .gte("payment_date", dateFrom)
+      .lte("payment_date", dateTo)
+      .order("id", { ascending: true })
+      .limit(pageSize);
+    if (afterId) query = query.gt("id", afterId);
+    const { data: page, error } = await query;
+    if (error) throw new StaffPaymentServiceError(error);
+    return page ?? [];
+  });
+  return sumFiniteNumbers(
+    data.map((payment) => payment.amount),
+    "Staff Paid total",
+  );
 }
 
 function mapPayment(row: PaymentRow): StaffPayment {

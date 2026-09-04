@@ -2,6 +2,9 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "../../../lib/supabase/client.ts";
 import type { SalesDateRange, SalesRegisterEntry } from "../sales-register-model.ts";
 import { getChallanPaymentState } from "./customer-payment-service.ts";
+import { assertInclusiveBusinessDateRange } from "../../../lib/business-date-contract.ts";
+import { sumFiniteNumbers } from "../../../lib/numeric-total.ts";
+import { readAllKeysetPages } from "../../../lib/complete-paginated-read.ts";
 
 const SALES_REGISTER_SELECT = `
   id,
@@ -62,6 +65,33 @@ export class SalesRegisterReconciliationError extends Error {
     super(`Sales Register revenue does not reconcile for Challan #${challanNumber}.`);
     this.name = "SalesRegisterReconciliationError";
   }
+}
+
+export async function getSalesTotal(
+  factoryId: string,
+  dateFrom: string,
+  dateTo: string,
+): Promise<number> {
+  assertInclusiveBusinessDateRange(factoryId, dateFrom, dateTo);
+  const data = await readAllKeysetPages(async (afterId, pageSize) => {
+    let query = supabase
+      .from("challans")
+      .select("id, challan_total")
+      .eq("factory_id", factoryId)
+      .eq("status", "active")
+      .gte("challan_date", dateFrom)
+      .lte("challan_date", dateTo)
+      .order("id", { ascending: true })
+      .limit(pageSize);
+    if (afterId) query = query.gt("id", afterId);
+    const { data: page, error } = await query;
+    if (error) throw new SalesRegisterServiceError(error);
+    return page ?? [];
+  });
+  return sumFiniteNumbers(
+    data.map((challan) => challan.challan_total),
+    "Sales total",
+  );
 }
 
 export async function listSalesRegister(

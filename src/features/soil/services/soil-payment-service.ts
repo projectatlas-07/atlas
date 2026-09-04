@@ -5,6 +5,9 @@ import type {
   SoilFinancialSummary,
   SoilPayment,
 } from "../types.ts";
+import { assertInclusiveBusinessDateRange } from "../../../lib/business-date-contract.ts";
+import { sumFiniteNumbers } from "../../../lib/numeric-total.ts";
+import { readAllKeysetPages } from "../../../lib/complete-paginated-read.ts";
 
 type SoilPaymentRow = {
   id: string;
@@ -37,6 +40,31 @@ export class SoilPaymentServiceError extends Error {
     this.details = error.details;
     this.hint = error.hint;
   }
+}
+
+export async function getSoilPaidTotal(
+  factoryId: string,
+  dateFrom: string,
+  dateTo: string,
+): Promise<number> {
+  assertInclusiveBusinessDateRange(factoryId, dateFrom, dateTo);
+  const data = await readAllKeysetPages(async (afterId, pageSize) => {
+    let query = supabase.from("soil_payments")
+      .select("id, amount")
+      .eq("factory_id", factoryId)
+      .gte("payment_date", dateFrom)
+      .lte("payment_date", dateTo)
+      .order("id", { ascending: true })
+      .limit(pageSize);
+    if (afterId) query = query.gt("id", afterId);
+    const { data: page, error } = await query;
+    if (error) throw new SoilPaymentServiceError(error);
+    return page ?? [];
+  });
+  return sumFiniteNumbers(
+    data.map((payment) => payment.amount),
+    "Soil/Trolley Paid total",
+  );
 }
 
 function readablePaymentError(error: PostgrestError): string {

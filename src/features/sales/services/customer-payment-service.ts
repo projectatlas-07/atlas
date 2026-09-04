@@ -10,6 +10,9 @@ import type {
   CustomerSalesSummary,
 } from "../types.ts";
 import { isNewCustomerPaymentMode } from "../types.ts";
+import { assertFactoryId, assertInclusiveBusinessDateRange } from "../../../lib/business-date-contract.ts";
+import { sumFiniteNumbers, toFiniteNumber } from "../../../lib/numeric-total.ts";
+import { readAllKeysetPages } from "../../../lib/complete-paginated-read.ts";
 
 const PAYMENT_COLUMNS =
   "id, factory_id, customer_id, customer_name_snapshot, customer_address_snapshot, customer_mobile_snapshot, company_name_snapshot, company_business_description_snapshot, company_address_snapshot, company_mobile_snapshot, payment_date, amount, payment_mode, note, created_at";
@@ -50,6 +53,17 @@ type OutstandingChallanRow = ChallanNumberRow & {
   challan_total: number | string;
   status: "active" | "void";
   is_locked: boolean;
+};
+
+type CurrentOutstandingRow = {
+  id: string;
+  challan_total: number | string;
+};
+
+type CurrentOutstandingAllocationRow = {
+  id: string;
+  challan_id: string;
+  allocated_amount: number | string;
 };
 
 export class CustomerPaymentServiceError extends Error {
@@ -245,6 +259,76 @@ export async function createCustomerPayment(
   if (!data) throw new Error("create_customer_payment returned no payment.");
   const allocations = await listPaymentAllocations(input.factoryId, data.id);
   return mapPayment(data, allocations);
+}
+
+export async function getPaymentsReceivedTotal(
+  factoryId: string,
+  dateFrom: string,
+  dateTo: string,
+): Promise<number> {
+  assertInclusiveBusinessDateRange(factoryId, dateFrom, dateTo);
+  const data = await readAllKeysetPages(async (afterId, pageSize) => {
+    let query = supabase.from("customer_payments")
+      .select("id, amount")
+      .eq("factory_id", factoryId)
+      .gte("payment_date", dateFrom)
+      .lte("payment_date", dateTo)
+      .order("id", { ascending: true })
+      .limit(pageSize);
+    if (afterId) query = query.gt("id", afterId);
+    const { data: page, error } = await query;
+    if (error) throw new CustomerPaymentServiceError(error);
+    return page ?? [];
+  });
+  return sumFiniteNumbers(
+    data.map((payment) => payment.amount),
+    "Payments Received total",
+  );
+}
+
+export async function getCurrentCustomerOutstandingTotal(
+  factoryId: string,
+): Promise<number> {
+  assertFactoryId(factoryId);
+  const challans = await readAllKeysetPages<CurrentOutstandingRow>(async (afterId, pageSize) => {
+    let query = supabase.from("challans")
+      .select("id, challan_total")
+      .eq("factory_id", factoryId)
+      .eq("status", "active")
+      .order("id", { ascending: true })
+      .limit(pageSize);
+    if (afterId) query = query.gt("id", afterId);
+    const { data, error } = await query;
+    if (error) throw new CustomerPaymentServiceError(error);
+    return (data ?? []) as CurrentOutstandingRow[];
+  });
+  if (challans.length === 0) return 0;
+  const activeChallanIds = new Set(challans.map((challan) => challan.id));
+  const allocations = await readAllKeysetPages<CurrentOutstandingAllocationRow>(async (afterId, pageSize) => {
+    let query = supabase.from("customer_payment_allocations")
+      .select("id, challan_id, allocated_amount")
+      .eq("factory_id", factoryId)
+      .order("id", { ascending: true })
+      .limit(pageSize);
+    if (afterId) query = query.gt("id", afterId);
+    const { data, error } = await query;
+    if (error) throw new CustomerPaymentServiceError(error);
+    return (data ?? []) as CurrentOutstandingAllocationRow[];
+  });
+  const allocatedByChallanId = new Map<string, number>();
+  for (const allocation of allocations) {
+    if (!activeChallanIds.has(allocation.challan_id)) continue;
+    const amount = toFiniteNumber(allocation.allocated_amount, "Customer Outstanding allocation");
+    allocatedByChallanId.set(allocation.challan_id, (allocatedByChallanId.get(allocation.challan_id) ?? 0) + amount);
+  }
+  return challans.reduce((factoryTotal, challan) => {
+    const saleTotal = toFiniteNumber(challan.challan_total, "Customer Outstanding sale total");
+    const paidTotal = allocatedByChallanId.get(challan.id) ?? 0;
+    if (paidTotal > saleTotal) {
+      throw new Error("Customer Outstanding allocations exceed the authoritative Challan total.");
+    }
+    return factoryTotal + saleTotal - paidTotal;
+  }, 0);
 }
 
 export async function getChallanPaymentState(

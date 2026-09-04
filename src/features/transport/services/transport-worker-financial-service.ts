@@ -5,6 +5,9 @@ import type {
   TransportWorkerAvailableBalance,
   TransportWorkerWithdrawal,
 } from "../types.ts";
+import { assertInclusiveBusinessDateRange } from "../../../lib/business-date-contract.ts";
+import { sumFiniteNumbers } from "../../../lib/numeric-total.ts";
+import { readAllKeysetPages } from "../../../lib/complete-paginated-read.ts";
 
 export type GetTransportWorkerAvailableBalanceInput = {
   factoryId: string;
@@ -36,6 +39,31 @@ export class TransportWorkerFinancialServiceError extends Error {
     this.details = error.details;
     this.hint = error.hint;
   }
+}
+
+export async function getChamberTransportPaidTotal(
+  factoryId: string,
+  dateFrom: string,
+  dateTo: string,
+): Promise<number> {
+  assertInclusiveBusinessDateRange(factoryId, dateFrom, dateTo);
+  const data = await readAllKeysetPages(async (afterId, pageSize) => {
+    let query = supabase.from("transport_withdrawals")
+      .select("id, amount")
+      .eq("factory_id", factoryId)
+      .gte("withdrawal_date", dateFrom)
+      .lte("withdrawal_date", dateTo)
+      .order("id", { ascending: true })
+      .limit(pageSize);
+    if (afterId) query = query.gt("id", afterId);
+    const { data: page, error } = await query;
+    if (error) throw new TransportWorkerFinancialServiceError(error);
+    return page ?? [];
+  });
+  return sumFiniteNumbers(
+    data.map((withdrawal) => withdrawal.amount),
+    "Chamber Transport Paid total",
+  );
 }
 
 export async function getTransportWorkerAvailableBalance({

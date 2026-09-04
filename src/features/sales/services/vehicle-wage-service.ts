@@ -13,6 +13,9 @@ import {
   type VehicleWagePayment,
   type VehicleWageTrip,
 } from "../vehicle-wage-model.ts";
+import { assertInclusiveBusinessDateRange } from "../../../lib/business-date-contract.ts";
+import { sumFiniteNumbers } from "../../../lib/numeric-total.ts";
+import { readAllKeysetPages } from "../../../lib/complete-paginated-read.ts";
 
 const VEHICLE_WAGE_TRIP_COLUMNS =
   "id, challan_number, challan_date, vehicle_id, vehicle_number_snapshot, delivery_wage_applicable_snapshot, trip_labour_wage, status";
@@ -61,6 +64,51 @@ export class VehicleWageServiceError extends Error {
     this.details = error.details;
     this.hint = error.hint;
   }
+}
+
+export async function getVehicleWagePaidTotal(
+  factoryId: string,
+  dateFrom: string,
+  dateTo: string,
+): Promise<number> {
+  assertInclusiveBusinessDateRange(factoryId, dateFrom, dateTo);
+  const payments = await readAllKeysetPages(async (afterId, pageSize) => {
+    let query = supabase.from("vehicle_wage_payments")
+      .select("id, amount")
+      .eq("factory_id", factoryId)
+      .gte("payment_date", dateFrom)
+      .lte("payment_date", dateTo)
+      .order("id", { ascending: true })
+      .limit(pageSize);
+    if (afterId) query = query.gt("id", afterId);
+    const { data, error } = await query;
+    if (error) throw new VehicleWageServiceError(error);
+    return data ?? [];
+  });
+  if (payments.length === 0) return 0;
+
+  const paymentIds = new Set(payments.map((payment) => payment.id));
+  const reversals = await readAllKeysetPages(async (afterId, pageSize) => {
+    let query = supabase.from("vehicle_wage_payment_reversals")
+      .select("id, payment_id")
+      .eq("factory_id", factoryId)
+      .order("id", { ascending: true })
+      .limit(pageSize);
+    if (afterId) query = query.gt("id", afterId);
+    const { data, error } = await query;
+    if (error) throw new VehicleWageServiceError(error);
+    return data ?? [];
+  });
+
+  const reversedPaymentIds = new Set(reversals
+    .filter((reversal) => paymentIds.has(reversal.payment_id))
+    .map((reversal) => reversal.payment_id));
+  return sumFiniteNumbers(
+    payments
+      .filter((payment) => !reversedPaymentIds.has(payment.id))
+      .map((payment) => payment.amount),
+    "Vehicle Delivery Wage Paid total",
+  );
 }
 
 function readableVehicleWageError(error: PostgrestError): string {

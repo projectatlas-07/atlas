@@ -64,6 +64,11 @@ export type CashBookDay = {
   moneyOut: CashBookMovement[];
 };
 
+export type CashBookRangeTotals = {
+  moneyIn: number;
+  moneyOut: number;
+};
+
 export type InitializeCashBookInput = {
   factoryId: string;
   startDate: string;
