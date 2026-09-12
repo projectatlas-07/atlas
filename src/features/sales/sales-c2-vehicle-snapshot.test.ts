@@ -64,11 +64,17 @@ const baseForm: ChallanFormState = {
 test("C2 form supports no Vehicle and clears stale wage when switching ON to OFF or blank", () => {
   assert.deepEqual(buildCreateChallanInput("factory-a", baseForm), {
     factoryId: "factory-a",
+    challanNumber: null,
     challanDate: "2026-09-01",
     customerId: "customer-a",
     vehicleId: null,
     tripLabourWage: null,
-    items: [{ brickTypeId: "brick-a", quantity: 1000, ratePer1000Bricks: 100000 }],
+    items: [{
+      brickTypeId: "brick-a",
+      quantity: 1000,
+      pricingMode: "RATE",
+      ratePer1000Bricks: 100000,
+    }],
     flexibleLines: [{
       lineType: "EXTRA_CHARGE",
       orderIndex: 0,
@@ -100,11 +106,39 @@ test("Trip Labour Wage remains completely outside customer total preview", () =>
   assert.equal(buildCreateChallanInput("factory-a", withWage)?.tripLabourWage, 750);
 });
 
+test("Trip Labour Wage input cannot be decremented by page scrolling", () => {
+  const field = office.match(/<Field label="Trip Labour Wage">([\s\S]*?)<\/Field>/)?.[1];
+  assert.ok(field, "Trip Labour Wage field must exist.");
+  assert.match(field, /type="text"/);
+  assert.match(field, /inputMode="decimal"/);
+  assert.doesNotMatch(field, /type="number"|step="0\.01"/);
+});
+
+test("Trip Labour Wage preserves each supported paise value through form serialization", () => {
+  const selected = selectVehicleForChallan(baseForm, [onVehicle], onVehicle.id);
+  for (const [entered, expected] of [
+    ["300", 300],
+    ["299.99", 299.99],
+    ["300.01", 300.01],
+    ["200", 200],
+  ] as const) {
+    const input = buildCreateChallanInput("factory-a", {
+      ...selected,
+      tripLabourWage: entered,
+    });
+    assert.equal(input?.tripLabourWage, expected);
+  }
+  assert.equal(buildCreateChallanInput("factory-a", {
+    ...selected,
+    tripLabourWage: "0",
+  }), null, "Current wage-applicable rules require a positive value.");
+});
+
 test("editing uses current live Vehicle configuration while saved detail remains historical", () => {
   const saved = {
     id: "challan-a",
     factoryId: "factory-a",
-    challanNumber: 1,
+    challanNumber: "1",
     challanDate: "2026-09-01",
     customerId: "customer-a",
     customerNameSnapshot: "Customer A",
@@ -162,7 +196,7 @@ test("runtime has one master-based write path and Correction D prints the saved 
   assert.match(challanService, /p_trip_labour_wage: input\.tripLabourWage/);
   assert.doesNotMatch(challanService, /p_vehicle_number: validated|p_tractor_labour_rate/);
   assert.match(vehicleService, /find_or_create_vehicle/);
-  assert.match(office, /Search Vehicles/);
+  assert.match(office, /Search or select vehicle\.\.\./);
   assert.match(office, /Add Vehicle without leaving this Challan/);
   assert.match(office, /Trip Labour Wage/);
   assert.match(office, /does not affect the customer Challan total/);

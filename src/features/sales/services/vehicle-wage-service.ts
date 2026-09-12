@@ -22,7 +22,7 @@ const VEHICLE_WAGE_TRIP_COLUMNS =
 
 type VehicleWageTripRow = {
   id: string;
-  challan_number: number | string;
+  challan_number: string | null;
   challan_date: string;
   vehicle_id: string | null;
   vehicle_number_snapshot: string | null;
@@ -158,7 +158,7 @@ export async function listVehicleWageTrips(
     .gte("challan_date", range.fromDate)
     .lte("challan_date", range.toDate)
     .order("challan_date", { ascending: false })
-    .order("challan_number", { ascending: false });
+    .order("id", { ascending: false });
 
   if (error) throw new VehicleWageServiceError(error);
   const snapshots = ((data ?? []) as VehicleWageTripRow[]).map(mapSnapshot);
@@ -290,7 +290,7 @@ export async function reverseVehicleWagePayment(
 function mapSnapshot(row: VehicleWageTripRow): VehicleWageChallanSnapshot {
   return {
     challanId: row.id,
-    challanNumber: Number(row.challan_number),
+    challanNumber: row.challan_number === null ? null : String(row.challan_number),
     challanDate: row.challan_date,
     vehicleId: row.vehicle_id,
     vehicleNumberSnapshot: row.vehicle_number_snapshot,

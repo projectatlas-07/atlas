@@ -27,6 +27,14 @@ const fakeSupabase = {
         calls.push(["eq", column, value]);
         return builder;
       },
+      gte(column: string, value: string) {
+        calls.push(["gte", column, value]);
+        return builder;
+      },
+      lte(column: string, value: string) {
+        calls.push(["lte", column, value]);
+        return builder;
+      },
       order(column: string, options: unknown) {
         calls.push(["order", column, options]);
         return builder;
@@ -47,6 +55,7 @@ const {
   TransportWeeklyEarningReadError,
   listTransportWeeklyEarningDetails,
   listTransportWeeklyEarnings,
+  listTransportWorkerEarningDetails,
 } = await import("./transport-weekly-earning-read-service.ts");
 
 function reset(data: unknown[] = []): void {
@@ -151,6 +160,47 @@ test("snapshot mapping does not recalculate inconsistent stored values", async (
   assert.equal(detail.attendanceCountSnapshot, 3);
   assert.equal(detail.dailyCrewPoolSnapshot, 1234.56);
   assert.equal(detail.workerDailyShareSnapshot, 411.52);
+});
+
+test("worker period details use inclusive authoritative work dates with factory isolation", async () => {
+  reset([
+    detailRow({ id: "on-from", work_date: "2026-08-05", created_at: "2026-09-30T00:00:00Z" }),
+    detailRow({ id: "on-to", work_date: "2026-08-11", created_at: "2026-08-01T00:00:00Z" }),
+  ]);
+
+  const details = await listTransportWorkerEarningDetails({
+    factoryId: "factory-a",
+    transportWorkerId: "worker-a",
+    range: { fromDate: "2026-08-05", toDate: "2026-08-11" },
+  });
+
+  assert.deepEqual(details.map((detail) => detail.detailId), ["on-from", "on-to"]);
+  assert.deepEqual(calls.filter(([method]) => method === "eq"), [
+    ["eq", "factory_id", "factory-a"],
+    ["eq", "transport_worker_id", "worker-a"],
+  ]);
+  assert.deepEqual(calls.filter(([method]) => method === "gte" || method === "lte"), [
+    ["gte", "work_date", "2026-08-05"],
+    ["lte", "work_date", "2026-08-11"],
+  ]);
+  assert.equal(calls.some(([, column]) => column === "created_at"), false);
+});
+
+test("worker period details reject invalid identity and date ranges before reading", async () => {
+  reset();
+  await assert.rejects(listTransportWorkerEarningDetails({
+    factoryId: "factory-a",
+    transportWorkerId: "worker-a",
+    range: { fromDate: "2026-08-12", toDate: "2026-08-11" },
+  }), /valid inclusive range/);
+  assert.equal(calls.length, 0);
+
+  await assert.rejects(listTransportWorkerEarningDetails({
+    factoryId: "factory-a",
+    transportWorkerId: " ",
+    range: { fromDate: "2026-08-05", toDate: "2026-08-11" },
+  }), /transportWorkerId is required/);
+  assert.equal(calls.length, 0);
 });
 
 test("read failures preserve Supabase metadata", async () => {

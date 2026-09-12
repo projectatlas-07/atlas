@@ -1,5 +1,9 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "../../../lib/supabase/client.ts";
+import {
+  isWageEarningsDateRange,
+  type WageEarningsDateRange,
+} from "../../wages/wage-earnings-date-range.ts";
 import type { SoilEarning, SoilEarningEventType } from "../types.ts";
 
 type SoilEarningRow = {
@@ -36,6 +40,19 @@ function assertRequiredId(value: string, label: string): void {
   if (!value.trim()) throw new Error(`${label} is required.`);
 }
 
+type SoilEarningReadIdentity = {
+  factoryId: string;
+  soilWorkerId: string;
+};
+
+function assertReadIdentity({
+  factoryId,
+  soilWorkerId,
+}: SoilEarningReadIdentity): void {
+  assertRequiredId(factoryId, "factoryId");
+  assertRequiredId(soilWorkerId, "soilWorkerId");
+}
+
 function mapSoilEarning(row: SoilEarningRow): SoilEarning {
   return {
     id: row.id,
@@ -57,9 +74,14 @@ function mapSoilEarning(row: SoilEarningRow): SoilEarning {
 export async function listSoilEarnings({
   factoryId,
   soilWorkerId,
-}: Readonly<{ factoryId: string; soilWorkerId: string }>): Promise<SoilEarning[]> {
-  assertRequiredId(factoryId, "factoryId");
-  assertRequiredId(soilWorkerId, "soilWorkerId");
+  range,
+}: Readonly<SoilEarningReadIdentity & {
+  range: WageEarningsDateRange;
+}>): Promise<SoilEarning[]> {
+  assertReadIdentity({ factoryId, soilWorkerId });
+  if (!isWageEarningsDateRange(range)) {
+    throw new Error("Soil wage dates must be a valid inclusive range.");
+  }
 
   const { data, error } = await supabase
     .from("soil_earnings")
@@ -68,6 +90,8 @@ export async function listSoilEarnings({
     )
     .eq("factory_id", factoryId)
     .eq("soil_worker_id", soilWorkerId)
+    .gte("work_date", range.fromDate)
+    .lte("work_date", range.toDate)
     .order("work_date", { ascending: false })
     .order("soil_daily_trolley_entry_id", { ascending: true })
     .order("event_sequence", { ascending: false })
@@ -77,12 +101,25 @@ export async function listSoilEarnings({
   return (data ?? []).map(mapSoilEarning);
 }
 
+export async function hasSoilEarningHistory(
+  input: Readonly<SoilEarningReadIdentity>,
+): Promise<boolean> {
+  assertReadIdentity(input);
+  const { data, error } = await supabase
+    .from("soil_earnings")
+    .select("id")
+    .eq("factory_id", input.factoryId)
+    .eq("soil_worker_id", input.soilWorkerId)
+    .limit(1);
+  if (error) throw new SoilEarningReadServiceError(error);
+  return (data?.length ?? 0) > 0;
+}
+
 export async function getSoilTotalEarned({
   factoryId,
   soilWorkerId,
 }: Readonly<{ factoryId: string; soilWorkerId: string }>): Promise<number> {
-  assertRequiredId(factoryId, "factoryId");
-  assertRequiredId(soilWorkerId, "soilWorkerId");
+  assertReadIdentity({ factoryId, soilWorkerId });
 
   const { data, error } = await supabase.rpc("get_soil_total_earned", {
     p_factory_id: factoryId,

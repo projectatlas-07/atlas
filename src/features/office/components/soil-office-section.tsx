@@ -18,8 +18,12 @@ import {
   SOIL_SECTION_HEADING,
   soilOfficeErrorMessage,
   splitSoilWorkers,
+  sumSoilPeriodEarned,
 } from "@/features/office/soil-office-model";
-import { listSoilEarnings } from "@/features/soil/services/soil-earning-read-service";
+import {
+  hasSoilEarningHistory,
+  listSoilEarnings,
+} from "@/features/soil/services/soil-earning-read-service";
 import {
   createSoilFinancialAdjustment,
   listSoilFinancialAdjustments,
@@ -47,6 +51,11 @@ import type {
   SoilWorker,
   SoilWorkerTrolleyRate,
 } from "@/features/soil/types";
+import {
+  DEFAULT_WAGE_EARNINGS_DATE_PRESET,
+  resolveWageEarningsDateRange,
+  type WageEarningsDatePreset,
+} from "@/features/wages/wage-earnings-date-range";
 import { getLocalDate } from "@/lib/local-date";
 
 const workersKey = (factoryId: string) => ["office-soil-workers", factoryId] as const;
@@ -56,8 +65,14 @@ const rateHistoryKey = (factoryId: string, workerId: string) =>
   ["office-soil-rate-history", factoryId, workerId] as const;
 const summaryKey = (factoryId: string, workerId: string) =>
   ["office-soil-financial-summary", factoryId, workerId] as const;
-const earningsKey = (factoryId: string, workerId: string) =>
-  ["office-soil-earnings", factoryId, workerId] as const;
+const earningsKey = (
+  factoryId: string,
+  workerId: string,
+  fromDate: string | undefined,
+  toDate: string | undefined,
+) => ["office-soil-earnings", factoryId, workerId, fromDate, toDate] as const;
+const earningHistoryExistenceKey = (factoryId: string, workerId: string) =>
+  ["office-soil-earning-history-exists", factoryId, workerId] as const;
 const paymentsKey = (factoryId: string, workerId: string) =>
   ["office-soil-payments", factoryId, workerId] as const;
 const adjustmentsKey = (factoryId: string, workerId: string) =>
@@ -66,6 +81,12 @@ const adjustmentsKey = (factoryId: string, workerId: string) =>
 const inputClass = "mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100";
 const primaryButton = "h-10 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50";
 const secondaryButton = "h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
+const wageDatePresets: Array<{ value: WageEarningsDatePreset; label: string }> = [
+  { value: "this_week", label: "This Week" },
+  { value: "last_week", label: "Last Week" },
+  { value: "this_month", label: "This Month" },
+  { value: "custom", label: "Custom" },
+];
 
 export function SoilOfficeSection({ factoryId }: Readonly<{ factoryId: string }>) {
   const queryClient = useQueryClient();
@@ -209,7 +230,7 @@ function SoilWorkerOverview({ factoryId, worker, isSelected, onOpen }: Readonly<
         <button type="button" onClick={onOpen} className={secondaryButton}>{isSelected ? "Close" : "Open details"}</button>
       </div>
       <div className="mt-4 grid grid-cols-3 gap-3 border-t border-slate-200 pt-4">
-        <CompactValue label="Earned" value={financialQuery.data ? formatSoilMoney(financialQuery.data.totalEarned) : financialQuery.isLoading ? "Loading..." : "Unavailable"} />
+        <CompactValue label="Total Earned" value={financialQuery.data ? formatSoilMoney(financialQuery.data.totalEarned) : financialQuery.isLoading ? "Loading..." : "Unavailable"} />
         <CompactValue label="Paid" value={financialQuery.data ? formatSoilMoney(financialQuery.data.totalPaid) : financialQuery.isLoading ? "Loading..." : "Unavailable"} />
         <CompactValue label="Available" value={financialQuery.data ? formatSoilMoney(financialQuery.data.availableBalance) : financialQuery.isLoading ? "Loading..." : "Unavailable"} emphasize />
       </div>
@@ -223,6 +244,18 @@ function SoilWorkerDetail({ factoryId, worker }: Readonly<{
   worker: SoilWorker;
 }>) {
   const queryClient = useQueryClient();
+  const [localToday] = useState(getLocalDate);
+  const [earningsPreset, setEarningsPreset] = useState<WageEarningsDatePreset>(
+    DEFAULT_WAGE_EARNINGS_DATE_PRESET,
+  );
+  const [customFrom, setCustomFrom] = useState(localToday);
+  const [customTo, setCustomTo] = useState(localToday);
+  const earningsRange = resolveWageEarningsDateRange(
+    earningsPreset,
+    localToday,
+    customFrom,
+    customTo,
+  );
   const rateQuery = useQuery({
     queryKey: rateHistoryKey(factoryId, worker.id),
     queryFn: () => listSoilWorkerTrolleyRates({ factoryId, soilWorkerId: worker.id }),
@@ -232,8 +265,22 @@ function SoilWorkerDetail({ factoryId, worker }: Readonly<{
     queryFn: () => getSoilFinancialSummary({ factoryId, soilWorkerId: worker.id }),
   });
   const earningsQuery = useQuery({
-    queryKey: earningsKey(factoryId, worker.id),
-    queryFn: () => listSoilEarnings({ factoryId, soilWorkerId: worker.id }),
+    queryKey: earningsKey(
+      factoryId,
+      worker.id,
+      earningsRange?.fromDate,
+      earningsRange?.toDate,
+    ),
+    queryFn: () => listSoilEarnings({
+      factoryId,
+      soilWorkerId: worker.id,
+      range: earningsRange!,
+    }),
+    enabled: earningsRange !== null,
+  });
+  const earningHistoryExistenceQuery = useQuery({
+    queryKey: earningHistoryExistenceKey(factoryId, worker.id),
+    queryFn: () => hasSoilEarningHistory({ factoryId, soilWorkerId: worker.id }),
   });
   const paymentsQuery = useQuery({
     queryKey: paymentsKey(factoryId, worker.id),
@@ -258,12 +305,18 @@ function SoilWorkerDetail({ factoryId, worker }: Readonly<{
   const [success, setSuccess] = useState("");
 
   const summary = summaryQuery.data;
-  const historiesLoaded = !earningsQuery.isLoading && !earningsQuery.error
+  const periodEarned = earningsRange
+    && !earningsQuery.isLoading
+    && !earningsQuery.error
+    ? sumSoilPeriodEarned(earningsQuery.data ?? [])
+    : null;
+  const historiesLoaded = !earningHistoryExistenceQuery.isLoading
+    && !earningHistoryExistenceQuery.error
     && !paymentsQuery.isLoading && !paymentsQuery.error
     && !adjustmentsQuery.isLoading && !adjustmentsQuery.error;
   const canDelete = canOfferUnusedSoilWorkerDelete({
     historiesLoaded,
-    earningCount: earningsQuery.data?.length ?? 0,
+    earningCount: earningHistoryExistenceQuery.data ? 1 : 0,
     paymentCount: paymentsQuery.data?.length ?? 0,
     adjustmentCount: adjustmentsQuery.data?.length ?? 0,
   });
@@ -410,6 +463,24 @@ function SoilWorkerDetail({ factoryId, worker }: Readonly<{
 
       {confirmingDelete && <div className="mt-4 rounded-lg border border-red-300 bg-red-50 p-4"><p className="text-sm font-semibold text-red-900">Permanently delete {worker.name} and their setup-only trolley rates?</p><p className="mt-1 text-sm text-red-800">This succeeds only if the database confirms there are no trolley, earning, payment, or adjustment records.</p><div className="mt-3 flex gap-2"><button type="button" onClick={deleteWorker} disabled={Boolean(savingAction)} className="h-9 rounded-lg bg-red-700 px-3 text-sm font-semibold text-white disabled:opacity-50">{savingAction === "delete" ? "Deleting..." : "Confirm permanent delete"}</button><button type="button" onClick={() => setConfirmingDelete(false)} disabled={Boolean(savingAction)} className={secondaryButton}>Cancel</button></div></div>}
 
+      <section aria-label={`${worker.name} earnings period`} className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-medium text-amber-900">Earnings period</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {wageDatePresets.map((option) => <button key={option.value} type="button" aria-pressed={earningsPreset === option.value} onClick={() => setEarningsPreset(option.value)} className={`h-9 rounded-lg border px-3 text-sm font-semibold ${earningsPreset === option.value ? "border-amber-700 bg-amber-700 text-white" : "border-amber-300 bg-white text-slate-700"}`}>{option.label}</button>)}
+            </div>
+          </div>
+          <SummaryValue label="Period Earned" value={periodEarned === null ? "—" : formatSoilMoney(periodEarned)} />
+        </div>
+        {earningsPreset === "custom" && <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
+          <Field label="From"><input type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} className={inputClass} /></Field>
+          <Field label="To"><input type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} className={inputClass} /></Field>
+        </div>}
+        {earningsPreset === "custom" && !earningsRange && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">Choose a valid inclusive date range. From date cannot be after To date.</p>}
+        {earningsRange && <p className="mt-3 text-xs text-amber-900">Showing {formatSoilDate(earningsRange.fromDate)} to {formatSoilDate(earningsRange.toDate)}, inclusive.</p>}
+      </section>
+
       <section aria-label={`${worker.name} financial summary`} className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <SummaryValue label="Total Earned" value={summaryQuery.isLoading ? "Loading..." : summary ? formatSoilMoney(summary.totalEarned) : "Unavailable"} />
         <SummaryValue label="Total Additions" value={summary ? formatSoilMoney(summary.totalAdditions) : "—"} tone="positive" />
@@ -462,7 +533,7 @@ function SoilWorkerDetail({ factoryId, worker }: Readonly<{
             <ul className="divide-y divide-slate-100">{(rateQuery.data ?? []).map((rate) => <li key={rate.id} className="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"><span className="font-semibold">{formatSoilMoney(rate.ratePerTrolley)} / trolley</span><span className="text-slate-600">{formatSoilDate(rate.effectiveFrom)}{rate.effectiveTo ? ` — ${formatSoilDate(rate.effectiveTo)}` : " — Current/open"}</span></li>)}</ul>
           </HistoryDetails>
 
-          <HistoryDetails title="Work and earnings" loading={earningsQuery.isLoading} error={earningsQuery.error} empty={(earningsQuery.data?.length ?? 0) === 0} emptyMessage="No trolley earnings recorded yet.">
+          <HistoryDetails title="Work and earnings — selected period" loading={earningsQuery.isLoading} error={earningsQuery.error} empty={!earningsRange || (earningsQuery.data?.length ?? 0) === 0} emptyMessage={earningsRange ? "No trolley earnings in the selected period." : "Choose a valid earnings period above."}>
             <ul className="divide-y divide-slate-100">{(earningsQuery.data ?? []).map(buildSoilEarningHistoryItem).map((item) => <li key={item.id} className="py-3 text-sm"><div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"><div><span className="font-medium">{item.date}</span><span className="ml-2 text-slate-600">{item.description}</span>{item.isCorrection && <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Correction</span>}</div><span className={`font-semibold tabular-nums ${item.amount.startsWith("−") ? "text-red-700" : "text-emerald-700"}`}>{item.amount}</span></div></li>)}</ul>
           </HistoryDetails>
 

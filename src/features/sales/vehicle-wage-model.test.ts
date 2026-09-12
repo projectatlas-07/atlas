@@ -39,7 +39,7 @@ function snapshot(
 ): VehicleWageChallanSnapshot {
   return {
     challanId,
-    challanNumber: Number(challanId.replace(/\D/g, "")) || 1,
+    challanNumber: challanId.replace(/\D/g, "") || "1",
     challanDate,
     vehicleId: vehicle.id,
     vehicleNumberSnapshot: vehicle.vehicleNumber,
@@ -58,7 +58,7 @@ test("Vehicle A earns ₹1,250 from two active Challan snapshots", () => {
   const [account] = buildVehicleWageAccounts([vehicleA], trips);
   assert.equal(account.earnedAmount, 1250);
   assert.equal(account.qualifyingTripCount, 2);
-  assert.deepEqual(account.trips.map((trip) => trip.challanNumber), [108, 101]);
+  assert.deepEqual(account.trips.map((trip) => trip.challanNumber), ["108", "101"]);
 });
 
 test("multiple Vehicles remain separate accounts without line-join multiplication", () => {
@@ -108,14 +108,14 @@ test("tracking OFF and archived master state do not erase historical earned trip
   assert.equal(account.vehicleNumber, "WB12AB1234");
 });
 
-test("date ranges support one day, current week, and arbitrary inclusive dates", () => {
-  assert.deepEqual(resolveVehicleWageDateRange("today", "2026-09-12"), {
-    fromDate: "2026-09-12",
-    toDate: "2026-09-12",
-  });
-  assert.deepEqual(resolveVehicleWageDateRange("week", "2026-09-12"), {
+test("Vehicle Wages adopts the shared weekly and arbitrary inclusive ranges", () => {
+  assert.deepEqual(resolveVehicleWageDateRange("this_week", "2026-09-12"), {
     fromDate: "2026-09-07",
-    toDate: "2026-09-12",
+    toDate: "2026-09-13",
+  });
+  assert.deepEqual(resolveVehicleWageDateRange("last_week", "2026-09-12"), {
+    fromDate: "2026-08-31",
+    toDate: "2026-09-06",
   });
   assert.deepEqual(resolveVehicleWageDateRange(
     "custom",
@@ -153,11 +153,13 @@ test("no-Vehicle, Tracking-OFF, NULL, zero, and invalid precision rows earn noth
 
 test("money aggregation uses integer paise and never drifts", () => {
   const trips = getEligibleVehicleWageTrips([
-    snapshot("challan-1", vehicleA, "2026-09-01", 750.1),
-    snapshot("challan-2", vehicleA, "2026-09-02", 500.2),
+    snapshot("challan-1", vehicleA, "2026-09-01", 300),
+    snapshot("challan-2", vehicleA, "2026-09-02", 299.99),
+    snapshot("challan-3", vehicleA, "2026-09-03", 300.01),
   ]);
   const [account] = buildVehicleWageAccounts([vehicleA], trips);
-  assert.equal(account.earnedAmount, 1250.3);
+  assert.equal(account.earnedAmount, 900);
+  assert.equal(account.trips.find((trip) => trip.challanId === "challan-1")?.tripLabourWage, 300);
 });
 
 test("customer revenue and later payment state cannot alter Challan-derived Vehicle wage", () => {
@@ -180,7 +182,7 @@ test("a duplicated Challan source fails closed instead of multiplying one trip",
   const source = snapshot("challan-101", vehicleA, "2026-09-01", 750);
   assert.throws(
     () => getEligibleVehicleWageTrips([source, { ...source }]),
-    /duplicated Challan #101/,
+    /duplicated Challan 101/,
   );
 });
 

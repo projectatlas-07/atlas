@@ -36,7 +36,13 @@ export type Vehicle = {
 };
 
 export type ChallanStatus = "active" | "void";
+export type ChallanNumber = string | null;
+
+export function formatChallanLabel(challanNumber: ChallanNumber): string {
+  return challanNumber ? `Challan ${challanNumber}` : "Challan";
+}
 export type ChallanPricingUnit = "PER_1000_BRICKS";
+export type ChallanBrickPricingMode = "RATE" | "AMOUNT";
 export type ChallanLineCategory =
   | "BRICK_REVENUE"
   | "OTHER_REVENUE"
@@ -46,7 +52,7 @@ export type ChallanFlexibleLineType = "NOTE" | "EXTRA_CHARGE";
 export type ChallanHeader = {
   id: string;
   factoryId: string;
-  challanNumber: number;
+  challanNumber: ChallanNumber;
   challanDate: string;
   customerId: string;
   customerNameSnapshot: string;
@@ -84,6 +90,7 @@ export type ChallanItem = {
   brickTypeId: string;
   brickParticularsSnapshot: string;
   quantity: number;
+  pricingMode?: ChallanBrickPricingMode;
   ratePer1000Bricks: number;
   pricingUnit: ChallanPricingUnit;
   /** Existing brick rows map to this common reporting category without a data migration. */
@@ -125,11 +132,21 @@ export type Challan = ChallanHeader & {
   flexibleLines: ChallanFlexibleLine[];
 };
 
-export type ChallanItemInput = {
+type ChallanItemInputBase = {
   brickTypeId: string;
   quantity: number;
-  ratePer1000Bricks: number;
 };
+
+export type ChallanItemInput = ChallanItemInputBase & ({
+  pricingMode?: "RATE";
+  ratePer1000Bricks: number;
+  lineAmount?: never;
+} | {
+  pricingMode: "AMOUNT";
+  /** Canonical decimal rupees; retained as text until Postgres casts it to numeric. */
+  lineAmount: string;
+  ratePer1000Bricks?: never;
+});
 
 export type ChallanNoteLineInput = {
   lineType: "NOTE";
@@ -163,6 +180,7 @@ export type ChallanFlexibleLineInput =
 
 export type CreateChallanInput = {
   factoryId: string;
+  challanNumber?: ChallanNumber;
   challanDate: string;
   customerId: string;
   vehicleId: string | null;
@@ -184,7 +202,7 @@ export type CustomerPaymentAllocation = {
   factoryId: string;
   paymentId: string;
   challanId: string;
-  challanNumber: number;
+  challanNumber: ChallanNumber;
   allocatedAmount: number;
   createdAt: string;
 };
@@ -266,8 +284,16 @@ export type CustomerSalesSummary = {
   totalOutstanding: number;
 };
 
+export type CustomerOutstandingBrickLine = {
+  itemId: string;
+  particularsSnapshot: string;
+  quantity: number;
+};
+
 export type CustomerOutstandingChallan = ChallanPaymentSummary & {
-  challanNumber: number;
+  challanNumber: ChallanNumber;
   challanDate: string;
+  createdAt: string;
   isLocked: boolean;
+  brickLines: CustomerOutstandingBrickLine[];
 };

@@ -1,4 +1,4 @@
-import type { CustomerPayment, CustomerPaymentMode } from "@/features/sales/types";
+import type { ChallanNumber, CustomerPayment, CustomerPaymentMode } from "@/features/sales/types";
 
 export type PrintablePaymentReceipt = {
   company: {
@@ -12,7 +12,7 @@ export type PrintablePaymentReceipt = {
   amount: number;
   paymentMode: CustomerPaymentMode;
   note: string | null;
-  allocations: Array<{ challanNumber: number; amount: number }>;
+  allocations: Array<{ challanNumber: ChallanNumber; amount: number }>;
 };
 
 export function buildPrintablePaymentReceipt(

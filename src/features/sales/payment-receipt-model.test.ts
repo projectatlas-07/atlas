@@ -27,10 +27,10 @@ const payment: CustomerPayment = {
   createdAt: "2026-08-27T10:00:00Z",
   allocations: [{
     id: "internal-allocation-1", factoryId: "internal-factory-id", paymentId: "internal-payment-id",
-    challanId: "internal-challan-1", challanNumber: 41, allocatedAmount: 5_000, createdAt: "2026-08-27T10:00:00Z",
+    challanId: "internal-challan-1", challanNumber: "41", allocatedAmount: 5_000, createdAt: "2026-08-27T10:00:00Z",
   }, {
     id: "internal-allocation-2", factoryId: "internal-factory-id", paymentId: "internal-payment-id",
-    challanId: "internal-challan-2", challanNumber: 42, allocatedAmount: 3_000, createdAt: "2026-08-27T10:00:00Z",
+    challanId: "internal-challan-2", challanNumber: "42", allocatedAmount: 3_000, createdAt: "2026-08-27T10:00:00Z",
   }],
 };
 
@@ -47,8 +47,8 @@ test("one multi-allocation payment produces one receipt containing every Challan
   const receipt = buildPrintablePaymentReceipt(payment);
   assert.equal(receipt.amount, 8_000);
   assert.deepEqual(receipt.allocations, [
-    { challanNumber: 41, amount: 5_000 },
-    { challanNumber: 42, amount: 3_000 },
+    { challanNumber: "41", amount: 5_000 },
+    { challanNumber: "42", amount: 3_000 },
   ]);
   assert.match(documentSource, /receipt\.allocations\.map/);
 });

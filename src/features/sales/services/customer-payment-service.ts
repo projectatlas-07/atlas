@@ -46,13 +46,22 @@ type CustomerPaymentAllocationRow = {
   created_at: string;
 };
 
-type ChallanNumberRow = { id: string; challan_number: number | string };
+type ChallanNumberRow = { id: string; challan_number: string | null };
 
 type OutstandingChallanRow = ChallanNumberRow & {
   challan_date: string;
+  created_at: string;
   challan_total: number | string;
   status: "active" | "void";
   is_locked: boolean;
+};
+
+type OutstandingBrickLineRow = {
+  id: string;
+  challan_id: string;
+  brick_particulars_snapshot: string;
+  quantity: number | string;
+  line_position: number;
 };
 
 type CurrentOutstandingRow = {
@@ -158,10 +167,10 @@ function validateAllocations(
 
 function mapAllocation(
   row: CustomerPaymentAllocationRow,
-  challanNumbers: ReadonlyMap<string, number>,
+  challanNumbers: ReadonlyMap<string, string | null>,
 ): CustomerPaymentAllocation {
-  const challanNumber = challanNumbers.get(row.challan_id);
-  if (challanNumber === undefined) throw new Error("Payment allocation Challan was not found.");
+  if (!challanNumbers.has(row.challan_id)) throw new Error("Payment allocation Challan was not found.");
+  const challanNumber = challanNumbers.get(row.challan_id) ?? null;
   return {
     id: row.id,
     factoryId: row.factory_id,
@@ -226,7 +235,10 @@ async function attachChallanNumbers(
     .in("id", challanIds);
   if (error) throw new CustomerPaymentServiceError(error);
   const challanNumbers = new Map(
-    ((data ?? []) as ChallanNumberRow[]).map((row) => [row.id, Number(row.challan_number)]),
+    ((data ?? []) as ChallanNumberRow[]).map((row) => [
+      row.id,
+      row.challan_number === null ? null : String(row.challan_number),
+    ]),
   );
   return rows.map((row) => mapAllocation(row, challanNumbers));
 }
@@ -443,29 +455,69 @@ export async function getCustomerPayment(
 export async function listCustomerOutstandingChallans(
   factoryId: string,
   customerId: string,
+  dateRange?: Readonly<{ fromDate: string; toDate: string }>,
 ): Promise<CustomerOutstandingChallan[]> {
   requireId(factoryId, "factoryId");
   requireId(customerId, "customerId");
-  const { data, error } = await supabase
+  if (dateRange) {
+    assertInclusiveBusinessDateRange(factoryId, dateRange.fromDate, dateRange.toDate);
+  }
+  let query = supabase
     .from("challans")
-    .select("id, challan_number, challan_date, challan_total, status, is_locked")
+    .select("id, challan_number, challan_date, created_at, challan_total, status, is_locked")
     .eq("factory_id", factoryId)
     .eq("customer_id", customerId)
-    .eq("status", "active")
+    .eq("status", "active");
+  if (dateRange) {
+    query = query
+      .gte("challan_date", dateRange.fromDate)
+      .lte("challan_date", dateRange.toDate);
+  }
+  const { data, error } = await query
     .order("challan_date", { ascending: true })
-    .order("challan_number", { ascending: true });
+    .order("id", { ascending: true });
   if (error) throw new CustomerPaymentServiceError(error);
 
   const rows = (data ?? []) as OutstandingChallanRow[];
-  const states = await Promise.all(rows.map((row) => getChallanPaymentState(factoryId, row.id)));
+  if (rows.length === 0) return [];
+  const challanIds = rows.map((row) => row.id);
+  const [states, itemResult] = await Promise.all([
+    Promise.all(rows.map((row) => getChallanPaymentState(factoryId, row.id))),
+    supabase
+      .from("challan_items")
+      .select("id, challan_id, brick_particulars_snapshot, quantity, line_position")
+      .eq("factory_id", factoryId)
+      .in("challan_id", challanIds)
+      .order("line_position", { ascending: true })
+      .order("id", { ascending: true }),
+  ]);
+  if (itemResult.error) throw new CustomerPaymentServiceError(itemResult.error);
+
+  const brickLinesByChallanId = new Map<string, CustomerOutstandingChallan["brickLines"]>();
+  for (const item of (itemResult.data ?? []) as OutstandingBrickLineRow[]) {
+    const quantity = toFiniteNumber(item.quantity, "Customer Challan brick quantity");
+    if (!Number.isSafeInteger(quantity) || quantity <= 0) {
+      throw new Error("Customer Challan brick quantity must be a positive whole number.");
+    }
+    const brickLines = brickLinesByChallanId.get(item.challan_id) ?? [];
+    brickLines.push({
+      itemId: item.id,
+      particularsSnapshot: item.brick_particulars_snapshot,
+      quantity,
+    });
+    brickLinesByChallanId.set(item.challan_id, brickLines);
+  }
+
   return rows.flatMap((row, index) => {
     const state = states[index];
     if (!state || state.challanStatus !== "active" || state.outstandingAmount <= 0) return [];
     return [{
       ...state,
-      challanNumber: Number(row.challan_number),
+      challanNumber: row.challan_number === null ? null : String(row.challan_number),
       challanDate: row.challan_date,
+      createdAt: row.created_at,
       isLocked: row.is_locked,
+      brickLines: brickLinesByChallanId.get(row.id) ?? [],
     }];
   });
 }

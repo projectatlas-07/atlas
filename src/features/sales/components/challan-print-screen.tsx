@@ -51,7 +51,9 @@ export function ChallanPrintScreen({ challanId }: Readonly<{ challanId: string }
   useEffect(() => {
     if (state.status !== "ready") return;
     const previousTitle = document.title;
-    document.title = `Road Challan ${state.challan.challanNumber}`;
+    document.title = state.challan.challanNumber
+      ? `Road Challan ${state.challan.challanNumber}`
+      : "Road Challan";
     return () => { document.title = previousTitle; };
   }, [state]);
 
@@ -73,7 +75,9 @@ export function ChallanPrintScreen({ challanId }: Readonly<{ challanId: string }
 
   function openPrintDialog(pdfMode: boolean) {
     const previousTitle = document.title;
-    if (pdfMode) document.title = `Road-Challan-${challan.challanNumber}`;
+    if (pdfMode) document.title = challan.challanNumber
+      ? `Road-Challan-${challan.challanNumber}`
+      : "Road-Challan";
     try {
       window.print();
     } finally {
@@ -120,8 +124,11 @@ export function RoadChallanDocument({ challan }: Readonly<{ challan: PrintableCh
       </header>
 
       <section aria-label="Challan transaction" className="grid grid-cols-2 border-x-2 border-b-2 border-black text-sm">
-        <p className="border-r border-black px-3 py-2"><span className="font-bold">Challan No.:</span> {challan.challanNumber}</p>
+        <p className="border-r border-black px-3 py-2"><span className="font-bold">Challan No.:</span> {challan.challanNumber ?? ""}</p>
         <p className="px-3 py-2 text-right"><span className="font-bold">Date:</span> {formatPrintableDate(challan.challanDate)}</p>
+        {challan.vehicleNumber && <p className="col-span-2 border-t border-black px-3 py-2">
+          <span className="font-bold">Vehicle No.:</span> <span className="font-semibold tracking-wide">{challan.vehicleNumber}</span>
+        </p>}
       </section>
 
       <section aria-label="Customer details" className="border-x-2 border-b-2 border-black px-3 py-3 text-sm">
@@ -136,8 +143,8 @@ export function RoadChallanDocument({ challan }: Readonly<{ challan: PrintableCh
         <thead>
           <tr className="border-b-2 border-black">
             <th className="w-[8%] border-r border-black px-2 py-2 text-center">No.</th>
-            <th className="w-[20%] border-r border-black px-2 py-2 text-right">Quantity</th>
             <th className="border-r border-black px-3 py-2 text-left">Particulars</th>
+            <th className="w-[20%] border-r border-black px-2 py-2 text-right">Quantity</th>
             <th className="w-[20%] border-r border-black px-2 py-2 text-right">Rate</th>
             <th className="w-[20%] px-2 py-2 text-right">Amount</th>
           </tr>
@@ -150,8 +157,8 @@ export function RoadChallanDocument({ challan }: Readonly<{ challan: PrintableCh
               </tr>
             : <tr key={`${line.lineKind}-${index}-${line.particulars}`} data-challan-line={line.lineKind === "BRICK" ? "brick" : "extra-charge"} className="border-b border-black last:border-b-0">
                 <td className="border-r border-black px-2 py-3 text-center">{index + 1}</td>
-                <td className="border-r border-black px-2 py-3 text-right tabular-nums">{line.quantity === null ? "" : formatPrintableQuantity(line.quantity)}</td>
                 <td className="break-words border-r border-black px-3 py-3 font-medium">{line.particulars}</td>
+                <td className="border-r border-black px-2 py-3 text-right tabular-nums">{line.quantity === null ? "" : formatPrintableQuantity(line.quantity)}</td>
                 <td className="border-r border-black px-2 py-3 text-right tabular-nums">
                   {line.rate === null ? "" : <>{formatPrintableMoney(line.rate)}{line.lineKind === "BRICK" && <span className="block text-[10px] font-normal">per 1,000</span>}</>}
                 </td>
@@ -165,10 +172,6 @@ export function RoadChallanDocument({ challan }: Readonly<{ challan: PrintableCh
           </tr>
         </tfoot>
       </table>
-
-      <section aria-label="Delivery details" className="border-x-2 border-b-2 border-black px-3 py-3 text-sm">
-        <span className="font-bold">Vehicle No.:</span> <span className="font-semibold tracking-wide">{challan.vehicleNumber ?? "—"}</span>
-      </section>
 
       <section aria-label="Acknowledgement and signatures" className="challan-signatures border-x-2 border-b-2 border-black px-4 py-5">
         <p className="text-center text-sm font-bold">Received the goods in good condition</p>

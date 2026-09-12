@@ -301,7 +301,7 @@ type VehicleWagePaymentReversalRow = {
 type ChallanRow = {
   id: string;
   factory_id: string;
-  challan_number: number;
+  challan_number: string | null;
   challan_date: string;
   customer_id: string;
   customer_name_snapshot: string;
@@ -337,6 +337,7 @@ type ChallanItemRow = {
   brick_type_id: string;
   brick_particulars_snapshot: string;
   quantity: number;
+  pricing_mode: "RATE" | "AMOUNT";
   rate_per_1000_bricks: number;
   pricing_unit: "PER_1000_BRICKS";
   line_amount: number;
@@ -537,18 +538,12 @@ export type Database = {
           { foreignKeyName: "vehicle_wage_payment_reversals_payment_factory_fkey"; columns: ["payment_id", "factory_id"]; isOneToOne: true; referencedRelation: "vehicle_wage_payments"; referencedColumns: ["id", "factory_id"] }
         ];
       };
-      challan_number_counters: {
-        Row: { factory_id: string; last_challan_number: number; updated_at: string };
-        Insert: { factory_id: string; last_challan_number: number; updated_at?: string };
-        Update: { factory_id?: string; last_challan_number?: number; updated_at?: string };
-        Relationships: [{ foreignKeyName: "challan_number_counters_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: true; referencedRelation: "factories"; referencedColumns: ["id"] }];
-      };
       challans: {
         Row: ChallanRow;
         Insert: {
           id?: string;
           factory_id: string;
-          challan_number: number;
+          challan_number?: string | null;
           challan_date: string;
           customer_id: string;
           customer_name_snapshot: string;
@@ -592,12 +587,14 @@ export type Database = {
           brick_type_id: string;
           brick_particulars_snapshot: string;
           quantity: number;
+          pricing_mode?: "RATE" | "AMOUNT";
           rate_per_1000_bricks: number;
           pricing_unit?: "PER_1000_BRICKS";
+          line_amount: number;
           line_position: number;
           created_at?: string;
         };
-        Update: Partial<Omit<ChallanItemRow, "line_amount">> & { line_amount?: never };
+        Update: Partial<ChallanItemRow>;
         Relationships: [
           { foreignKeyName: "challan_items_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
           { foreignKeyName: "challan_items_challan_factory_fkey"; columns: ["challan_id", "factory_id"]; isOneToOne: false; referencedRelation: "challans"; referencedColumns: ["id", "factory_id"] },
@@ -1121,11 +1118,11 @@ export type Database = {
         }[];
       };
       create_challan: {
-        Args: { p_factory_id: string; p_challan_date: string; p_customer_id: string; p_vehicle_id: string | null; p_trip_labour_wage: number | null; p_items: Json; p_flexible_lines?: Json | null };
+        Args: { p_factory_id: string; p_challan_number: string | null; p_challan_date: string; p_customer_id: string; p_vehicle_id: string | null; p_trip_labour_wage: number | null; p_items: Json; p_flexible_lines?: Json | null };
         Returns: ChallanRow;
       };
       update_challan: {
-        Args: { p_factory_id: string; p_challan_id: string; p_challan_date: string; p_customer_id: string; p_vehicle_id: string | null; p_trip_labour_wage: number | null; p_items: Json; p_flexible_lines?: Json | null };
+        Args: { p_factory_id: string; p_challan_id: string; p_challan_number: string | null; p_challan_date: string; p_customer_id: string; p_vehicle_id: string | null; p_trip_labour_wage: number | null; p_items: Json; p_flexible_lines?: Json | null };
         Returns: ChallanRow;
       };
       void_challan: {

@@ -34,8 +34,10 @@ import {
   buildTransportFinanceWorkerOption,
   buildTransportWithdrawalHistoryItem,
   buildTransportWithdrawalInput,
+  formatTransportFinanceCurrency,
   getTransportFinanceRefreshQueryKeys,
   selectTransportFinanceWorker,
+  sumTransportPeriodEarned,
   transportFinanceFormAfterSuccess,
   transportWorkerFinanceErrorMessage,
   type TransportWorkerFinanceFormState,
@@ -60,6 +62,7 @@ import {
 import {
   listTransportWeeklyEarningDetails,
   listTransportWeeklyEarnings,
+  listTransportWorkerEarningDetails,
 } from "@/features/transport/services/transport-weekly-earning-read-service";
 import { calculateTransportWeeklyWages } from "@/features/transport/services/transport-weekly-wage-calculation-service";
 import {
@@ -78,7 +81,19 @@ import type {
   TransportWorker,
   TransportWorkDirection,
 } from "@/features/transport/types";
+import {
+  DEFAULT_WAGE_EARNINGS_DATE_PRESET,
+  resolveWageEarningsDateRange,
+  type WageEarningsDatePreset,
+} from "@/features/wages/wage-earnings-date-range";
 import { getLocalDate } from "@/lib/local-date";
+
+const wageDatePresets: Array<{ value: WageEarningsDatePreset; label: string }> = [
+  { value: "this_week", label: "This Week" },
+  { value: "last_week", label: "Last Week" },
+  { value: "this_month", label: "This Month" },
+  { value: "custom", label: "Custom" },
+];
 
 const workerQueryKey = (factoryId: string) => ["office-transport-workers", factoryId] as const;
 const crewQueryKey = (factoryId: string) => ["office-transport-crews", factoryId] as const;
@@ -99,6 +114,18 @@ const transportWorkerBalanceQueryKey = (
 ) => ["office-transport-worker-balance", factoryId, transportWorkerId, asOfDate] as const;
 const transportWorkerWithdrawalsQueryKey = (factoryId: string, transportWorkerId: string) =>
   ["office-transport-worker-withdrawals", factoryId, transportWorkerId] as const;
+const transportWorkerPeriodEarningsQueryKey = (
+  factoryId: string,
+  transportWorkerId: string,
+  fromDate: string | undefined,
+  toDate: string | undefined,
+) => [
+  "office-transport-worker-period-earnings",
+  factoryId,
+  transportWorkerId,
+  fromDate,
+  toDate,
+] as const;
 
 export function TransportOfficeSection({ factoryId }: Readonly<{ factoryId: string }>) {
   const workersQuery = useQuery({
@@ -999,6 +1026,18 @@ function TransportWorkerFinances({
   workersUnavailable: boolean;
 }>) {
   const queryClient = useQueryClient();
+  const [localToday] = useState(getLocalDate);
+  const [earningsPreset, setEarningsPreset] = useState<WageEarningsDatePreset>(
+    DEFAULT_WAGE_EARNINGS_DATE_PRESET,
+  );
+  const [customFrom, setCustomFrom] = useState(localToday);
+  const [customTo, setCustomTo] = useState(localToday);
+  const earningsRange = resolveWageEarningsDateRange(
+    earningsPreset,
+    localToday,
+    customFrom,
+    customTo,
+  );
   const [form, setForm] = useState<TransportWorkerFinanceFormState>({
     selectedWorkerId: "",
     withdrawalDate: getLocalDate(),
@@ -1029,10 +1068,29 @@ function TransportWorkerFinances({
     }),
     enabled: Boolean(form.selectedWorkerId),
   });
+  const periodEarningsQuery = useQuery({
+    queryKey: transportWorkerPeriodEarningsQueryKey(
+      factoryId,
+      form.selectedWorkerId,
+      earningsRange?.fromDate,
+      earningsRange?.toDate,
+    ),
+    queryFn: () => listTransportWorkerEarningDetails({
+      factoryId,
+      transportWorkerId: form.selectedWorkerId,
+      range: earningsRange!,
+    }),
+    enabled: Boolean(form.selectedWorkerId && earningsRange),
+  });
 
   const selectedWorker = workers.find((worker) => worker.id === form.selectedWorkerId) ?? null;
   const balanceDisplay = balanceQuery.data
     ? buildTransportBalanceDisplay(balanceQuery.data)
+    : null;
+  const periodEarned = earningsRange
+    && !periodEarningsQuery.isLoading
+    && !periodEarningsQuery.error
+    ? sumTransportPeriodEarned(periodEarningsQuery.data ?? [])
     : null;
 
   function clearFeedback(): void {
@@ -1117,6 +1175,68 @@ function TransportWorkerFinances({
             Selected worker: <span className="font-semibold text-slate-900">{buildTransportFinanceWorkerOption(selectedWorker).label}</span>
           </p>
 
+          <section aria-label={`${selectedWorker.name} earnings period`} className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-medium text-amber-900">Earnings period</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {wageDatePresets.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={earningsPreset === option.value}
+                      onClick={() => setEarningsPreset(option.value)}
+                      className={`h-9 rounded-lg border px-3 text-sm font-semibold ${earningsPreset === option.value ? "border-amber-700 bg-amber-700 text-white" : "border-amber-300 bg-white text-slate-700"}`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-lg bg-white px-4 py-3 text-right">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Period Earned</p>
+                <p className="mt-1 text-xl font-bold tabular-nums">
+                  {periodEarned === null ? "—" : formatTransportFinanceCurrency(periodEarned)}
+                </p>
+              </div>
+            </div>
+            {earningsPreset === "custom" && (
+              <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
+                <label className="block text-sm font-medium text-slate-700">
+                  From
+                  <input
+                    type="date"
+                    value={customFrom}
+                    onChange={(event) => setCustomFrom(event.target.value)}
+                    className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-950"
+                  />
+                </label>
+                <label className="block text-sm font-medium text-slate-700">
+                  To
+                  <input
+                    type="date"
+                    value={customTo}
+                    onChange={(event) => setCustomTo(event.target.value)}
+                    className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-950"
+                  />
+                </label>
+              </div>
+            )}
+            {earningsPreset === "custom" && !earningsRange && (
+              <p role="alert" className="mt-3 text-sm font-semibold text-red-700">
+                Choose a valid inclusive date range. From date cannot be after To date.
+              </p>
+            )}
+            {earningsRange && (
+              <p className="mt-3 text-xs text-amber-900">
+                Showing {earningsRange.fromDate} to {earningsRange.toDate}, inclusive.
+              </p>
+            )}
+          </section>
+
+          <h4 className="mt-6 font-semibold">Cumulative account</h4>
+          <p className="mt-1 text-xs text-slate-600">The earnings period above does not change settled totals, withdrawals, or available balance.</p>
+
           <label className="mt-4 block max-w-sm text-sm font-medium text-slate-700">
             Balance as of / withdrawal date
             <input
@@ -1142,11 +1262,11 @@ function TransportWorkerFinances({
             <>
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-lg bg-slate-50 p-4">
-                  <p className="text-sm text-slate-500">Earned</p>
+                  <p className="text-sm text-slate-500">Total Earned</p>
                   <p className="mt-1 font-semibold tabular-nums">{balanceDisplay.earned}</p>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-4">
-                  <p className="text-sm text-slate-500">Withdrawn</p>
+                  <p className="text-sm text-slate-500">Paid / Withdrawn</p>
                   <p className="mt-1 font-semibold tabular-nums">{balanceDisplay.withdrawn}</p>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-4">
@@ -1161,6 +1281,36 @@ function TransportWorkerFinances({
                 <p className="mt-3 text-sm text-slate-500">Available balance is zero as of this date.</p>
               )}
             </>
+          )}
+
+          <h4 className="mt-6 font-semibold">Work and earnings — selected period</h4>
+          {periodEarningsQuery.isLoading && <p className="mt-3 text-sm text-slate-500">Loading selected-period work...</p>}
+          {periodEarningsQuery.error && (
+            <p role="alert" className="mt-3 text-sm font-medium text-red-700">
+              {transportWorkerFinanceErrorMessage(periodEarningsQuery.error, "Could not load selected-period transport earnings.")}
+            </p>
+          )}
+          {!periodEarningsQuery.isLoading && !periodEarningsQuery.error && earningsRange && (periodEarningsQuery.data ?? []).length === 0 && (
+            <p className="mt-3 text-sm text-slate-500">No locked transport earnings were found in this period.</p>
+          )}
+          {!periodEarningsQuery.isLoading && !periodEarningsQuery.error && earningsRange && (periodEarningsQuery.data ?? []).length > 0 && (
+            <div className="mt-3 space-y-3">
+              {(periodEarningsQuery.data ?? []).map((detail) => {
+                const item = buildTransportWeeklyDetailDisplay(detail);
+                return (
+                  <article key={item.detailId} className="rounded-lg border border-slate-200 p-4 text-sm">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <h5 className="font-semibold">{item.workDate} · {item.crewLabel}</h5>
+                        <p className="mt-1 text-slate-600">Paya: {item.paya} · Attendance: {item.attendanceCount}</p>
+                      </div>
+                      <p className="font-bold tabular-nums">Share: {item.workerShare}</p>
+                    </div>
+                    <p className="mt-2 text-slate-600">Saved rate: {item.ratePerPaya} · Daily crew pool: {item.dailyCrewPool}</p>
+                  </article>
+                );
+              })}
+            </div>
           )}
 
           <form className="mt-5 grid gap-4 rounded-lg border border-slate-200 p-4 sm:grid-cols-2 sm:items-end" onSubmit={(event) => void submitWithdrawal(event)}>

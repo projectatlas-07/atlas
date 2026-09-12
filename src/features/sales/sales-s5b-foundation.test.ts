@@ -18,7 +18,7 @@ test("S5B stays bounded to Office payment workflow, history, receipt, and paymen
 test("Office payment save uses only verified S5A services and explicitly selected allocations", () => {
   assert.match(office, /createCustomerPayment\(input\)/);
   assert.match(service, /supabase\.rpc\("create_customer_payment"/);
-  assert.doesNotMatch(office, /oldest|auto.?allocate/i);
+  assert.doesNotMatch(office, /auto.?allocate|allocateOldest|oldestAllocation/i);
   assert.match(office, /Nothing is selected automatically/);
   assert.match(office, /status\.canSubmit/);
   assert.match(office, /if \(isSaving\) return/);

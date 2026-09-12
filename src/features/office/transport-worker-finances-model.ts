@@ -1,9 +1,19 @@
 import type { CreateTransportWorkerWithdrawalInput } from "../transport/services/transport-worker-financial-service.ts";
 import type {
+  TransportWeeklyEarningDetail,
   TransportWorker,
   TransportWorkerAvailableBalance,
   TransportWorkerWithdrawal,
 } from "../transport/types.ts";
+
+export function sumTransportPeriodEarned(
+  details: readonly TransportWeeklyEarningDetail[],
+): number {
+  return details.reduce(
+    (total, detail) => total + detail.workerDailyShareSnapshot,
+    0,
+  );
+}
 
 export type TransportWorkerFinanceFormState = {
   selectedWorkerId: string;

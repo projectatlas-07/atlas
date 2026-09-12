@@ -1,16 +1,17 @@
 import {
-  resolveSalesDateRange,
-  type SalesDatePreset,
-  type SalesDateRange,
-} from "./sales-register-model.ts";
-import type { ChallanStatus, Vehicle } from "./types.ts";
+  isWageEarningsDateRange,
+  resolveWageEarningsDateRange,
+  type WageEarningsDatePreset,
+  type WageEarningsDateRange,
+} from "../wages/wage-earnings-date-range.ts";
+import type { ChallanNumber, ChallanStatus, Vehicle } from "./types.ts";
 
-export type VehicleWageDatePreset = SalesDatePreset;
-export type VehicleWageDateRange = SalesDateRange;
+export type VehicleWageDatePreset = WageEarningsDatePreset;
+export type VehicleWageDateRange = WageEarningsDateRange;
 
 export type VehicleWageChallanSnapshot = {
   challanId: string;
-  challanNumber: number;
+  challanNumber: ChallanNumber;
   challanDate: string;
   vehicleId: string | null;
   vehicleNumberSnapshot: string | null;
@@ -21,7 +22,7 @@ export type VehicleWageChallanSnapshot = {
 
 export type VehicleWageTrip = {
   challanId: string;
-  challanNumber: number;
+  challanNumber: ChallanNumber;
   challanDate: string;
   vehicleId: string;
   vehicleNumberSnapshot: string;
@@ -177,18 +178,13 @@ export function resolveVehicleWageDateRange(
   customFrom = "",
   customTo = "",
 ): VehicleWageDateRange | null {
-  return resolveSalesDateRange(preset, localToday, customFrom, customTo);
+  return resolveWageEarningsDateRange(preset, localToday, customFrom, customTo);
 }
 
 export function isVehicleWageDateRange(
   range: VehicleWageDateRange,
 ): boolean {
-  return resolveSalesDateRange(
-    "custom",
-    range.toDate,
-    range.fromDate,
-    range.toDate,
-  ) !== null;
+  return isWageEarningsDateRange(range);
 }
 
 export function getEligibleVehicleWageTrips(
@@ -206,7 +202,7 @@ export function getEligibleVehicleWageTrips(
       || tripWagePaise === null
       || tripWagePaise <= 0) continue;
     if (seenChallanIds.has(snapshot.challanId)) {
-      throw new Error(`Vehicle wage source duplicated Challan #${snapshot.challanNumber}.`);
+      throw new Error(`Vehicle wage source duplicated ${snapshot.challanNumber ? `Challan ${snapshot.challanNumber}` : "an unnumbered Challan"}.`);
     }
     seenChallanIds.add(snapshot.challanId);
     trips.push({
@@ -221,7 +217,6 @@ export function getEligibleVehicleWageTrips(
 
   return trips.sort((left, right) =>
     right.challanDate.localeCompare(left.challanDate)
-    || right.challanNumber - left.challanNumber
     || left.challanId.localeCompare(right.challanId));
 }
 
@@ -264,7 +259,6 @@ export function buildVehicleWageAccounts(
   for (const account of accounts.values()) {
     account.trips.sort((left, right) =>
       right.challanDate.localeCompare(left.challanDate)
-      || right.challanNumber - left.challanNumber
       || left.challanId.localeCompare(right.challanId));
     if (account.trips[0]) {
       account.vehicleNumber = account.trips[0].vehicleNumberSnapshot;

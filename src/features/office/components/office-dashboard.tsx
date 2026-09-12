@@ -30,6 +30,7 @@ import { getLabourGroups, type LabourGroup } from "@/features/wages/services/lab
 import { LabourGroupMutationError, createLabourGroup, setLabourGroupActive } from "@/features/wages/services/labour-group-mutation-service";
 import { CalculateMudSupplyWagesError, calculateMudSupplyWages } from "@/features/wages/services/mud-supply-wage-calculation-service";
 import { calculateInformationalPerMemberShare } from "@/features/wages/services/mud-supply-wage-calculation";
+import { calculateMudSupplyRangeSummary, listMudSupplyProductionForRange, type MudSupplyRangeSummary } from "@/features/wages/services/mud-supply-range-summary-service";
 import { getMudSupplyWeeklyEarning, type MudSupplyWeeklyEarning } from "@/features/wages/services/mud-supply-weekly-earning-read-service";
 import { getLabourGroupAvailableBalance } from "@/features/wages/services/labour-group-available-balance-service";
 import { CreateLabourGroupWithdrawalError, createLabourGroupWithdrawal } from "@/features/wages/services/labour-group-withdrawal-create-service";
@@ -38,6 +39,8 @@ import { assignLabourerToProductionCrew, endLabourerProductionCrewAssignment, Pr
 import { createProductionCrew, getCurrentProductionCrewAssignment, getProductionCrewAssignments, getProductionCrews, ProductionCrewMutationError, setProductionCrewActive, type ProductionCrew } from "@/features/wages/services/production-crew-service";
 import { CreateProductionWageRateError, createLabourerProductionWageRateOverride, createProductionCrewWageRate } from "@/features/wages/services/production-wage-rate-create-service";
 import { getCurrentCrewProductionWageRate, getCurrentLabourerProductionWageRateOverride, getProductionWageRatesForFactory, type ProductionWageRate } from "@/features/wages/services/production-wage-rate-read-service";
+import { calculateProductionRangeSummary, listLabourerProductionEntriesForRange, type ProductionRangeSummary } from "@/features/wages/services/production-range-summary-service";
+import { DEFAULT_WAGE_EARNINGS_DATE_PRESET, resolveWageEarningsDateRange, type WageEarningsDatePreset } from "@/features/wages/wage-earnings-date-range";
 import { getLocalDate } from "@/lib/local-date";
 import { supabase } from "@/lib/supabase/client";
 
@@ -58,6 +61,13 @@ type ManagedLabourer = {
 };
 
 type BrickTypeTotal = { id: string; name: string; quantity: number };
+
+const productionRangePresets: Array<{ value: WageEarningsDatePreset; label: string }> = [
+  { value: "this_week", label: "This Week" },
+  { value: "last_week", label: "Last Week" },
+  { value: "this_month", label: "This Month" },
+  { value: "custom", label: "Custom" },
+];
 
 export function OfficeDashboard() {
   const router = useRouter();
@@ -419,7 +429,12 @@ export function OfficeDashboard() {
           onSaveName={saveLabourerName}
           onCancelNameEdit={() => { setEditingLabourerNameId(""); setLabourersError(""); }}
         />
-        <LabourGroupManagement factoryId={factoryId!} />
+        <LabourGroupManagement
+          factoryId={factoryId!}
+          wageRates={wageRates}
+          wageRatesLoading={isLoadingWageRates}
+          wageRatesError={Boolean(wageRatesError)}
+        />
         <SoilOfficeSection factoryId={factoryId!} />
         <StaffOfficeSection factoryId={factoryId!} />
         <TransportOfficeSection factoryId={factoryId!} />
@@ -881,7 +896,12 @@ function ProductionRateHistory({ title, rates, asOfDate }: Readonly<{ title: str
   );
 }
 
-function LabourGroupManagement({ factoryId }: Readonly<{ factoryId: string }>) {
+function LabourGroupManagement({ factoryId, wageRates, wageRatesLoading, wageRatesError }: Readonly<{
+  factoryId: string;
+  wageRates: readonly WageRateHistory[];
+  wageRatesLoading: boolean;
+  wageRatesError: boolean;
+}>) {
   const queryClient = useQueryClient();
   const { data: groups = [], error, isLoading } = useQuery({
     queryKey: ["office-labour-groups", factoryId],
@@ -1007,18 +1027,61 @@ function LabourGroupManagement({ factoryId }: Readonly<{ factoryId: string }>) {
         groups={groups}
         isLoadingGroups={isLoading}
         groupsLoadFailed={Boolean(error)}
+        wageRates={wageRates}
+        wageRatesLoading={wageRatesLoading}
+        wageRatesError={wageRatesError}
       />
     </section>
   );
 }
 
-function MudSupplyWageCalculation({ factoryId, groups, isLoadingGroups, groupsLoadFailed }: Readonly<{
+function MudSupplyWageCalculation({ factoryId, groups, isLoadingGroups, groupsLoadFailed, wageRates, wageRatesLoading, wageRatesError }: Readonly<{
   factoryId: string;
   groups: readonly LabourGroup[];
   isLoadingGroups: boolean;
   groupsLoadFailed: boolean;
+  wageRates: readonly WageRateHistory[];
+  wageRatesLoading: boolean;
+  wageRatesError: boolean;
 }>) {
   const activeGroup = groups.find((group) => group.isActive) ?? null;
+  const [rangeToday] = useState(() => getLocalDate());
+  const [rangePreset, setRangePreset] = useState<WageEarningsDatePreset>(
+    DEFAULT_WAGE_EARNINGS_DATE_PRESET,
+  );
+  const [customFrom, setCustomFrom] = useState(rangeToday);
+  const [customTo, setCustomTo] = useState(rangeToday);
+  const mudRange = resolveWageEarningsDateRange(
+    rangePreset,
+    rangeToday,
+    customFrom,
+    customTo,
+  );
+  const mudRangeProductionQuery = useQuery({
+    queryKey: [
+      "mud-supply-range-summary",
+      factoryId,
+      mudRange?.fromDate,
+      mudRange?.toDate,
+    ],
+    queryFn: () => listMudSupplyProductionForRange({ factoryId, range: mudRange! }),
+    enabled: mudRange !== null && !wageRatesLoading && !wageRatesError,
+    refetchInterval: 30_000,
+  });
+  let mudRangeSummary: MudSupplyRangeSummary | null = null;
+  let mudRangeCalculationError = "";
+  if (mudRangeProductionQuery.data && !wageRatesLoading && !wageRatesError) {
+    try {
+      mudRangeSummary = calculateMudSupplyRangeSummary({
+        entries: mudRangeProductionQuery.data,
+        wageRates,
+      });
+    } catch (calculationError) {
+      mudRangeCalculationError = calculationError instanceof Error
+        ? calculationError.message
+        : "Could not calculate the Mud range.";
+    }
+  }
   const [weekStart, setWeekStart] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [readError, setReadError] = useState("");
@@ -1090,7 +1153,41 @@ function MudSupplyWageCalculation({ factoryId, groups, isLoadingGroups, groupsLo
 
   return (
     <div className="mt-6 border-t border-slate-200 pt-6">
-      <h3 className="text-lg font-bold">Calculate Mud-Supply Wage</h3>
+      <section aria-label="Mud range summary" className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-medium text-amber-900">Earnings period</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {productionRangePresets.map((option) => <button
+                key={option.value}
+                type="button"
+                aria-pressed={rangePreset === option.value}
+                onClick={() => setRangePreset(option.value)}
+                className={`h-9 rounded-lg border px-3 text-sm font-semibold ${rangePreset === option.value ? "border-amber-700 bg-amber-700 text-white" : "border-amber-300 bg-white text-slate-700"}`}
+              >{option.label}</button>)}
+            </div>
+          </div>
+          {mudRange && <p className="text-xs text-amber-900">{formatDate(mudRange.fromDate)} → {formatDate(mudRange.toDate)}, inclusive</p>}
+        </div>
+
+        {rangePreset === "custom" && <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
+          <label className="text-xs font-medium text-amber-900">From<input type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm text-slate-950" /></label>
+          <label className="text-xs font-medium text-amber-900">To<input type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm text-slate-950" /></label>
+        </div>}
+        {rangePreset === "custom" && !mudRange && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">Choose a valid inclusive date range. From date cannot be after To date.</p>}
+        {wageRatesLoading && <p className="mt-3 text-sm text-slate-600">Loading historical Mud rates...</p>}
+        {wageRatesError && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">Historical Mud rate data is unavailable.</p>}
+        {mudRangeProductionQuery.isLoading && <p className="mt-3 text-sm text-slate-600">Loading Mud range...</p>}
+        {mudRangeProductionQuery.error && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{mudRangeProductionQuery.error instanceof Error ? mudRangeProductionQuery.error.message : "Could not load the Mud range."}</p>}
+        {mudRangeCalculationError && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{mudRangeCalculationError}</p>}
+        {mudRange && mudRangeSummary && !mudRangeProductionQuery.error && !mudRangeCalculationError && <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-lg bg-white p-4"><p className="text-sm text-slate-600">Range Production</p><p className="mt-1 text-xl font-bold tabular-nums">{formatStoredNumber(mudRangeSummary.rangeProduction)}</p></div>
+          <div className="rounded-lg bg-white p-4"><p className="text-sm text-slate-600">Range Earned</p><p className="mt-1 text-xl font-bold tabular-nums">{formatStoredCurrency(mudRangeSummary.rangeEarned)}</p></div>
+        </div>}
+        <p className="mt-3 text-xs text-amber-900">Factory-level informational summary. It is not attributed to a labour group and does not change locked weekly earnings or group balances.</p>
+      </section>
+
+      <h3 className="mt-6 text-lg font-bold">Calculate Mud-Supply Wage</h3>
       {isLoadingGroups && <p className="mt-3 text-sm text-slate-500">Loading the active labour group...</p>}
       {!isLoadingGroups && groupsLoadFailed && <p className="mt-3 text-sm text-slate-500">Labour groups could not be loaded, so mud wages cannot be calculated.</p>}
       {!isLoadingGroups && !groupsLoadFailed && !activeGroup && <p className="mt-3 text-sm text-slate-500">No active labour group. Activate or add one before calculating mud wages or recording group withdrawals.</p>}
@@ -1479,7 +1576,14 @@ function LabourerManagement({ factoryId, labourers, isLoading, error, updatingLa
                   history={labourerOverrideHistory}
                   asOfDate={asOfDate}
                 />}
-                {earningsLabourerId === labourer.id && <LabourerEarningsHistory factoryId={factoryId} labourerId={labourer.id} />}
+                {earningsLabourerId === labourer.id && <LabourerEarningsHistory
+                  factoryId={factoryId}
+                  labourerId={labourer.id}
+                  crewAssignments={crewAssignments}
+                  wageRates={productionWageRates}
+                  historicalDataLoading={isLoadingCrewAssignments || isLoadingProductionWageRates}
+                  historicalDataError={Boolean(crewAssignmentsError || productionWageRatesError)}
+                />}
                 {isEditingName && <EditLabourerNameForm labourer={labourer} isUpdating={isUpdating} onSave={onSaveName} onCancel={onCancelNameEdit} />}
                 {isEditingBrickType && (
                   <div className="w-full border-t border-slate-200 pt-3">
@@ -1687,8 +1791,67 @@ function LabourerCrewAssignmentControls({ factoryId, labourer, currentAssignment
   );
 }
 
-function LabourerEarningsHistory({ factoryId, labourerId }: Readonly<{ factoryId: string; labourerId: string }>) {
+function LabourerEarningsHistory({
+  factoryId,
+  labourerId,
+  crewAssignments,
+  wageRates,
+  historicalDataLoading,
+  historicalDataError,
+}: Readonly<{
+  factoryId: string;
+  labourerId: string;
+  crewAssignments: readonly ProductionCrewAssignment[];
+  wageRates: readonly ProductionWageRate[];
+  historicalDataLoading: boolean;
+  historicalDataError: boolean;
+}>) {
   const asOfDate = getLocalDate();
+  const [rangeToday] = useState(() => getLocalDate());
+  const [rangePreset, setRangePreset] = useState<WageEarningsDatePreset>(
+    DEFAULT_WAGE_EARNINGS_DATE_PRESET,
+  );
+  const [customFrom, setCustomFrom] = useState(rangeToday);
+  const [customTo, setCustomTo] = useState(rangeToday);
+  const productionRange = resolveWageEarningsDateRange(
+    rangePreset,
+    rangeToday,
+    customFrom,
+    customTo,
+  );
+  const historicalDataReady = !historicalDataLoading && !historicalDataError;
+  const productionRangeEntriesQuery = useQuery({
+    queryKey: [
+      "labourer-production-range-summary",
+      factoryId,
+      labourerId,
+      productionRange?.fromDate,
+      productionRange?.toDate,
+    ],
+    queryFn: () => listLabourerProductionEntriesForRange({
+      factoryId,
+      labourerId,
+      range: productionRange!,
+    }),
+    enabled: productionRange !== null && historicalDataReady,
+    refetchInterval: 30_000,
+  });
+  let productionRangeSummary: ProductionRangeSummary | null = null;
+  let productionRangeCalculationError = "";
+  if (productionRangeEntriesQuery.data && historicalDataReady) {
+    try {
+      productionRangeSummary = calculateProductionRangeSummary({
+        labourerId,
+        entries: productionRangeEntriesQuery.data,
+        crewAssignments,
+        wageRates,
+      });
+    } catch (calculationError) {
+      productionRangeCalculationError = calculationError instanceof Error
+        ? calculationError.message
+        : "Could not calculate Production range earnings.";
+    }
+  }
   const { data: earnings = [], error, isLoading } = useQuery({
     queryKey: ["labourer-earnings-history", factoryId, labourerId],
     queryFn: () => getLabourerEarningsHistory({ factoryId, labourerId }),
@@ -1706,8 +1869,42 @@ function LabourerEarningsHistory({ factoryId, labourerId }: Readonly<{ factoryId
   const withdrawalsErrorMessage = withdrawalsError instanceof Error ? withdrawalsError.message : "Could not load withdrawal history.";
 
   return (
-    <section aria-label="Locked earnings history" className="w-full border-t border-slate-200 pt-4">
-      <h3 className="font-semibold">Available Balance</h3>
+    <section aria-label="Production wage details" className="w-full border-t border-slate-200 pt-4">
+      <section aria-label="Production range summary" className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-medium text-amber-900">Earnings period</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {productionRangePresets.map((option) => <button
+                key={option.value}
+                type="button"
+                aria-pressed={rangePreset === option.value}
+                onClick={() => setRangePreset(option.value)}
+                className={`h-9 rounded-lg border px-3 text-sm font-semibold ${rangePreset === option.value ? "border-amber-700 bg-amber-700 text-white" : "border-amber-300 bg-white text-slate-700"}`}
+              >{option.label}</button>)}
+            </div>
+          </div>
+          {productionRange && <p className="text-xs text-amber-900">{formatDate(productionRange.fromDate)} → {formatDate(productionRange.toDate)}, inclusive</p>}
+        </div>
+
+        {rangePreset === "custom" && <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
+          <label className="text-xs font-medium text-amber-900">From<input type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm text-slate-950" /></label>
+          <label className="text-xs font-medium text-amber-900">To<input type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm text-slate-950" /></label>
+        </div>}
+        {rangePreset === "custom" && !productionRange && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">Choose a valid inclusive date range. From date cannot be after To date.</p>}
+        {historicalDataLoading && <p className="mt-3 text-sm text-slate-600">Loading historical Production rates...</p>}
+        {historicalDataError && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">Historical Production crew or rate data is unavailable.</p>}
+        {productionRangeEntriesQuery.isLoading && <p className="mt-3 text-sm text-slate-600">Loading Production range...</p>}
+        {productionRangeEntriesQuery.error && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{productionRangeEntriesQuery.error instanceof Error ? productionRangeEntriesQuery.error.message : "Could not load Production range."}</p>}
+        {productionRangeCalculationError && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{productionRangeCalculationError}</p>}
+        {productionRange && productionRangeSummary && !productionRangeEntriesQuery.error && !productionRangeCalculationError && <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-lg bg-white p-4"><p className="text-sm text-slate-600">Range Production</p><p className="mt-1 text-xl font-bold tabular-nums">{formatStoredNumber(productionRangeSummary.rangeProduction)}</p></div>
+          <div className="rounded-lg bg-white p-4"><p className="text-sm text-slate-600">Range Earned</p><p className="mt-1 text-xl font-bold tabular-nums">{formatStoredCurrency(productionRangeSummary.rangeEarned)}</p></div>
+        </div>}
+        <p className="mt-3 text-xs text-amber-900">Informational only. Uses editable Production records and does not change locked weekly earnings or Available Balance.</p>
+      </section>
+
+      <h3 className="mt-6 font-semibold">Available Balance</h3>
       {isLoadingBalance && <p className="mt-3 text-sm text-slate-500">Loading available balance...</p>}
       {balanceError && <p role="alert" className="mt-3 text-sm font-medium text-red-700">Could not load available balance: {balanceErrorMessage}</p>}
       {!isLoadingBalance && !balanceError && balance && <div className="mt-3 grid gap-3 sm:grid-cols-3">

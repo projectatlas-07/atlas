@@ -8,6 +8,7 @@ import type {
   SoilWorker,
   SoilWorkerTrolleyRate,
 } from "@/features/soil/types";
+import { sumFiniteNumbers } from "../../lib/numeric-total.ts";
 
 export const SOIL_SECTION_HEADING = "Soil Supply";
 
@@ -165,6 +166,15 @@ export function buildSoilEarningHistoryItem(earning: SoilEarning): {
     amount: `${earning.amount >= 0 ? "+" : "−"}${formatSoilMoney(Math.abs(earning.amount))}`,
     isCorrection: earning.eventType === "CORRECTION",
   };
+}
+
+export function sumSoilPeriodEarned(
+  earnings: readonly SoilEarning[],
+): number {
+  return sumFiniteNumbers(
+    earnings.map((earning) => earning.amount),
+    "Soil/Trolley Period Earned",
+  );
 }
 
 export function insertSoilPaymentNewestFirst(

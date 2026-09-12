@@ -25,7 +25,7 @@ const officeSource = readFileSync(
 const entries: SalesRegisterEntry[] = [
   {
     challanId: "active-a",
-    challanNumber: 10,
+    challanNumber: "10",
     challanDate: "2026-08-27",
     customerNameSnapshot: "Historical Customer A",
     items: [
@@ -43,7 +43,7 @@ const entries: SalesRegisterEntry[] = [
   },
   {
     challanId: "void-a",
-    challanNumber: 9,
+    challanNumber: "9",
     challanDate: "2026-08-26",
     customerNameSnapshot: "Historical Customer B",
     items: [{ particularsSnapshot: "Historical Red Brick", quantity: 9999, linePosition: 1 }],
@@ -58,7 +58,7 @@ const entries: SalesRegisterEntry[] = [
   },
   {
     challanId: "active-b",
-    challanNumber: 8,
+    challanNumber: "8",
     challanDate: "2026-08-25",
     customerNameSnapshot: "Historical Customer C",
     items: [{ particularsSnapshot: "Historical Class Three", quantity: 500, linePosition: 1 }],

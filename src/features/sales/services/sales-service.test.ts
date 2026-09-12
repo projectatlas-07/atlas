@@ -69,6 +69,7 @@ const { createCustomer, updateCustomer } = await import("./customer-service.ts")
 const {
   ChallanServiceError,
   createChallan,
+  getChallan,
   getFactoryPrintableProfile,
   updateFactoryPrintableProfile,
   updateChallan,
@@ -140,6 +141,7 @@ const itemRows = [
     brick_type_id: "brick-a",
     brick_particulars_snapshot: "Class One",
     quantity: "1500",
+    pricing_mode: "RATE",
     rate_per_1000_bricks: "2000",
     pricing_unit: "PER_1000_BRICKS",
     line_amount: "3000",
@@ -153,6 +155,7 @@ const itemRows = [
     brick_type_id: "brick-b",
     brick_particulars_snapshot: "Class Two",
     quantity: "500",
+    pricing_mode: "RATE",
     rate_per_1000_bricks: "1000",
     pricing_unit: "PER_1000_BRICKS",
     line_amount: "500",
@@ -279,14 +282,22 @@ test("customer master writes use controlled RPCs and normalized profile values",
 
   reset();
   rpcResponse.data = { ...customerRow, address: "Address B" };
-  assert.equal((await updateCustomer({
+  const updated = await updateCustomer({
     factoryId: "factory-a",
     customerId: "customer-a",
-    name: "Anand Traders",
-    address: "Address B",
-    mobile: "9222222222",
-  })).address, "Address B");
-  assert.equal(calls[0][1], "update_customer");
+    name: "  Anand   Traders ",
+    address: " Address B ",
+    mobile: " 9222222222 ",
+  });
+  assert.equal(updated.id, "customer-a");
+  assert.equal(updated.address, "Address B");
+  assert.deepEqual(calls, [["rpc", "update_customer", {
+    p_factory_id: "factory-a",
+    p_customer_id: "customer-a",
+    p_name: "Anand Traders",
+    p_address: "Address B",
+    p_mobile: "9222222222",
+  }]]);
 });
 
 test("create payload contains inputs only while returned amounts come from the database", async () => {
@@ -309,18 +320,19 @@ test("create payload contains inputs only while returned amounts come from the d
   const rpcCall = calls[0];
   assert.deepEqual(rpcCall, ["rpc", "create_challan", {
     p_factory_id: "factory-a",
+    p_challan_number: null,
     p_challan_date: "2026-08-26",
     p_customer_id: "customer-a",
     p_vehicle_id: "vehicle-a",
     p_trip_labour_wage: 450.5,
     p_items: [
-      { brick_type_id: "brick-a", quantity: 1500, rate: 2000 },
-      { brick_type_id: "brick-b", quantity: 500, rate: 1000 },
+      { brick_type_id: "brick-a", quantity: 1500, pricing_mode: "RATE", rate: 2000 },
+      { brick_type_id: "brick-b", quantity: 500, pricing_mode: "RATE", rate: 1000 },
     ],
     p_flexible_lines: [],
   }]);
   assert.doesNotMatch(JSON.stringify(rpcCall[2]), /line_amount|challan_total/i);
-  assert.equal(result.challanNumber, 42);
+  assert.equal(result.challanNumber, "42");
   assert.equal(result.challanTotal, 3500);
   assert.deepEqual(result.items.map((item) => item.lineAmount), [3000, 500]);
   assert.deepEqual(result.items.map((item) => item.pricingUnit), [
@@ -332,6 +344,83 @@ test("create payload contains inputs only while returned amounts come from the d
     "BRICK_REVENUE",
   ]);
   assert.deepEqual(result.flexibleLines, []);
+});
+
+test("Trip Labour Wage keeps exact paise through save response and re-read mapping", async () => {
+  for (const wage of [300, 299.99, 300.01] as const) {
+    reset();
+    rpcResponse.data = {
+      ...challanRow,
+      trip_labour_wage: wage.toFixed(2),
+      tractor_labour_rate_snapshot: wage.toFixed(2),
+    };
+    singleResponse.data = rpcResponse.data;
+    itemListResponse.data = itemRows;
+
+    const saved = await createChallan({
+      factoryId: "factory-a",
+      challanDate: "2026-08-26",
+      customerId: "customer-a",
+      vehicleId: "vehicle-a",
+      tripLabourWage: wage,
+      items: [{ brickTypeId: "brick-a", quantity: 1500, ratePer1000Bricks: 2000 }],
+    });
+    assert.equal((calls[0]?.[2] as Row).p_trip_labour_wage, wage);
+    assert.equal(saved.tripLabourWage, wage);
+
+    calls.length = 0;
+    const reloaded = await getChallan("factory-a", "challan-a");
+    assert.equal(reloaded.tripLabourWage, wage);
+  }
+});
+
+test("amount-driven brick row sends exact decimal Amount and reloads database-derived Rate", async () => {
+  reset();
+  rpcResponse.data = { ...challanRow, challan_total: "80000.00" };
+  singleResponse.data = rpcResponse.data;
+  itemListResponse.data = [{
+    ...itemRows[0],
+    quantity: "12347",
+    pricing_mode: "AMOUNT",
+    rate_per_1000_bricks: "6479.306714182",
+    line_amount: "80000.00",
+  }];
+
+  const saved = await createChallan({
+    factoryId: "factory-a",
+    challanDate: "2026-08-26",
+    customerId: "customer-a",
+    vehicleId: null,
+    tripLabourWage: null,
+    items: [{
+      brickTypeId: "brick-a",
+      quantity: 12347,
+      pricingMode: "AMOUNT",
+      lineAmount: "80000",
+    }],
+  });
+  assert.deepEqual((calls[0]?.[2] as Row).p_items, [{
+    brick_type_id: "brick-a",
+    quantity: 12347,
+    pricing_mode: "AMOUNT",
+    amount: "80000.00",
+  }]);
+  assert.deepEqual({
+    pricingMode: saved.items[0]?.pricingMode,
+    rate: saved.items[0]?.ratePer1000Bricks,
+    amount: saved.items[0]?.lineAmount,
+    total: saved.challanTotal,
+  }, {
+    pricingMode: "AMOUNT",
+    rate: 6479.306714182,
+    amount: 80000,
+    total: 80000,
+  });
+
+  calls.length = 0;
+  const reloaded = await getChallan("factory-a", "challan-a");
+  assert.equal(reloaded.items[0]?.lineAmount, 80000);
+  assert.equal(reloaded.challanTotal, 80000);
 });
 
 test("flexible NOTE and EXTRA_CHARGE lines use the A2 overload and map database-authoritative values", async () => {
@@ -367,11 +456,12 @@ test("flexible NOTE and EXTRA_CHARGE lines use the A2 overload and map database-
 
   assert.deepEqual(calls[0], ["rpc", "create_challan", {
     p_factory_id: "factory-a",
+    p_challan_number: null,
     p_challan_date: "2026-08-26",
     p_customer_id: "customer-a",
     p_vehicle_id: "vehicle-a",
     p_trip_labour_wage: 450.5,
-    p_items: [{ brick_type_id: "brick-a", quantity: 1500, rate: 2000 }],
+    p_items: [{ brick_type_id: "brick-a", quantity: 1500, pricing_mode: "RATE", rate: 2000 }],
     p_flexible_lines: [
       { line_type: "NOTE", order_index: 0, particulars: "Deliver before noon" },
       {
@@ -423,6 +513,7 @@ test("A3 service permits a NOTE-only create payload and returns the zero-total d
 
   assert.deepEqual(calls[0], ["rpc", "create_challan", {
     p_factory_id: "factory-a",
+    p_challan_number: null,
     p_challan_date: "2026-08-26",
     p_customer_id: "customer-a",
     p_vehicle_id: null,

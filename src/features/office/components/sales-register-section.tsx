@@ -94,7 +94,7 @@ export function SalesRegisterSection({ factoryId }: Readonly<{ factoryId: string
           </thead>
           <tbody className="divide-y divide-slate-100">
             {entries.map((entry) => <tr key={entry.challanId} className={entry.status === "void" ? "bg-slate-50 text-slate-500" : "bg-white"}>
-              <td className="px-4 py-3 font-bold text-slate-900">#{entry.challanNumber}</td>
+              <td className="px-4 py-3 font-bold text-slate-900">{entry.challanNumber ?? ""}</td>
               <td className="whitespace-nowrap px-4 py-3">{formatChallanDate(entry.challanDate)}</td>
               <td className="px-4 py-3 font-medium text-slate-900">{entry.customerNameSnapshot}</td>
               <td className="px-4 py-3">{entry.items.length > 0 ? <ul className="space-y-1">{entry.items.map((item) => <li key={item.linePosition}><span className="font-medium text-slate-800">{item.particularsSnapshot}</span> <span className="text-xs">· {item.quantity.toLocaleString("en-IN")}</span></li>)}</ul> : <span className="text-slate-400">No brick revenue</span>}</td>

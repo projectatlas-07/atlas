@@ -27,7 +27,7 @@ const routeSource = readFileSync(
 const savedChallan: Challan = {
   id: "challan-internal-id",
   factoryId: "factory-internal-id",
-  challanNumber: 42,
+  challanNumber: "42",
   challanDate: "2026-08-26",
   customerId: "customer-internal-id",
   customerNameSnapshot: "Historical Customer",
@@ -103,6 +103,19 @@ test("printable model uses only saved company and customer snapshots", () => {
   });
 });
 
+test("print preserves a manual Challan reference and leaves a missing reference blank", () => {
+  assert.equal(
+    buildPrintableChallan({ ...savedChallan, challanNumber: "2026/145" }).challanNumber,
+    "2026/145",
+  );
+  assert.equal(
+    buildPrintableChallan({ ...savedChallan, challanNumber: null }).challanNumber,
+    null,
+  );
+  assert.match(documentSource, /challan\.challanNumber \?\? ""/);
+  assert.doesNotMatch(documentSource, /challan\.id|challan-internal-id|N\/A|Untitled/);
+});
+
 test("structured snapshots render without consulting or using the legacy address", () => {
   const printable = buildPrintableChallan({
     ...savedChallan,
@@ -148,6 +161,28 @@ test("all brick snapshot rows and authoritative saved amounts pass through uncha
   assert.equal(printable.vehicleNumber, "RJ14AB1234");
 });
 
+test("Amount-driven non-round Rate prints the saved ₹80,000 without recomputation", () => {
+  const printable = buildPrintableChallan({
+    ...savedChallan,
+    challanTotal: 80000,
+    items: [{
+      ...savedChallan.items[0]!,
+      quantity: 12347,
+      pricingMode: "AMOUNT",
+      ratePer1000Bricks: 6479.306714182,
+      lineAmount: 80000,
+    }],
+  });
+  assert.deepEqual(printable.lines[0], {
+    lineKind: "BRICK",
+    quantity: 12347,
+    particulars: "Historical Class One",
+    rate: 6479.306714182,
+    amount: 80000,
+  });
+  assert.equal(printable.total, 80000);
+});
+
 test("printable model excludes internal operational and database fields", () => {
   const serialized = JSON.stringify(buildPrintableChallan(savedChallan));
   assert.doesNotMatch(serialized, /987\.65|tractor|isLocked|internal-id|brick-current/i);
@@ -165,6 +200,7 @@ test("customer-facing document renders every row, delivery, total, and signature
   assert.match(documentSource, /line\.amount/);
   assert.match(documentSource, /challan\.total/);
   assert.match(documentSource, /challan\.vehicleNumber/);
+  assert.match(documentSource, /challan\.vehicleNumber &&/);
   assert.match(documentSource, /Signature of Driver/);
   assert.match(documentSource, /Received the goods in good condition/);
   assert.match(documentSource, /Customer&amp;apos;s Signature|Customer&apos;s Signature/);

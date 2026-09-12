@@ -9,6 +9,7 @@ import {
   buildCreateChallanInput,
   buildQuickCustomerInput,
   buildUpdateChallanInput,
+  calculateChallanBrickLineAmountPreview,
   calculateChallanTotalPreview,
   calculateFlexibleLineAmountPreview,
   calculateLineAmountPreview,
@@ -26,6 +27,7 @@ import {
   SALES_SECTION_HEADING,
   salesOfficeErrorMessage,
   selectCustomer,
+  updateChallanLineField,
 } from "./sales-office-model.ts";
 
 const sectionSource = readFileSync(
@@ -50,7 +52,7 @@ const customers: Customer[] = [{
 const savedChallan: Challan = {
   id: "challan-a",
   factoryId: "factory-a",
-  challanNumber: 18,
+  challanNumber: "18",
   challanDate: "2026-08-26",
   customerId: "customer-a",
   customerNameSnapshot: "Historical Customer Name",
@@ -233,6 +235,102 @@ test("preview follows database per-1000 rounding and totals rounded lines", () =
   ]), 3500);
 });
 
+test("brick rows switch cleanly between Rate and exact Amount authority", () => {
+  let [line] = updateChallanLineField(
+    [emptyChallanLine("brick")],
+    "brick",
+    "quantity",
+    "12347",
+  );
+  [line] = updateChallanLineField([line!], "brick", "ratePer1000Bricks", "8000");
+  assert.deepEqual({
+    pricingMode: line?.pricingMode,
+    rate: line?.ratePer1000Bricks,
+    amount: line?.lineAmount,
+  }, {
+    pricingMode: "RATE",
+    rate: "8000",
+    amount: "98776.00",
+  });
+
+  [line] = updateChallanLineField([line!], "brick", "lineAmount", "80000");
+  assert.deepEqual({
+    pricingMode: line?.pricingMode,
+    rate: line?.ratePer1000Bricks,
+    amount: line?.lineAmount,
+  }, {
+    pricingMode: "AMOUNT",
+    rate: "6479.306714182",
+    amount: "80000",
+  });
+  assert.equal(calculateChallanBrickLineAmountPreview(line!), 80000);
+
+  const stable = updateChallanLineField([line!], "brick", "quantity", "12347")[0];
+  assert.deepEqual(stable, line, "Recalculating from the same authority must not drift.");
+
+  [line] = updateChallanLineField([line!], "brick", "ratePer1000Bricks", "6480");
+  assert.equal(line?.pricingMode, "RATE");
+  assert.equal(line?.lineAmount, "80008.56");
+
+  [line] = updateChallanLineField([line!], "brick", "lineAmount", "80000.00");
+  assert.equal(line?.pricingMode, "AMOUNT");
+  assert.equal(line?.ratePer1000Bricks, "6479.306714182");
+});
+
+test("mixed Rate and Amount brick rows keep the exact Amount in total and payload", () => {
+  const rateLine = updateChallanLineField(
+    updateChallanLineField([emptyChallanLine("rate")], "rate", "quantity", "10000"),
+    "rate",
+    "ratePer1000Bricks",
+    "8000",
+  )[0]!;
+  const amountLine = updateChallanLineField(
+    updateChallanLineField([emptyChallanLine("amount")], "amount", "quantity", "12347"),
+    "amount",
+    "lineAmount",
+    "80000",
+  )[0]!;
+  const completedRateLine = { ...rateLine, brickTypeId: "brick-a" };
+  const completedAmountLine = { ...amountLine, brickTypeId: "brick-b" };
+
+  const form = {
+    challanDate: "2026-08-26",
+    customerId: "customer-a",
+    vehicleId: "",
+    selectedVehicleIsActive: true,
+    vehicleDeliveryWageTrackingEnabled: false,
+    tripLabourWage: "",
+    lines: [completedRateLine, completedAmountLine],
+    flexibleLines: [
+      { key: "note", lineType: "NOTE" as const, particulars: "Exact agreement" },
+      {
+        key: "charge",
+        lineType: "EXTRA_CHARGE" as const,
+        particulars: "Loading",
+        chargeMode: "DIRECT_AMOUNT" as const,
+        amount: "2000",
+        quantity: "",
+        rate: "",
+      },
+    ],
+  };
+  assert.equal(calculateChallanTotalPreview(form.lines, form.flexibleLines), 162000);
+  assert.deepEqual(buildCreateChallanInput("factory-a", form)?.items, [
+    {
+      brickTypeId: "brick-a",
+      quantity: 10000,
+      pricingMode: "RATE",
+      ratePer1000Bricks: 8000,
+    },
+    {
+      brickTypeId: "brick-b",
+      quantity: 12347,
+      pricingMode: "AMOUNT",
+      lineAmount: "80000.00",
+    },
+  ]);
+});
+
 test("additional rows add, reorder, and remove with stable client keys", () => {
   const note = emptyChallanFlexibleLine("flex-1", "NOTE");
   const charge = emptyChallanFlexibleLine("flex-2", "EXTRA_CHARGE");
@@ -393,13 +491,14 @@ test("creation request contains inputs only and rejects invalid quantities/rates
   });
   assert.deepEqual(valid, {
     factoryId: "factory-a",
+    challanNumber: null,
     challanDate: "2026-08-26",
     customerId: "customer-a",
     vehicleId: "vehicle-a",
     tripLabourWage: 450.5,
     items: [
-      { brickTypeId: "brick-a", quantity: 1500, ratePer1000Bricks: 2000 },
-      { brickTypeId: "brick-b", quantity: 500, ratePer1000Bricks: 1000 },
+      { brickTypeId: "brick-a", quantity: 1500, pricingMode: "RATE", ratePer1000Bricks: 2000 },
+      { brickTypeId: "brick-b", quantity: 500, pricingMode: "RATE", ratePer1000Bricks: 1000 },
     ],
     flexibleLines: [],
   });
@@ -426,8 +525,37 @@ test("creation request contains inputs only and rejects invalid quantities/rates
   }), null);
 });
 
+test("optional manual Challan numbers preserve operator text and blank stores as NULL", () => {
+  const baseForm = {
+    challanDate: "2026-09-11",
+    customerId: "customer-a",
+    vehicleId: "",
+    selectedVehicleIsActive: true,
+    vehicleDeliveryWageTrackingEnabled: false,
+    tripLabourWage: "",
+    lines: [{ key: "a", brickTypeId: "brick-a", quantity: "1000", ratePer1000Bricks: "2000" }],
+    flexibleLines: [],
+  };
+
+  for (const challanNumber of ["145", "A-39", "2026/145"]) {
+    assert.equal(
+      buildCreateChallanInput("factory-a", { ...baseForm, challanNumber })?.challanNumber,
+      challanNumber,
+    );
+  }
+  assert.equal(
+    buildCreateChallanInput("factory-a", { ...baseForm, challanNumber: "  A-39  " })?.challanNumber,
+    "A-39",
+  );
+  assert.equal(
+    buildCreateChallanInput("factory-a", { ...baseForm, challanNumber: "   " })?.challanNumber,
+    null,
+  );
+});
+
 test("saved data populates edit form while detail display keeps historical snapshots", () => {
   assert.deepEqual(challanFormFromSaved(savedChallan, vehicles), {
+    challanNumber: "18",
     challanDate: "2026-08-26",
     customerId: "customer-a",
     vehicleId: "vehicle-a",
@@ -438,7 +566,9 @@ test("saved data populates edit form while detail display keeps historical snaps
       key: "saved-item-a",
       brickTypeId: "brick-a",
       quantity: "1500",
+      pricingMode: "RATE",
       ratePer1000Bricks: "2000",
+      lineAmount: "3000",
     }],
     flexibleLines: [],
   });
@@ -547,7 +677,7 @@ test("successful writes refresh caches and duplicate submits are blocked", () =>
   assert.match(sectionSource, /await createChallan\(input\)/);
   assert.match(sectionSource, /upsertChallanNewestFirst/);
   assert.match(sectionSource, /setQueryData<Challan>/);
-  assert.match(sectionSource, /Challan #\$\{saved\.challanNumber\} created/);
+  assert.match(sectionSource, /formatChallanLabel\(saved\.challanNumber\).*created/);
   assert.equal(
     salesOfficeErrorMessage({ code: "P3005", message: "Locked" }, "fallback"),
     "This Challan is locked and cannot be edited or voided.",

@@ -18,7 +18,9 @@ export type ChallanLineForm = {
   key: string;
   brickTypeId: string;
   quantity: string;
+  pricingMode?: "RATE" | "AMOUNT";
   ratePer1000Bricks: string;
+  lineAmount?: string;
 };
 
 export type ChallanExtraChargeMode = "DIRECT_AMOUNT" | "QUANTITY_RATE";
@@ -64,6 +66,7 @@ export type SavedChallanVehicleDetails = {
 };
 
 export type ChallanFormState = {
+  challanNumber?: string;
   challanDate: string;
   customerId: string;
   vehicleId: string;
@@ -151,7 +154,14 @@ export function buildFactoryProfileInput(
 }
 
 export function emptyChallanLine(key: string): ChallanLineForm {
-  return { key, brickTypeId: "", quantity: "", ratePer1000Bricks: "" };
+  return {
+    key,
+    brickTypeId: "",
+    quantity: "",
+    pricingMode: "RATE",
+    ratePer1000Bricks: "",
+    lineAmount: "",
+  };
 }
 
 export function addChallanLine(
@@ -256,17 +266,93 @@ export function buildQuickCustomerInput(
   };
 }
 
+export function customerFormFromSaved(
+  customer: Pick<Customer, "name" | "address" | "mobile">,
+): QuickCustomerForm {
+  return {
+    name: customer.name,
+    address: customer.address,
+    mobile: customer.mobile,
+  };
+}
+
+export function buildCustomerUpdateInput(
+  factoryId: string,
+  customerId: string,
+  form: Readonly<QuickCustomerForm>,
+) {
+  const customer = buildQuickCustomerInput(factoryId, form);
+  if (!customerId || !customer) return null;
+  return { ...customer, customerId };
+}
+
 export function calculateLineAmountPreview(
   quantityInput: string,
   rateInput: string,
 ): number | null {
-  const quantity = parsePositiveWholeNumber(quantityInput);
-  const rate = parseMoney(rateInput, false);
-  if (quantity === null || rate === null) return null;
+  const amount = calculateRateDrivenAmountInput(quantityInput, rateInput);
+  return amount ? Number(amount) : null;
+}
 
-  const ratePaise = Math.round(rate * 100);
-  const lineAmountPaise = Math.round((quantity * ratePaise) / 1000);
-  return lineAmountPaise / 100;
+export function calculateChallanBrickLineAmountPreview(
+  line: Readonly<ChallanLineForm>,
+): number | null {
+  if (line.pricingMode === "AMOUNT") {
+    const paise = parseMoneyToPaise(line.lineAmount ?? "", false);
+    return paise === null ? null : paise / 100;
+  }
+  return calculateLineAmountPreview(line.quantity, line.ratePer1000Bricks);
+}
+
+export function deriveRatePer1000Input(
+  quantityInput: string,
+  amountInput: string,
+): string {
+  const quantity = parsePositiveWholeNumber(quantityInput);
+  const amountPaise = parseMoneyToPaise(amountInput, false);
+  if (quantity === null || amountPaise === null) return "";
+  const scaledRate = divideAndRound(
+    BigInt(amountPaise) * 10_000_000_000n,
+    BigInt(quantity),
+  );
+  if (scaledRate <= 0n || scaledRate >= 1_000_000_000_000_000_000n) return "";
+  return formatScaledDecimal(scaledRate, 9);
+}
+
+export function updateChallanLineField(
+  lines: readonly ChallanLineForm[],
+  key: string,
+  field: "brickTypeId" | "quantity" | "ratePer1000Bricks" | "lineAmount",
+  value: string,
+): ChallanLineForm[] {
+  return lines.map((line) => {
+    if (line.key !== key) return line;
+    if (field === "brickTypeId") return { ...line, brickTypeId: value };
+
+    const next = { ...line, [field]: value };
+    const pricingMode = field === "ratePer1000Bricks"
+      ? "RATE"
+      : field === "lineAmount"
+        ? "AMOUNT"
+        : line.pricingMode ?? "RATE";
+    const quantity = field === "quantity" ? value : line.quantity;
+
+    if (pricingMode === "AMOUNT") {
+      const amount = field === "lineAmount" ? value : line.lineAmount ?? "";
+      return {
+        ...next,
+        pricingMode,
+        ratePer1000Bricks: deriveRatePer1000Input(quantity, amount),
+      };
+    }
+
+    const rate = field === "ratePer1000Bricks" ? value : line.ratePer1000Bricks;
+    return {
+      ...next,
+      pricingMode,
+      lineAmount: calculateRateDrivenAmountInput(quantity, rate),
+    };
+  });
 }
 
 export function calculateChallanTotalPreview(
@@ -274,7 +360,7 @@ export function calculateChallanTotalPreview(
   flexibleLines: readonly ChallanFlexibleLineForm[] = [],
 ): number {
   const brickPaise = lines.reduce((total, line) => {
-    const amount = calculateLineAmountPreview(line.quantity, line.ratePer1000Bricks);
+    const amount = calculateChallanBrickLineAmountPreview(line);
     return total + (amount === null ? 0 : Math.round(amount * 100));
   }, 0);
   const flexiblePaise = flexibleLines.reduce((total, line) => {
@@ -320,6 +406,7 @@ export function challanFormFromSaved(
   const liveTrackingEnabled = currentVehicle?.deliveryWageTrackingEnabled
     ?? challan.deliveryWageApplicableSnapshot;
   return {
+    challanNumber: challan.challanNumber ?? "",
     challanDate: challan.challanDate,
     customerId: challan.customerId,
     vehicleId: challan.vehicleId ?? "",
@@ -332,7 +419,9 @@ export function challanFormFromSaved(
       key: `saved-${item.id}`,
       brickTypeId: item.brickTypeId,
       quantity: String(item.quantity),
+      pricingMode: item.pricingMode ?? "RATE",
       ratePer1000Bricks: String(item.ratePer1000Bricks),
+      lineAmount: String(item.lineAmount),
     })),
     flexibleLines: [...challan.flexibleLines]
       .sort((left, right) => left.orderIndex - right.orderIndex || left.id.localeCompare(right.id))
@@ -374,6 +463,15 @@ export function selectVehicleForChallan(
   };
 }
 
+export function filterActiveVehiclesForChallan(
+  vehicles: readonly Vehicle[],
+  searchText: string,
+): Vehicle[] {
+  const normalizedSearch = searchText.trim().replace(/\s+/g, "").toUpperCase();
+  return vehicles.filter((vehicle) => vehicle.isActive
+    && (!normalizedSearch || vehicle.normalizedVehicleNumber.includes(normalizedSearch)));
+}
+
 export function getChallanEligibility(challan: Pick<ChallanHeader, "status" | "isLocked">): {
   canEdit: boolean;
   canVoid: boolean;
@@ -412,7 +510,7 @@ export function upsertChallanNewestFirst(
 ): ChallanHeader[] {
   return [...challans.filter((challan) => challan.id !== saved.id), saved].sort(
     (left, right) => right.challanDate.localeCompare(left.challanDate)
-      || right.challanNumber - left.challanNumber
+      || right.createdAt.localeCompare(left.createdAt)
       || right.id.localeCompare(left.id),
   );
 }
@@ -483,11 +581,24 @@ function buildChallanInput(
     ? parseMoney(form.tripLabourWage, false)!
     : null;
 
-  const items: ChallanItemInput[] = form.lines.map((line) => ({
-    brickTypeId: line.brickTypeId,
-    quantity: parsePositiveWholeNumber(line.quantity)!,
-    ratePer1000Bricks: parseMoney(line.ratePer1000Bricks, false)!,
-  }));
+  const items: ChallanItemInput[] = form.lines.map((line) => {
+    const common = {
+      brickTypeId: line.brickTypeId,
+      quantity: parsePositiveWholeNumber(line.quantity)!,
+    };
+    if (line.pricingMode === "AMOUNT") {
+      return {
+        ...common,
+        pricingMode: "AMOUNT",
+        lineAmount: canonicalMoneyDecimal(line.lineAmount ?? "")!,
+      };
+    }
+    return {
+      ...common,
+      pricingMode: "RATE",
+      ratePer1000Bricks: parseMoney(line.ratePer1000Bricks, false)!,
+    };
+  });
   const flexibleLines: ChallanFlexibleLineInput[] = form.flexibleLines.map((line, orderIndex) => {
     const particulars = normalizeParticulars(line.particulars);
     if (line.lineType === "NOTE") return { lineType: "NOTE", orderIndex, particulars };
@@ -510,6 +621,7 @@ function buildChallanInput(
 
   return {
     factoryId,
+    challanNumber: normalizeChallanNumberInput(form.challanNumber ?? ""),
     challanDate: form.challanDate,
     customerId: form.customerId,
     vehicleId: form.vehicleId || null,
@@ -520,6 +632,9 @@ function buildChallanInput(
 }
 
 export function getChallanFormError(form: Readonly<ChallanFormState>): string | null {
+  if ((form.challanNumber?.length ?? 0) > 100 || /[\u0000-\u001f\u007f]/.test(form.challanNumber ?? "")) {
+    return "Keep Challan No. within 100 characters and on one line.";
+  }
   if (!form.customerId) return "Choose a customer.";
   if (!isCanonicalDate(form.challanDate)) return "Choose a valid Challan date.";
   if (form.vehicleId && !form.selectedVehicleIsActive) {
@@ -536,9 +651,12 @@ export function getChallanFormError(form: Readonly<ChallanFormState>): string | 
   }
 
   for (const [index, line] of form.lines.entries()) {
+    const pricingInputIsValid = line.pricingMode === "AMOUNT"
+      ? parseMoneyToPaise(line.lineAmount ?? "", false) !== null
+      : parseMoney(line.ratePer1000Bricks, false) !== null;
     if (!line.brickTypeId
       || parsePositiveWholeNumber(line.quantity) === null
-      || parseMoney(line.ratePer1000Bricks, false) === null) {
+      || !pricingInputIsValid) {
       return `Complete or remove brick row ${index + 1}.`;
     }
   }
@@ -567,6 +685,10 @@ function normalizeParticulars(value: string): string {
   return value.trim().replace(/\s+/g, " ");
 }
 
+function normalizeChallanNumberInput(value: string): string | null {
+  return value.trim() || null;
+}
+
 function parsePositiveWholeNumber(value: string): number | null {
   if (!value.trim()) return null;
   const parsed = Number(value);
@@ -583,6 +705,41 @@ function parseMoney(value: string, allowZero: boolean): number | null {
     || parsed >= 1_000_000_000
     || Math.abs(parsed * 100 - Math.round(parsed * 100)) >= 1e-7) return null;
   return parsed;
+}
+
+function parseMoneyToPaise(value: string, allowZero: boolean): number | null {
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(value.trim());
+  if (!match) return null;
+  const paise = BigInt(match[1]!) * 100n
+    + BigInt((match[2] ?? "").padEnd(2, "0"));
+  if ((allowZero ? paise < 0n : paise <= 0n)
+    || paise >= 100_000_000_000n) return null;
+  return Number(paise);
+}
+
+function canonicalMoneyDecimal(value: string): string | null {
+  const paise = parseMoneyToPaise(value, false);
+  if (paise === null) return null;
+  return `${Math.floor(paise / 100)}.${String(paise % 100).padStart(2, "0")}`;
+}
+
+function calculateRateDrivenAmountInput(quantityInput: string, rateInput: string): string {
+  const quantity = parsePositiveWholeNumber(quantityInput);
+  const ratePaise = parseMoneyToPaise(rateInput, false);
+  if (quantity === null || ratePaise === null) return "";
+  const amountPaise = divideAndRound(BigInt(quantity) * BigInt(ratePaise), 1000n);
+  return `${amountPaise / 100n}.${String(amountPaise % 100n).padStart(2, "0")}`;
+}
+
+function divideAndRound(numerator: bigint, denominator: bigint): bigint {
+  return (numerator * 2n + denominator) / (denominator * 2n);
+}
+
+function formatScaledDecimal(value: bigint, decimalPlaces: number): string {
+  const factor = 10n ** BigInt(decimalPlaces);
+  const whole = value / factor;
+  const fraction = String(value % factor).padStart(decimalPlaces, "0").replace(/0+$/, "");
+  return fraction ? `${whole}.${fraction}` : String(whole);
 }
 
 function parsePositiveDecimal(value: string, decimalPlaces: number): number | null {

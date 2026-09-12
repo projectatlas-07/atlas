@@ -5,11 +5,15 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   buildCustomerPaymentInput,
-  customerPaymentStateLabel,
+  clearCustomerPaymentAllocations,
   emptyCustomerPaymentForm,
   getCustomerPaymentFormStatus,
+  resolveCustomerDuesDateFilter,
+  sortCustomerOutstandingChallans,
   togglePaymentAllocation,
   fillOutstandingAllocation,
+  type CustomerDuesDatePreset,
+  type CustomerDuesSortOrder,
   type CustomerPaymentForm,
 } from "@/features/office/customer-payment-office-model";
 import { formatChallanDate, formatSalesMoney } from "@/features/office/sales-office-model";
@@ -20,6 +24,7 @@ import {
   listCustomerPayments,
 } from "@/features/sales/services/customer-payment-service";
 import {
+  formatChallanLabel,
   formatCustomerPaymentMode,
   NEW_CUSTOMER_PAYMENT_MODES,
   type Customer,
@@ -34,6 +39,14 @@ const candidatesKey = (factoryId: string, customerId: string) =>
 const historyKey = (factoryId: string, customerId: string) =>
   ["office-customer-payment-history", factoryId, customerId] as const;
 const inputClass = "mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 disabled:bg-slate-100";
+const duesDatePresets: Array<{ value: CustomerDuesDatePreset; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "today", label: "Today" },
+  { value: "yesterday", label: "Yesterday" },
+  { value: "week", label: "This Week" },
+  { value: "month", label: "This Month" },
+  { value: "custom", label: "Custom" },
+];
 
 export function CustomerPaymentsSection({
   factoryId,
@@ -51,6 +64,16 @@ export function CustomerPaymentsSection({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [duesSortOrder, setDuesSortOrder] = useState<CustomerDuesSortOrder>("newest");
+  const [duesDatePreset, setDuesDatePreset] = useState<CustomerDuesDatePreset>("all");
+  const [customFrom, setCustomFrom] = useState(localToday);
+  const [customTo, setCustomTo] = useState(localToday);
+  const duesDateFilter = resolveCustomerDuesDateFilter(
+    duesDatePreset,
+    localToday,
+    customFrom,
+    customTo,
+  );
   const enabled = Boolean(customerId);
 
   const summaryQuery = useQuery({
@@ -59,18 +82,53 @@ export function CustomerPaymentsSection({
     enabled,
   });
   const candidatesQuery = useQuery({
-    queryKey: candidatesKey(factoryId, customerId),
-    queryFn: () => listCustomerOutstandingChallans(factoryId, customerId),
-    enabled,
+    queryKey: [
+      ...candidatesKey(factoryId, customerId),
+      duesDatePreset,
+      duesDateFilter.range?.fromDate ?? "",
+      duesDateFilter.range?.toDate ?? "",
+    ],
+    queryFn: () => listCustomerOutstandingChallans(
+      factoryId,
+      customerId,
+      duesDateFilter.range ?? undefined,
+    ),
+    enabled: enabled && duesDateFilter.error === "",
   });
   const historyQuery = useQuery({
     queryKey: historyKey(factoryId, customerId),
     queryFn: () => listCustomerPayments(factoryId, customerId),
     enabled,
   });
-  const candidates = candidatesQuery.data ?? [];
+  const candidates = sortCustomerOutstandingChallans(
+    candidatesQuery.data ?? [],
+    duesSortOrder,
+  );
   const history = historyQuery.data ?? [];
   const status = getCustomerPaymentFormStatus(form, candidates);
+
+  function clearDraftAllocations() {
+    setForm((current) => clearCustomerPaymentAllocations(current));
+    setError("");
+  }
+
+  function changeDuesDatePreset(nextPreset: CustomerDuesDatePreset) {
+    if (nextPreset === duesDatePreset) return;
+    setDuesDatePreset(nextPreset);
+    clearDraftAllocations();
+  }
+
+  function changeCustomFrom(nextFrom: string) {
+    if (nextFrom === customFrom) return;
+    setCustomFrom(nextFrom);
+    clearDraftAllocations();
+  }
+
+  function changeCustomTo(nextTo: string) {
+    if (nextTo === customTo) return;
+    setCustomTo(nextTo);
+    clearDraftAllocations();
+  }
 
   function selectCustomer(nextCustomerId: string) {
     setCustomerId(nextCustomerId);
@@ -144,21 +202,48 @@ export function CustomerPaymentsSection({
 
           <div className="mt-5 overflow-hidden rounded-lg border border-slate-200">
             <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-              <h4 className="text-sm font-bold">Allocate to outstanding Challans</h4>
-              <p className="mt-1 text-xs text-slate-500">Nothing is selected automatically.</p>
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-bold">Allocate to outstanding Challans</h4>
+                  <p className="mt-1 text-xs text-slate-500">Nothing is selected automatically.</p>
+                </div>
+                <label className="text-xs font-medium text-slate-600">Sort
+                  <select value={duesSortOrder} onChange={(event) => setDuesSortOrder(event.target.value as CustomerDuesSortOrder)} className="ml-2 h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950">
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                  </select>
+                </label>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2" aria-label="Customer Dues date filters">
+                <span className="mr-1 text-xs font-medium text-slate-600">Date</span>
+                {duesDatePresets.map((option) => <button key={option.value} type="button" aria-pressed={duesDatePreset === option.value} onClick={() => changeDuesDatePreset(option.value)} className={`h-8 rounded-lg border px-3 text-xs font-semibold ${duesDatePreset === option.value ? "border-cyan-700 bg-cyan-700 text-white" : "border-slate-300 bg-white text-slate-700"}`}>{option.label}</button>)}
+              </div>
+              {duesDatePreset === "custom" && <div className="mt-3 grid max-w-xl gap-3 sm:grid-cols-2">
+                <label className="text-xs font-medium text-slate-600">From<input type="date" value={customFrom} onChange={(event) => changeCustomFrom(event.target.value)} className={inputClass} /></label>
+                <label className="text-xs font-medium text-slate-600">To<input type="date" value={customTo} onChange={(event) => changeCustomTo(event.target.value)} className={inputClass} /></label>
+              </div>}
+              {duesDateFilter.error && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{duesDateFilter.error}</p>}
+              {duesDateFilter.range && <p className="mt-3 text-xs text-slate-500">Showing {formatChallanDate(duesDateFilter.range.fromDate)} to {formatChallanDate(duesDateFilter.range.toDate)}, inclusive.</p>}
             </div>
             {candidatesQuery.isLoading && <p className="px-4 py-6 text-sm text-slate-500">Loading outstanding Challans...</p>}
-            {!candidatesQuery.isLoading && candidates.length === 0 && <p className="px-4 py-6 text-sm text-slate-500">This customer has no active Challan with an outstanding balance.</p>}
+            {!candidatesQuery.isLoading && !duesDateFilter.error && candidates.length === 0 && <p className="px-4 py-6 text-sm text-slate-500">{duesDatePreset === "all" ? "This customer has no active Challan with an outstanding balance." : "No outstanding Challans in this date range."}</p>}
             {candidates.length > 0 && <ul className="divide-y divide-slate-100">
               {candidates.map((challan) => {
                 const selected = Object.prototype.hasOwnProperty.call(form.allocations, challan.challanId);
-                return <li key={challan.challanId} className="grid gap-3 px-4 py-3 lg:grid-cols-[2rem_1.6fr_repeat(3,1fr)_10rem_7rem] lg:items-center">
-                  <input type="checkbox" aria-label={`Allocate payment to Challan #${challan.challanNumber}`} checked={selected} onChange={(event) => setForm(togglePaymentAllocation(form, challan.challanId, event.target.checked))} className="h-4 w-4" />
-                  <div><p className="font-bold">Challan #{challan.challanNumber}</p><p className="text-xs text-slate-500">{formatChallanDate(challan.challanDate)} · {customerPaymentStateLabel(challan.paymentState)}</p></div>
-                  <SmallMoney label="Sale" value={challan.saleTotal} />
-                  <SmallMoney label="Paid" value={challan.totalPaid} />
-                  <SmallMoney label="Outstanding" value={challan.outstandingAmount} />
-                  <label className="text-xs font-medium text-slate-600">Allocation<input inputMode="decimal" aria-label={`Allocation for Challan #${challan.challanNumber}`} disabled={!selected} value={form.allocations[challan.challanId] ?? ""} onChange={(event) => setForm({ ...form, allocations: { ...form.allocations, [challan.challanId]: event.target.value } })} className={inputClass} /></label>
+                return <li key={challan.challanId} className="grid gap-3 px-4 py-4 lg:grid-cols-[2rem_minmax(0,1fr)_minmax(9rem,auto)_10rem_7rem] lg:items-center">
+                  <input type="checkbox" aria-label={`Allocate payment to ${formatChallanLabel(challan.challanNumber)}`} checked={selected} onChange={(event) => setForm(togglePaymentAllocation(form, challan.challanId, event.target.checked))} className="h-4 w-4" />
+                  <div>
+                    <p className="text-xs text-slate-500">{formatChallanDate(challan.challanDate)}</p>
+                    {challan.challanNumber && <p className="mt-1 font-bold">Challan No. {challan.challanNumber}</p>}
+                    {challan.brickLines.length > 0
+                      ? <ul className="mt-2 space-y-1 text-sm">{challan.brickLines.map((line) => <li key={line.itemId} className="grid w-fit max-w-full grid-cols-[minmax(0,auto)_auto_auto] items-baseline gap-x-2"><span className="text-slate-700">{line.particularsSnapshot}</span><span aria-hidden="true" className="text-slate-400">—</span><span className="font-semibold tabular-nums">{line.quantity.toLocaleString("en-IN")}</span></li>)}</ul>
+                      : <p className="mt-2 text-xs text-slate-500">No brick goods on this Challan.</p>}
+                  </div>
+                  <div className="lg:text-right">
+                    <p className="font-bold tabular-nums text-slate-950">{formatSalesMoney(challan.outstandingAmount)} due</p>
+                    {challan.totalPaid > 0 && <p className="mt-1 text-xs text-slate-500">Original {formatSalesMoney(challan.saleTotal)} · Paid {formatSalesMoney(challan.totalPaid)}</p>}
+                  </div>
+                  <label className="text-xs font-medium text-slate-600">Allocation<input inputMode="decimal" aria-label={`Allocation for ${formatChallanLabel(challan.challanNumber)}`} disabled={!selected} value={form.allocations[challan.challanId] ?? ""} onChange={(event) => setForm({ ...form, allocations: { ...form.allocations, [challan.challanId]: event.target.value } })} className={inputClass} /></label>
                   <button type="button" onClick={() => setForm(fillOutstandingAllocation(form, challan))} className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold">Use outstanding</button>
                 </li>;
               })}
@@ -190,7 +275,7 @@ export function CustomerPaymentsSection({
                 <Link href={`/office/payments/${payment.id}`} target="_blank" rel="noreferrer" className="text-sm font-semibold text-cyan-800 hover:underline">Open receipt</Link>
               </div>
               <ul className="mt-3 divide-y divide-slate-100 border-t border-slate-100 text-sm">
-                {payment.allocations.map((allocation) => <li key={allocation.id} className="flex justify-between gap-4 py-2"><span>Challan #{allocation.challanNumber}</span><span className="font-semibold tabular-nums">{formatSalesMoney(allocation.allocatedAmount)}</span></li>)}
+                {payment.allocations.map((allocation) => <li key={allocation.id} className="flex justify-between gap-4 py-2"><span>{formatChallanLabel(allocation.challanNumber)}</span><span className="font-semibold tabular-nums">{formatSalesMoney(allocation.allocatedAmount)}</span></li>)}
               </ul>
             </li>)}
           </ul>}
@@ -202,10 +287,6 @@ export function CustomerPaymentsSection({
 
 function PaymentSummary({ label, value }: Readonly<{ label: string; value: number | undefined }>) {
   return <div className="border-r border-slate-200 px-5 py-4"><p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p><p className="mt-1 text-lg font-bold tabular-nums">{value === undefined ? "—" : formatSalesMoney(value)}</p></div>;
-}
-
-function SmallMoney({ label, value }: Readonly<{ label: string; value: number }>) {
-  return <div className="text-sm"><p className="text-xs text-slate-500">{label}</p><p className="font-semibold tabular-nums">{formatSalesMoney(value)}</p></div>;
 }
 
 function MoneyTotal({ label, value }: Readonly<{ label: string; value: number }>) {

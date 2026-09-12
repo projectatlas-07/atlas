@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { TransportWorker, TransportWorkerWithdrawal } from "../transport/types.ts";
+import type {
+  TransportWeeklyEarningDetail,
+  TransportWorker,
+  TransportWorkerWithdrawal,
+} from "../transport/types.ts";
 import {
   buildTransportBalanceDisplay,
   buildTransportFinanceWorkerOption,
@@ -8,6 +12,7 @@ import {
   buildTransportWithdrawalInput,
   getTransportFinanceRefreshQueryKeys,
   selectTransportFinanceWorker,
+  sumTransportPeriodEarned,
   transportFinanceFormAfterSuccess,
   transportWorkerFinanceErrorMessage,
   type TransportWorkerFinanceFormState,
@@ -77,6 +82,49 @@ test("zero authoritative balance has explicit empty-state flags", () => {
     available: "₹0.00",
     hasLockedEarnings: false,
     hasAvailableBalance: false,
+  });
+});
+
+test("period earned sums saved daily shares across weeks, rates, and attendance changes", () => {
+  const firstWeek = detail({
+    detailId: "first-week",
+    weekStart: "2026-08-03",
+    workDate: "2026-08-09",
+    ratePerPayaSnapshot: 400,
+    attendanceCountSnapshot: 2,
+    dailyCrewPoolSnapshot: 800,
+    workerDailyShareSnapshot: 400,
+    createdAt: "2026-08-20T00:00:00Z",
+  });
+  const secondWeek = detail({
+    detailId: "second-week",
+    weekStart: "2026-08-10",
+    workDate: "2026-08-10",
+    ratePerPayaSnapshot: 750,
+    attendanceCountSnapshot: 3,
+    dailyCrewPoolSnapshot: 1500,
+    workerDailyShareSnapshot: 500,
+    createdAt: "2026-08-01T00:00:00Z",
+  });
+
+  assert.equal(sumTransportPeriodEarned([firstWeek, secondWeek]), 900);
+  assert.equal(sumTransportPeriodEarned([secondWeek]), 500);
+});
+
+test("period rows do not redefine cumulative finance values", () => {
+  const cumulative = buildTransportBalanceDisplay({
+    totalEarned: 5000,
+    totalWithdrawn: 1200,
+    availableBalance: 3800,
+  });
+
+  assert.equal(sumTransportPeriodEarned([detail({ workerDailyShareSnapshot: 300 })]), 300);
+  assert.deepEqual(cumulative, {
+    earned: "₹5,000.00",
+    withdrawn: "₹1,200.00",
+    available: "₹3,800.00",
+    hasLockedEarnings: true,
+    hasAvailableBalance: true,
   });
 });
 
@@ -176,3 +224,28 @@ test("insufficient balance and expected request errors are concise", () => {
   assert.equal(transportWorkerFinanceErrorMessage({ code: "08006", message: "Failed to fetch" }, "fallback"),
     "Network problem. Check your connection and try again.");
 });
+
+function detail(
+  overrides: Partial<TransportWeeklyEarningDetail> = {},
+): TransportWeeklyEarningDetail {
+  return {
+    detailId: "detail-a",
+    factoryId: "factory-a",
+    transportWeeklyEarningId: "earning-a",
+    transportWorkerId: "worker-active",
+    weekStart: "2026-08-03",
+    workDate: "2026-08-04",
+    transportCrewId: "crew-a",
+    transportCrewName: "Crew A",
+    transportCrewWorkDirection: "FIELD_TO_KILN",
+    transportDailyEntryId: "entry-a",
+    transportCrewWageRateId: "rate-a",
+    ratePerPayaSnapshot: 500,
+    payaQuantitySnapshot: 1,
+    attendanceCountSnapshot: 1,
+    dailyCrewPoolSnapshot: 500,
+    workerDailyShareSnapshot: 500,
+    createdAt: "2026-08-10T00:00:00Z",
+    ...overrides,
+  };
+}

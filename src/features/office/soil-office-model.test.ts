@@ -26,6 +26,7 @@ import {
   SOIL_SECTION_HEADING,
   soilOfficeErrorMessage,
   splitSoilWorkers,
+  sumSoilPeriodEarned,
 } from "./soil-office-model.ts";
 
 const sectionSource = readFileSync(
@@ -56,7 +57,7 @@ test("Soil worker list is integrated into Office with compact cards and an empty
   assert.match(sectionSource, /No active Soil workers/);
   assert.match(sectionSource, /Open details/);
   assert.match(sectionSource, /Current rate:/);
-  assert.match(sectionSource, /label="Earned"/);
+  assert.match(sectionSource, /label="Total Earned"/);
   assert.match(sectionSource, /label="Paid"/);
   assert.match(sectionSource, /label="Available"/);
 });
@@ -238,6 +239,51 @@ test("earnings, payment, and adjustment histories are read-only and corrections 
   assert.match(sectionSource, /Payments/);
   assert.match(sectionSource, /Read-only histories/);
   assert.doesNotMatch(sectionSource, /edit payment|delete payment|edit adjustment|delete adjustment/i);
+});
+
+test("switching period rows changes Period Earned using saved historical amounts", () => {
+  const base: SoilEarning = {
+    id: "earning-base", factoryId: "factory-a", soilWorkerId: "worker-a",
+    soilDailyTrolleyEntryId: "daily-a", workDate: "2026-08-25",
+    eventType: "BASE", eventSequence: 1, amount: 1000,
+    trolleyQuantitySnapshot: 5, ratePerTrolleySnapshot: 200,
+    previousBaseAmountSnapshot: 0, sourceBaseAmountSnapshot: 1000,
+    createdAt: "2026-09-30T10:00:00Z",
+  };
+  const correction: SoilEarning = {
+    ...base,
+    id: "earning-correction",
+    eventType: "CORRECTION",
+    eventSequence: 2,
+    amount: -200,
+    trolleyQuantitySnapshot: 4,
+    sourceBaseAmountSnapshot: 800,
+  };
+  assert.equal(sumSoilPeriodEarned([base, correction]), 800);
+  assert.equal(sumSoilPeriodEarned([{ ...base, id: "earning-other", amount: 400 }]), 400);
+  assert.equal(base.ratePerTrolleySnapshot, 200);
+});
+
+test("Soil reuses the shared earnings range while cumulative financial queries stay independent", () => {
+  for (const label of [
+    "Earnings period", "This Week", "Last Week", "This Month", "Custom",
+    "Period Earned", "From", "To",
+  ]) assert.match(sectionSource, new RegExp(label));
+  assert.match(sectionSource, /DEFAULT_WAGE_EARNINGS_DATE_PRESET/);
+  assert.match(sectionSource, /useState<WageEarningsDatePreset>\(\s*DEFAULT_WAGE_EARNINGS_DATE_PRESET/);
+  assert.match(sectionSource, /resolveWageEarningsDateRange/);
+  assert.match(sectionSource, /enabled: earningsRange !== null/);
+  assert.match(sectionSource, /earningsRange\?\.fromDate[\s\S]*earningsRange\?\.toDate/);
+  assert.match(sectionSource, /Work and earnings — selected period/);
+  assert.match(sectionSource, /hasSoilEarningHistory/);
+  assert.doesNotMatch(sectionSource, /localStorage|sessionStorage/);
+  assert.doesNotMatch(sectionSource, /summaryKey\([^\n]*earningsRange|paymentsKey\([^\n]*earningsRange|adjustmentsKey\([^\n]*earningsRange/);
+  const periodCalculation = sectionSource.slice(
+    sectionSource.indexOf("const periodEarned"),
+    sectionSource.indexOf("const historiesLoaded"),
+  );
+  assert.match(periodCalculation, /sumSoilPeriodEarned\(earningsQuery\.data/);
+  assert.doesNotMatch(periodCalculation, /adjustmentsQuery|paymentsQuery|summaryQuery/);
 });
 
 test("financial actions do not refresh or mutate recorded trolley and earning history", () => {

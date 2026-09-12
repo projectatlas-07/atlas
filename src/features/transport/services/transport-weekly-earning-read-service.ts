@@ -1,5 +1,9 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "../../../lib/supabase/client.ts";
+import {
+  isWageEarningsDateRange,
+  type WageEarningsDateRange,
+} from "../../wages/wage-earnings-date-range.ts";
 import type {
   TransportLockedWeeklyEarning,
   TransportWeeklyEarningDetail,
@@ -148,7 +152,69 @@ export async function listTransportWeeklyEarningDetails({
 
   if (error) throw new TransportWeeklyEarningReadError(error);
 
-  return ((data ?? []) as unknown as TransportWeeklyEarningDetailRow[]).map((row) => ({
+  return ((data ?? []) as unknown as TransportWeeklyEarningDetailRow[]).map(mapTransportWeeklyEarningDetail);
+}
+
+export async function listTransportWorkerEarningDetails({
+  factoryId,
+  transportWorkerId,
+  range,
+}: Readonly<{
+  factoryId: string;
+  transportWorkerId: string;
+  range: WageEarningsDateRange;
+}>): Promise<TransportWeeklyEarningDetail[]> {
+  if (!factoryId.trim()) throw new Error("factoryId is required.");
+  if (!transportWorkerId.trim()) throw new Error("transportWorkerId is required.");
+  if (!isWageEarningsDateRange(range)) {
+    throw new Error("Transport wage dates must be a valid inclusive range.");
+  }
+
+  const { data, error } = await supabase
+    .from("transport_weekly_earning_details")
+    .select(`
+      id,
+      factory_id,
+      transport_weekly_earning_id,
+      transport_worker_id,
+      week_start,
+      work_date,
+      transport_crew_id,
+      transport_daily_entry_id,
+      transport_crew_wage_rate_id,
+      rate_per_paya_snapshot,
+      paya_quantity_snapshot,
+      attendance_count_snapshot,
+      daily_crew_pool_snapshot,
+      worker_daily_share_snapshot,
+      created_at,
+      daily_entry:transport_daily_entries!transport_weekly_earning_details_daily_entry_fkey(
+        transport_crew:transport_crews!transport_daily_entries_crew_factory_fkey(
+          id,
+          name,
+          work_direction
+        )
+      )
+    `)
+    .eq("factory_id", factoryId)
+    .eq("transport_worker_id", transportWorkerId)
+    .gte("work_date", range.fromDate)
+    .lte("work_date", range.toDate)
+    .order("work_date", { ascending: false })
+    .order("transport_crew_id", { ascending: true })
+    .order("transport_daily_entry_id", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (error) throw new TransportWeeklyEarningReadError(error);
+
+  return ((data ?? []) as unknown as TransportWeeklyEarningDetailRow[])
+    .map(mapTransportWeeklyEarningDetail);
+}
+
+function mapTransportWeeklyEarningDetail(
+  row: TransportWeeklyEarningDetailRow,
+): TransportWeeklyEarningDetail {
+  return {
     detailId: row.id,
     factoryId: row.factory_id,
     transportWeeklyEarningId: row.transport_weekly_earning_id,
@@ -166,5 +232,5 @@ export async function listTransportWeeklyEarningDetails({
     dailyCrewPoolSnapshot: Number(row.daily_crew_pool_snapshot),
     workerDailyShareSnapshot: Number(row.worker_daily_share_snapshot),
     createdAt: row.created_at,
-  }));
+  };
 }

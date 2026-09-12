@@ -29,7 +29,7 @@ const SALES_REGISTER_SELECT = `
 
 type SalesRegisterRow = {
   id: string;
-  challan_number: number | string;
+  challan_number: string | null;
   challan_date: string;
   customer_name_snapshot: string;
   challan_total: number | string;
@@ -61,8 +61,8 @@ export class SalesRegisterServiceError extends Error {
 export class SalesRegisterReconciliationError extends Error {
   readonly code = "SALES_REVENUE_MISMATCH";
 
-  constructor(challanNumber: number | string) {
-    super(`Sales Register revenue does not reconcile for Challan #${challanNumber}.`);
+  constructor(challanNumber: string | null) {
+    super(`Sales Register revenue does not reconcile for ${challanNumber ? `Challan ${challanNumber}` : "an unnumbered Challan"}.`);
     this.name = "SalesRegisterReconciliationError";
   }
 }
@@ -111,7 +111,7 @@ export async function listSalesRegister(
     .gte("challan_date", range.fromDate)
     .lte("challan_date", range.toDate)
     .order("challan_date", { ascending: false })
-    .order("challan_number", { ascending: false });
+    .order("id", { ascending: false });
 
   if (error) throw new SalesRegisterServiceError(error);
   const entries = ((data ?? []) as unknown as SalesRegisterRow[]).map(mapRegisterRow);
@@ -146,7 +146,7 @@ function mapRegisterRow(row: SalesRegisterRow): SalesRegisterEntry {
 
   return {
     challanId: row.id,
-    challanNumber: Number(row.challan_number),
+    challanNumber: row.challan_number === null ? null : String(row.challan_number),
     challanDate: row.challan_date,
     customerNameSnapshot: row.customer_name_snapshot,
     items: (row.challan_items ?? [])

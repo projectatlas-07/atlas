@@ -43,7 +43,7 @@ const fakeSupabase = {
       },
       order(column: string, options: { ascending: boolean }) {
         calls.push(["order", column, options]);
-        return column === "challan_number" ? Promise.resolve(response) : builder;
+        return column === "id" ? Promise.resolve(response) : builder;
       },
     };
     return builder;
@@ -60,7 +60,7 @@ const { VehicleWageServiceError, listVehicleWageTrips } = await import(
 
 const activeTrip = {
   id: "challan-101",
-  challan_number: 101,
+  challan_number: "101",
   challan_date: "2026-09-01",
   vehicle_id: "vehicle-a",
   vehicle_number_snapshot: "WB12AB1234",
@@ -74,21 +74,31 @@ function reset(): void {
   response = { data: [], error: null };
 }
 
-test("reads each eligible Challan once through the existing factory RLS path", async () => {
+test("reads inclusive boundary Challans once through the existing factory RLS path", async () => {
   reset();
-  response.data = [activeTrip];
+  response.data = [
+    { ...activeTrip, created_at: "2099-01-01T00:00:00Z" },
+    {
+      ...activeTrip,
+      id: "challan-105",
+      challan_number: "105",
+      challan_date: "2026-09-05",
+      trip_labour_wage: "500.00",
+      created_at: "2000-01-01T00:00:00Z",
+    },
+  ];
   const trips = await listVehicleWageTrips("factory-a", {
     fromDate: "2026-09-01",
     toDate: "2026-09-05",
   });
-  assert.deepEqual(trips, [{
-    challanId: "challan-101",
-    challanNumber: 101,
-    challanDate: "2026-09-01",
-    vehicleId: "vehicle-a",
-    vehicleNumberSnapshot: "WB12AB1234",
-    tripLabourWage: 750,
-  }]);
+  assert.deepEqual(trips.map((trip) => ({
+    challanId: trip.challanId,
+    challanDate: trip.challanDate,
+    tripLabourWage: trip.tripLabourWage,
+  })), [
+    { challanId: "challan-105", challanDate: "2026-09-05", tripLabourWage: 500 },
+    { challanId: "challan-101", challanDate: "2026-09-01", tripLabourWage: 750 },
+  ]);
   assert.deepEqual(calls.filter((call) => call[0] === "eq"), [
     ["eq", "factory_id", "factory-a"],
     ["eq", "status", "active"],
@@ -98,6 +108,9 @@ test("reads each eligible Challan once through the existing factory RLS path", a
     ["gte", "challan_date", "2026-09-01"],
     ["lte", "challan_date", "2026-09-05"],
   ]);
+  const selectedColumns = calls.find((call) => call[0] === "select")?.[1];
+  assert.equal(typeof selectedColumns === "string" && selectedColumns.includes("challan_date"), true);
+  assert.equal(typeof selectedColumns === "string" && selectedColumns.includes("created_at"), false);
   assert.equal(calls.some((call) => call[0] === "rpc"), false);
   assert.equal(calls.some((call) => call[0] === "join"), false);
 });

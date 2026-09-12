@@ -16,6 +16,7 @@ import {
   type VehicleWageLifetimeAccount,
   type VehicleWagePayment,
 } from "@/features/sales/vehicle-wage-model";
+import { buildVehicleTripHistories } from "@/features/sales/vehicle-trip-model";
 import {
   getVehicleWageLifetimeAccount,
   listVehicleWagePayments,
@@ -23,15 +24,16 @@ import {
   recordVehicleWagePayment,
   reverseVehicleWagePayment,
 } from "@/features/sales/services/vehicle-wage-service";
+import { listVehicleTrips } from "@/features/sales/services/vehicle-trip-service";
 import type { Vehicle } from "@/features/sales/types";
+import { DEFAULT_WAGE_EARNINGS_DATE_PRESET } from "@/features/wages/wage-earnings-date-range";
 import { getLocalDate } from "@/lib/local-date";
 
 const presets: Array<{ value: VehicleWageDatePreset; label: string }> = [
-  { value: "today", label: "Today" },
-  { value: "yesterday", label: "Yesterday" },
-  { value: "week", label: "This week" },
-  { value: "month", label: "This month" },
-  { value: "custom", label: "Custom range" },
+  { value: "this_week", label: "This Week" },
+  { value: "last_week", label: "Last Week" },
+  { value: "this_month", label: "This Month" },
+  { value: "custom", label: "Custom" },
 ];
 
 const dateInputClass =
@@ -50,7 +52,9 @@ export function VehicleWageAccountsSection({
 }>) {
   const queryClient = useQueryClient();
   const [localToday] = useState(() => getLocalDate());
-  const [preset, setPreset] = useState<VehicleWageDatePreset>("month");
+  const [preset, setPreset] = useState<VehicleWageDatePreset>(
+    DEFAULT_WAGE_EARNINGS_DATE_PRESET,
+  );
   const [customFrom, setCustomFrom] = useState(localToday);
   const [customTo, setCustomTo] = useState(localToday);
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
@@ -67,17 +71,29 @@ export function VehicleWageAccountsSection({
   const [reversalError, setReversalError] = useState("");
   const [reversalSuccess, setReversalSuccess] = useState("");
   const range = resolveVehicleWageDateRange(preset, localToday, customFrom, customTo);
-  const tripsQuery = useQuery({
+  const wageTripsQuery = useQuery({
     queryKey: ["office-vehicle-wages", factoryId, "trips", range?.fromDate, range?.toDate],
     queryFn: () => listVehicleWageTrips(factoryId, range!),
     enabled: range !== null,
   });
-  const accounts = buildVehicleWageAccounts(vehicles, tripsQuery.data ?? []);
+  const tripHistoryQuery = useQuery({
+    queryKey: ["office-vehicle-trips", factoryId],
+    queryFn: () => listVehicleTrips(factoryId),
+  });
+  const accounts = buildVehicleWageAccounts(vehicles, wageTripsQuery.data ?? []);
+  const tripHistories = buildVehicleTripHistories(vehicles, tripHistoryQuery.data ?? []);
+  const tripHistoryByVehicleId = new Map(
+    tripHistories.map((history) => [history.vehicleId, history]),
+  );
   const rangeSummary = summarizeVehicleWageRange(accounts);
   const selectedAccount = accounts.find((account) => account.vehicleId === selectedVehicleId)
+    ?? accounts.find((account) => (
+      tripHistoryByVehicleId.get(account.vehicleId)?.tripCount ?? 0
+    ) > 0)
     ?? accounts.find((account) => account.qualifyingTripCount > 0)
     ?? accounts[0];
   const activeVehicleId = selectedAccount?.vehicleId ?? "";
+  const selectedTripHistory = tripHistoryByVehicleId.get(activeVehicleId);
   const lifetimeQuery = useQuery({
     queryKey: accountKey(factoryId, activeVehicleId),
     queryFn: () => getVehicleWageLifetimeAccount(factoryId, activeVehicleId),
@@ -219,16 +235,19 @@ export function VehicleWageAccountsSection({
           <div>
             <p className="text-sm font-semibold uppercase tracking-wider text-cyan-800">Vehicle Wages</p>
             <h3 id="vehicle-wage-accounts-heading" className="mt-1 text-xl font-bold">Delivery Labour Wage accounts</h3>
-            <p className="mt-1 max-w-3xl text-sm text-slate-600">Lifetime account balances and immutable payments, with selected-range trip reporting. Current tracking and archive settings do not rewrite history.</p>
+            <p className="mt-1 max-w-3xl text-sm text-slate-600">Lifetime account balances and immutable payments, with selected-range wage reporting and all-time trip history. Current tracking and archive settings do not rewrite history.</p>
           </div>
-          <div className="flex flex-wrap gap-2" aria-label="Vehicle wage date filters">
-            {presets.map((option) => <button
-              key={option.value}
-              type="button"
-              aria-pressed={preset === option.value}
-              onClick={() => setPreset(option.value)}
-              className={`h-9 rounded-lg border px-3 text-sm font-semibold ${preset === option.value ? "border-cyan-700 bg-cyan-700 text-white" : "border-slate-300 bg-white text-slate-700"}`}
-            >{option.label}</button>)}
+          <div>
+            <p className="mb-2 text-xs font-medium text-slate-600">Earnings period</p>
+            <div className="flex flex-wrap gap-2" aria-label="Vehicle wage earnings period">
+              {presets.map((option) => <button
+                key={option.value}
+                type="button"
+                aria-pressed={preset === option.value}
+                onClick={() => setPreset(option.value)}
+                className={`h-9 rounded-lg border px-3 text-sm font-semibold ${preset === option.value ? "border-cyan-700 bg-cyan-700 text-white" : "border-slate-300 bg-white text-slate-700"}`}
+              >{option.label}</button>)}
+            </div>
           </div>
         </div>
 
@@ -241,31 +260,33 @@ export function VehicleWageAccountsSection({
       </div>
 
       <div className="grid border-b border-slate-200 bg-slate-50 sm:grid-cols-3">
-        <SummaryValue label="Earned in selected range" value={formatSalesMoney(rangeSummary.earnedAmount)} />
-        <SummaryValue label="Qualifying Trips" value={rangeSummary.qualifyingTripCount.toLocaleString("en-IN")} />
-        <SummaryValue label="Vehicles with Earnings" value={rangeSummary.vehicleCountWithEarnings.toLocaleString("en-IN")} />
+        <SummaryValue label="Period Earned" value={range ? formatSalesMoney(rangeSummary.earnedAmount) : "—"} />
+        <SummaryValue label="Wage-earning Trips" value={range ? rangeSummary.qualifyingTripCount.toLocaleString("en-IN") : "—"} />
+        <SummaryValue label="Vehicles with Earnings" value={range ? rangeSummary.vehicleCountWithEarnings.toLocaleString("en-IN") : "—"} />
       </div>
 
-      {tripsQuery.isLoading && <p className="px-5 py-10 text-center text-sm text-slate-500">Loading Vehicle wage earnings...</p>}
-      {tripsQuery.error && <p role="alert" className="px-5 py-10 text-center text-sm font-semibold text-red-700">{tripsQuery.error instanceof Error ? tripsQuery.error.message : "Could not load Vehicle wage earnings."}</p>}
-      {!tripsQuery.isLoading && !tripsQuery.error && vehicles.length === 0 && accounts.length === 0 && <p className="px-5 py-10 text-center text-sm text-slate-500">No Vehicles exist yet. Wage earnings will appear automatically from eligible Challans.</p>}
+      {wageTripsQuery.isLoading && <p className="px-5 py-10 text-center text-sm text-slate-500">Loading Vehicle wage earnings...</p>}
+      {wageTripsQuery.error && <p role="alert" className="px-5 py-10 text-center text-sm font-semibold text-red-700">{wageTripsQuery.error instanceof Error ? wageTripsQuery.error.message : "Could not load Vehicle wage earnings."}</p>}
+      {!wageTripsQuery.isLoading && !wageTripsQuery.error && vehicles.length === 0 && accounts.length === 0 && <p className="px-5 py-10 text-center text-sm text-slate-500">No Vehicles exist yet. Wage earnings will appear automatically from eligible Challans.</p>}
 
-      {!tripsQuery.isLoading && !tripsQuery.error && accounts.length > 0 && <div className="grid lg:grid-cols-[minmax(16rem,0.75fr)_minmax(0,1.5fr)]">
+      {!wageTripsQuery.isLoading && !wageTripsQuery.error && accounts.length > 0 && <div className="grid lg:grid-cols-[minmax(16rem,0.75fr)_minmax(0,1.5fr)]">
         <div className="border-b border-slate-200 lg:border-b-0 lg:border-r">
           <h4 className="border-b border-slate-200 px-4 py-3 text-sm font-bold text-slate-700">Vehicle accounts</h4>
           <ul className="max-h-[48rem] divide-y divide-slate-100 overflow-y-auto">
-            {accounts.map((account) => <li key={account.vehicleId} className={selectedAccount?.vehicleId === account.vehicleId ? "bg-cyan-50" : "bg-white"}>
+            {accounts.map((account) => {
+              const recordedTripCount = tripHistoryByVehicleId.get(account.vehicleId)?.tripCount ?? 0;
+              return <li key={account.vehicleId} className={selectedAccount?.vehicleId === account.vehicleId ? "bg-cyan-50" : "bg-white"}>
               <button type="button" onClick={() => selectVehicle(account.vehicleId)} className="w-full px-4 py-4 text-left hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-cyan-600">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-bold text-slate-950">{account.vehicleNumber}</p>
                     <p className="mt-1 text-xs text-slate-500">{account.isActive ? "Active" : "Archived"} · Tracking {account.deliveryWageTrackingEnabled ? "ON" : "OFF"} now</p>
                   </div>
-                  <div className="text-right"><p className="font-bold tabular-nums text-slate-950">{formatSalesMoney(account.earnedAmount)}</p><p className="text-[11px] text-slate-500">range earned</p></div>
+                  <div className="text-right"><p className="font-bold tabular-nums text-slate-950">{range ? formatSalesMoney(account.earnedAmount) : "—"}</p><p className="text-[11px] text-slate-500">period earned</p></div>
                 </div>
-                <p className="mt-2 text-xs font-semibold text-cyan-800">{account.qualifyingTripCount.toLocaleString("en-IN")} qualifying {account.qualifyingTripCount === 1 ? "trip" : "trips"}</p>
+                <p className="mt-2 text-xs font-semibold text-cyan-800">{recordedTripCount.toLocaleString("en-IN")} recorded {recordedTripCount === 1 ? "trip" : "trips"}</p>
               </button>
-            </li>)}
+            </li>})}
           </ul>
         </div>
 
@@ -277,8 +298,8 @@ export function VehicleWageAccountsSection({
                 <p className="mt-1 text-xs text-slate-500">{selectedAccount.isActive ? "Active" : "Archived"} · Tracking {selectedAccount.deliveryWageTrackingEnabled ? "ON" : "OFF"} now. Settlement remains available against historical earnings.</p>
               </div>
               <div className="sm:text-right">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Earned in selected range</p>
-                <p className="mt-1 text-xl font-bold tabular-nums">{formatSalesMoney(selectedAccount.earnedAmount)}</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Period Earned</p>
+                <p className="mt-1 text-xl font-bold tabular-nums">{range ? formatSalesMoney(selectedAccount.earnedAmount) : "—"}</p>
               </div>
             </div>
           </div>
@@ -287,9 +308,9 @@ export function VehicleWageAccountsSection({
             {lifetimeQuery.isLoading && <p className="px-5 py-6 text-sm text-slate-500">Loading lifetime Vehicle wage account...</p>}
             {lifetimeQuery.error && <p role="alert" className="px-5 py-6 text-sm font-semibold text-red-700">{lifetimeQuery.error instanceof Error ? lifetimeQuery.error.message : "Could not load the lifetime account."}</p>}
             {lifetimeQuery.data && <div className="grid sm:grid-cols-3">
-              <SummaryValue label="Lifetime Earned" value={formatSalesMoney(lifetimeQuery.data.totalEarned)} />
-              <SummaryValue label="Lifetime Paid" value={formatSalesMoney(lifetimeQuery.data.totalPaid)} />
-              <SummaryValue label="Lifetime Available" value={formatSalesMoney(lifetimeQuery.data.availableBalance)} />
+              <SummaryValue label="Total Earned" value={formatSalesMoney(lifetimeQuery.data.totalEarned)} />
+              <SummaryValue label="Paid" value={formatSalesMoney(lifetimeQuery.data.totalPaid)} />
+              <SummaryValue label="Available" value={formatSalesMoney(lifetimeQuery.data.availableBalance)} />
             </div>}
           </div>
 
@@ -341,25 +362,29 @@ export function VehicleWageAccountsSection({
             </section>
           </div>
 
-          <div className="border-b border-slate-200 px-5 py-3"><h5 className="font-bold">Trip History</h5><p className="mt-1 text-xs text-slate-500">Eligible active Challan snapshots in the selected date range.</p></div>
-          {selectedAccount.trips.length === 0
-            ? <p className="px-5 py-10 text-center text-sm text-slate-500">No qualifying active Challan trips for this Vehicle in the selected range.</p>
-            : <div className="max-h-[36rem] overflow-auto">
-                <table className="w-full min-w-[34rem] text-left text-sm">
-                  <thead className="sticky top-0 border-b border-slate-200 bg-white text-xs uppercase tracking-wide text-slate-500">
-                    <tr><th className="px-4 py-3">Date</th><th className="px-4 py-3">Challan</th><th className="px-4 py-3">Historical Vehicle</th><th className="px-4 py-3 text-right">Trip Labour Wage</th><th className="px-4 py-3 text-right">Audit</th></tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {selectedAccount.trips.map((trip) => <tr key={trip.challanId}>
-                      <td className="whitespace-nowrap px-4 py-3">{formatChallanDate(trip.challanDate)}</td>
-                      <td className="px-4 py-3 font-bold">#{trip.challanNumber}</td>
-                      <td className="px-4 py-3 font-medium">{trip.vehicleNumberSnapshot}</td>
-                      <td className="px-4 py-3 text-right font-bold tabular-nums">{formatSalesMoney(trip.tripLabourWage)}</td>
-                      <td className="px-4 py-3 text-right"><Link href={`/office/challans/${trip.challanId}`} target="_blank" rel="noreferrer" className="font-semibold text-cyan-800 hover:underline">Open Challan</Link></td>
-                    </tr>)}
-                  </tbody>
-                </table>
-              </div>}
+          <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-3"><div><h5 className="font-bold">Trip History</h5><p className="mt-1 text-xs text-slate-500">All active Challans recorded with this Vehicle. Wage filters above do not limit this list.</p></div><p className="whitespace-nowrap text-sm font-bold text-cyan-800">{(selectedTripHistory?.tripCount ?? 0).toLocaleString("en-IN")} {(selectedTripHistory?.tripCount ?? 0) === 1 ? "trip" : "trips"}</p></div>
+          {tripHistoryQuery.isLoading && <p className="px-5 py-10 text-center text-sm text-slate-500">Loading Vehicle trip history...</p>}
+          {tripHistoryQuery.error && <p role="alert" className="px-5 py-10 text-center text-sm font-semibold text-red-700">{tripHistoryQuery.error instanceof Error ? tripHistoryQuery.error.message : "Could not load Vehicle trip history."}</p>}
+          {!tripHistoryQuery.isLoading && !tripHistoryQuery.error && (selectedTripHistory?.tripCount ?? 0) === 0
+            ? <p className="px-5 py-10 text-center text-sm text-slate-500">No active Challan trips recorded for this Vehicle.</p>
+            : null}
+          {!tripHistoryQuery.isLoading && !tripHistoryQuery.error && (selectedTripHistory?.tripCount ?? 0) > 0 && <ul className="max-h-[36rem] divide-y divide-slate-100 overflow-y-auto">
+            {selectedTripHistory!.trips.map((trip) => <li key={trip.challanId} className="px-5 py-4 text-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="font-bold text-slate-950">{formatChallanDate(trip.challanDate)}</p>
+                  <p className="mt-1 font-semibold text-slate-800">{trip.customerNameSnapshot}</p>
+                  {trip.challanNumber && <p className="mt-1 text-xs text-slate-600">Challan No. {trip.challanNumber}</p>}
+                  {trip.destinationSnapshot && <p className="mt-1 text-xs text-slate-600">Destination: {trip.destinationSnapshot}</p>}
+                  <p className="mt-1 text-xs text-slate-500">Historical Vehicle: {trip.vehicleNumberSnapshot}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-bold text-slate-700">{trip.deliveryWageApplicableSnapshot && trip.tripLabourWage !== null ? `Wage ${formatSalesMoney(trip.tripLabourWage)}` : "No Vehicle wage"}</p>
+                  <Link href={`/office/challans/${trip.challanId}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-semibold text-cyan-800 hover:underline">Open Challan</Link>
+                </div>
+              </div>
+            </li>)}
+          </ul>}
         </div>}
       </div>}
     </section>

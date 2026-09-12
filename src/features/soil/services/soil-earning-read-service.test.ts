@@ -30,6 +30,18 @@ const fakeSupabase = {
         calls.push(["eq", column, value]);
         return builder;
       },
+      gte(column: string, value: string) {
+        calls.push(["gte", column, value]);
+        return builder;
+      },
+      lte(column: string, value: string) {
+        calls.push(["lte", column, value]);
+        return builder;
+      },
+      limit(value: number) {
+        calls.push(["limit", value]);
+        return builder;
+      },
       order(column: string, options: { ascending: boolean }) {
         calls.push(["order", column, options]);
         return builder;
@@ -53,6 +65,7 @@ await mock.module("../../../lib/supabase/client.ts", {
 const {
   SoilEarningReadServiceError,
   getSoilTotalEarned,
+  hasSoilEarningHistory,
   listSoilEarnings,
 } = await import("./soil-earning-read-service.ts");
 
@@ -110,6 +123,7 @@ test("reads immutable base and signed correction events from only the T3 ledger"
   const earnings = await listSoilEarnings({
     factoryId: "factory-a",
     soilWorkerId: "worker-raju",
+    range: { fromDate: "2026-08-25", toDate: "2026-08-25" },
   });
 
   assert.deepEqual(earnings.map((earning) => earning.amount), [-400, 200, 1000]);
@@ -117,6 +131,7 @@ test("reads immutable base and signed correction events from only the T3 ledger"
   assert.equal(earnings[0].eventSequence, 3);
   assert.equal(earnings[0].previousBaseAmountSnapshot, 1200);
   assert.equal(earnings[0].sourceBaseAmountSnapshot, 800);
+  assert.equal(earnings[0].ratePerTrolleySnapshot, 200);
   assert.equal(calls[0]?.[1], "soil_earnings");
   assert.deepEqual(calls.filter(([method]) => method === "eq"), [
     ["eq", "factory_id", "factory-a"],
@@ -128,6 +143,56 @@ test("reads immutable base and signed correction events from only the T3 ledger"
     ["order", "event_sequence", { ascending: false }],
     ["order", "id", { ascending: false }],
   ]);
+  assert.deepEqual(calls.filter(([method]) => method === "gte" || method === "lte"), [
+    ["gte", "work_date", "2026-08-25"],
+    ["lte", "work_date", "2026-08-25"],
+  ]);
+});
+
+test("includes both work_date boundaries regardless of created_at", async () => {
+  reset();
+  listResponse.data = [
+    earningRow({
+      id: "earning-to",
+      work_date: "2026-09-19",
+      amount: "600",
+      created_at: "2000-01-01T00:00:00Z",
+    }),
+    earningRow({
+      id: "earning-from",
+      work_date: "2026-09-03",
+      amount: "400",
+      created_at: "2099-01-01T00:00:00Z",
+    }),
+  ];
+  const earnings = await listSoilEarnings({
+    factoryId: "factory-a",
+    soilWorkerId: "worker-raju",
+    range: { fromDate: "2026-09-03", toDate: "2026-09-19" },
+  });
+  assert.deepEqual(earnings.map((earning) => earning.workDate), [
+    "2026-09-19",
+    "2026-09-03",
+  ]);
+  assert.deepEqual(calls.filter(([method]) => method === "gte" || method === "lte"), [
+    ["gte", "work_date", "2026-09-03"],
+    ["lte", "work_date", "2026-09-19"],
+  ]);
+});
+
+test("checks all-time earning existence without applying the reporting range", async () => {
+  reset();
+  listResponse.data = [{ id: "earning-old" }];
+  assert.equal(await hasSoilEarningHistory({
+    factoryId: "factory-a",
+    soilWorkerId: "worker-raju",
+  }), true);
+  assert.deepEqual(calls.filter(([method]) => method === "eq"), [
+    ["eq", "factory_id", "factory-a"],
+    ["eq", "soil_worker_id", "worker-raju"],
+  ]);
+  assert.deepEqual(calls.filter(([method]) => method === "limit"), [["limit", 1]]);
+  assert.equal(calls.some(([method]) => method === "gte" || method === "lte"), false);
 });
 
 test("gets cumulative earned from the authoritative database aggregate RPC", async () => {
@@ -161,7 +226,11 @@ test("preserves factory-security errors for history and total reads", async () =
     hint: null,
   };
   await assert.rejects(
-    () => listSoilEarnings({ factoryId: "factory-b", soilWorkerId: "worker-b" }),
+    () => listSoilEarnings({
+      factoryId: "factory-b",
+      soilWorkerId: "worker-b",
+      range: { fromDate: "2026-08-25", toDate: "2026-08-25" },
+    }),
     (error: unknown) => error instanceof SoilEarningReadServiceError
       && error.code === "42501"
       && error.details === "factory mapping missing",
@@ -184,12 +253,26 @@ test("preserves factory-security errors for history and total reads", async () =
 test("validates required identities and missing aggregate results", async () => {
   reset();
   await assert.rejects(
-    () => listSoilEarnings({ factoryId: "", soilWorkerId: "worker-raju" }),
+    () => listSoilEarnings({
+      factoryId: "",
+      soilWorkerId: "worker-raju",
+      range: { fromDate: "2026-08-25", toDate: "2026-08-25" },
+    }),
     /factoryId is required/,
   );
   await assert.rejects(
     () => getSoilTotalEarned({ factoryId: "factory-a", soilWorkerId: " " }),
     /soilWorkerId is required/,
+  );
+  assert.equal(calls.length, 0);
+
+  await assert.rejects(
+    () => listSoilEarnings({
+      factoryId: "factory-a",
+      soilWorkerId: "worker-raju",
+      range: { fromDate: "2026-08-26", toDate: "2026-08-25" },
+    }),
+    /valid inclusive range/,
   );
   assert.equal(calls.length, 0);
 

@@ -92,7 +92,7 @@ function savedChallan(overrides: Partial<Challan> = {}): Challan {
   return {
     id: "challan-a",
     factoryId: "factory-a",
-    challanNumber: 108,
+    challanNumber: "108",
     challanDate: "2026-09-01",
     customerId: "customer-a",
     customerNameSnapshot: "Historical Customer",
@@ -228,7 +228,25 @@ test("quantity-rate Extra Charge preserves quantity, rate, and authoritative amo
   assert.match(printDocumentSource, /formatPrintableMoney\(line\.amount\)/);
 });
 
-test("Vehicle snapshot is primary, legacy fallback is minimal, and no Vehicle is a dash", () => {
+test("saved Vehicle prints for either wage mode and remains independent of Vehicle Master", () => {
+  const wageEnabled = buildPrintableChallan(savedChallan({
+    vehicleNumberSnapshot: "WB 57B 1234",
+    deliveryWageApplicableSnapshot: true,
+    tripLabourWage: 750,
+  }));
+  const wageDisabled = buildPrintableChallan(savedChallan({
+    vehicleNumberSnapshot: "WB 57B 1234",
+    deliveryWageApplicableSnapshot: false,
+    tripLabourWage: null,
+  }));
+  const changedArchivedMaster = { vehicleNumber: "CHANGED-NUMBER", isActive: false };
+  assert.equal(wageEnabled.vehicleNumber, "WB 57B 1234");
+  assert.equal(wageDisabled.vehicleNumber, "WB 57B 1234");
+  assert.notEqual(wageDisabled.vehicleNumber, changedArchivedMaster.vehicleNumber);
+  assert.doesNotMatch(printModelSource, /listVehicles|vehicle-service|isActive/);
+});
+
+test("Vehicle snapshot is primary, legacy fallback is minimal, and no Vehicle row is rendered", () => {
   assert.equal(buildPrintableChallan(savedChallan()).vehicleNumber, "WB12AB1234");
   assert.equal(buildPrintableChallan(savedChallan({
     vehicleNumberSnapshot: null,
@@ -239,7 +257,38 @@ test("Vehicle snapshot is primary, legacy fallback is minimal, and no Vehicle is
     vehicleNumberSnapshot: null,
     vehicleNumber: "",
   })).vehicleNumber, null);
-  assert.match(printDocumentSource, /challan\.vehicleNumber \?\? "—"/);
+  assert.match(printDocumentSource, /challan\.vehicleNumber &&/);
+  assert.doesNotMatch(printDocumentSource, /challan\.vehicleNumber \?\?/);
+  assert.ok(
+    printDocumentSource.indexOf("Vehicle No.:")
+      < printDocumentSource.indexOf("challan-print-table"),
+    "Saved Vehicle number must print before the variable-length line table.",
+  );
+});
+
+test("print headers and non-note row cells share the requested column order", () => {
+  const header = printDocumentSource.slice(
+    printDocumentSource.indexOf("<thead>"),
+    printDocumentSource.indexOf("</thead>"),
+  );
+  const row = printDocumentSource.slice(
+    printDocumentSource.indexOf(": <tr key="),
+    printDocumentSource.indexOf("</tr>)}"),
+  );
+  const headerPositions = ["No.", "Particulars", "Quantity", "Rate", "Amount"]
+    .map((label) => header.indexOf(`>${label}</th>`));
+  assert.ok(headerPositions.every((position) => position >= 0));
+  assert.deepEqual(headerPositions, [...headerPositions].sort((left, right) => left - right));
+
+  const cellPositions = [
+    ">{index + 1}</td>",
+    ">{line.particulars}</td>",
+    "formatPrintableQuantity(line.quantity)",
+    "formatPrintableMoney(line.rate)",
+    "formatPrintableMoney(line.amount)",
+  ].map((expression) => row.indexOf(expression));
+  assert.ok(cellPositions.every((position) => position >= 0));
+  assert.deepEqual(cellPositions, [...cellPositions].sort((left, right) => left - right));
 });
 
 test("customer print excludes internal wage state while retaining Vehicle and saved total", () => {

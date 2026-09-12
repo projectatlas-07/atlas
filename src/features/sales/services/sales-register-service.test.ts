@@ -85,7 +85,7 @@ test("Sales Register query is factory-scoped, inclusive, deterministic, and date
     ["gte", "challan_date", "2026-08-01"],
     ["lte", "challan_date", "2026-08-27"],
     ["order", "challan_date", { ascending: false }],
-    ["order", "challan_number", { ascending: false }],
+    ["order", "id", { ascending: false }],
   ]);
 });
 
@@ -125,7 +125,7 @@ test("service derives the explicit revenue split from persisted authoritative ro
     toDate: "2026-08-27",
   }), [{
     challanId: "challan-a",
-    challanNumber: 42,
+    challanNumber: "42",
     challanDate: "2026-08-27",
     customerNameSnapshot: "Historical Customer",
     items: [
@@ -143,11 +143,56 @@ test("service derives the explicit revenue split from persisted authoritative ro
   }]);
 });
 
+test("Sales Register keeps an exact Amount-driven ₹80,000 row", async () => {
+  reset();
+  response.data = [{
+    id: "challan-exact",
+    challan_number: "44",
+    challan_date: "2026-09-10",
+    customer_name_snapshot: "Exact Customer",
+    challan_total: "80000.00",
+    vehicle_number: null,
+    status: "active",
+    challan_items: [{
+      brick_particulars_snapshot: "Class One",
+      quantity: "12347",
+      line_amount: "80000.00",
+      line_position: 1,
+    }],
+    challan_flexible_lines: [],
+  }];
+  rpcResponses.set("get_challan_payment_state", {
+    data: [{
+      challan_id: "challan-exact",
+      challan_status: "active",
+      sale_total: "80000.00",
+      total_paid: "0",
+      outstanding_amount: "80000.00",
+      payment_state: "unpaid",
+    }],
+    error: null,
+  });
+
+  const [entry] = await listSalesRegister("factory-a", {
+    fromDate: "2026-09-10",
+    toDate: "2026-09-10",
+  });
+  assert.deepEqual({
+    brickRevenue: entry?.brickRevenue,
+    totalRevenue: entry?.totalRevenue,
+    outstandingAmount: entry?.outstandingAmount,
+  }, {
+    brickRevenue: 80000,
+    totalRevenue: 80000,
+    outstandingAmount: 80000,
+  });
+});
+
 test("void rows keep their revenue split but do not request payment state", async () => {
   reset();
   response.data = [{
     id: "challan-void",
-    challan_number: 43,
+    challan_number: "43",
     challan_date: "2026-08-27",
     customer_name_snapshot: "Historical Customer",
     challan_total: "5000",
@@ -173,7 +218,7 @@ test("service refuses a register row whose category split does not reconcile", a
   reset();
   response.data = [{
     id: "challan-bad",
-    challan_number: 99,
+    challan_number: "99",
     challan_date: "2026-08-27",
     customer_name_snapshot: "Historical Customer",
     challan_total: "102000",
@@ -198,7 +243,7 @@ test("service refuses a register row whose category split does not reconcile", a
     }),
     (error: unknown) => error instanceof SalesRegisterReconciliationError
       && error.code === "SALES_REVENUE_MISMATCH"
-      && /Challan #99/.test(error.message),
+      && /Challan 99/.test(error.message),
   );
   assert.equal(calls.some(([method]) => method === "rpc"), false);
 });

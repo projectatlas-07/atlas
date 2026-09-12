@@ -1,4 +1,4 @@
-import type { ChallanPaymentState, ChallanStatus } from "@/features/sales/types";
+import type { ChallanNumber, ChallanPaymentState, ChallanStatus } from "@/features/sales/types";
 
 export type SalesDatePreset = "today" | "yesterday" | "week" | "month" | "custom";
 
@@ -15,7 +15,7 @@ export type SalesRegisterItem = {
 
 export type SalesRegisterEntry = {
   challanId: string;
-  challanNumber: number;
+  challanNumber: ChallanNumber;
   challanDate: string;
   customerNameSnapshot: string;
   items: SalesRegisterItem[];

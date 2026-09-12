@@ -89,8 +89,8 @@ test("RPC-only writes enforce factory access, exact money, available balance, an
 
 test("UI separates range reporting from lifetime solvency and refreshes after payment", () => {
   for (const label of [
-    "Earned in selected range", "Lifetime Earned", "Lifetime Paid",
-    "Lifetime Available", "Record Payment", "Payment History", "Trip History",
+    "Period Earned", "Total Earned", "Paid",
+    "Available", "Record Payment", "Payment History", "Trip History",
   ]) assert.match(component, new RegExp(label));
   assert.match(component, /lifetimeQuery\.data\.availableBalance <= 0/);
   assert.match(component, /setQueryData<VehicleWageLifetimeAccount>/);

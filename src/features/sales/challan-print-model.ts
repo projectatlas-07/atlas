@@ -1,4 +1,4 @@
-import type { Challan } from "@/features/sales/types";
+import type { Challan, ChallanNumber } from "@/features/sales/types";
 
 export type PrintableChallanBrickLine = {
   lineKind: "BRICK";
@@ -46,7 +46,7 @@ export type PrintableCompany = PrintableCompanyBase & ({
 
 export type PrintableChallan = {
   company: PrintableCompany;
-  challanNumber: number;
+  challanNumber: ChallanNumber;
   challanDate: string;
   customer: {
     name: string;

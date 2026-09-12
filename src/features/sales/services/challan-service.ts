@@ -17,7 +17,7 @@ const FACTORY_COLUMNS =
 const CHALLAN_COLUMNS =
   "id, factory_id, challan_number, challan_date, customer_id, customer_name_snapshot, customer_address_snapshot, customer_mobile_snapshot, company_name_snapshot, company_business_description_snapshot, company_address_snapshot, company_mobile_snapshot, company_village_snapshot, company_post_office_snapshot, company_police_station_snapshot, company_district_snapshot, company_state_snapshot, vehicle_id, vehicle_number_snapshot, delivery_wage_applicable_snapshot, trip_labour_wage, vehicle_number, tractor_labour_rate_snapshot, challan_total, status, is_locked, voided_at, created_at, updated_at";
 const CHALLAN_ITEM_COLUMNS =
-  "id, factory_id, challan_id, brick_type_id, brick_particulars_snapshot, quantity, rate_per_1000_bricks, pricing_unit, line_amount, line_position, created_at";
+  "id, factory_id, challan_id, brick_type_id, brick_particulars_snapshot, quantity, pricing_mode, rate_per_1000_bricks, pricing_unit, line_amount, line_position, created_at";
 const CHALLAN_FLEXIBLE_LINE_COLUMNS =
   "id, factory_id, challan_id, line_type, line_category, order_index, particulars, quantity, rate, amount, created_at";
 
@@ -39,7 +39,7 @@ type FactoryRow = {
 type ChallanRow = {
   id: string;
   factory_id: string;
-  challan_number: number | string;
+  challan_number: string | null;
   challan_date: string;
   customer_id: string;
   customer_name_snapshot: string;
@@ -75,6 +75,7 @@ type ChallanItemRow = {
   brick_type_id: string;
   brick_particulars_snapshot: string;
   quantity: number | string;
+  pricing_mode: "RATE" | "AMOUNT";
   rate_per_1000_bricks: number | string;
   pricing_unit: "PER_1000_BRICKS";
   line_amount: number | string;
@@ -140,8 +141,9 @@ function readableChallanError(error: PostgrestError): string {
   if (error.code === "P3111") {
     return "This Challan change would overpay the Vehicle wage account. Review its payments first.";
   }
+  if (error.code === "23505") return "This Challan No. is already used in this factory.";
   if (error.code === "22023" || error.code === "23514") {
-    return "Check the Challan date, Vehicle, Trip Labour Wage, brick lines, and flexible lines.";
+    return "Check the Challan No., date, Vehicle, Trip Labour Wage, brick lines, and flexible lines.";
   }
   return error.message;
 }
@@ -185,6 +187,19 @@ function assertMoney(value: number, label: string, allowZero: boolean): void {
   }
 }
 
+function normalizeMoneyDecimal(value: string, label: string): string {
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(value.trim());
+  if (!match) {
+    throw new Error(`${label} must be positive and use at most two decimal places.`);
+  }
+  const paise = BigInt(match[1]!) * 100n
+    + BigInt((match[2] ?? "").padEnd(2, "0"));
+  if (paise <= 0n || paise >= 100_000_000_000n) {
+    throw new Error(`${label} must be positive and less than 1000000000.`);
+  }
+  return `${paise / 100n}.${String(paise % 100n).padStart(2, "0")}`;
+}
+
 function validateItems(items: ChallanItemInput[]): void {
   if (items.length > 100) {
     throw new Error("A Challan supports at most 100 brick items.");
@@ -196,7 +211,17 @@ function validateItems(items: ChallanItemInput[]): void {
       || item.quantity > 1_000_000_000) {
       throw new Error("quantity must be a positive whole number up to 1000000000.");
     }
-    assertMoney(item.ratePer1000Bricks, "ratePer1000Bricks", false);
+    if (item.pricingMode === "AMOUNT") {
+      if ("ratePer1000Bricks" in item) {
+        throw new Error("An amount-driven brick item cannot also supply a rate.");
+      }
+      normalizeMoneyDecimal(item.lineAmount, "lineAmount");
+    } else {
+      if ("lineAmount" in item) {
+        throw new Error("A rate-driven brick item cannot also supply an amount.");
+      }
+      assertMoney(item.ratePer1000Bricks, "ratePer1000Bricks", false);
+    }
   }
 }
 
@@ -221,7 +246,7 @@ function mapHeader(row: ChallanRow): ChallanHeader {
   return {
     id: row.id,
     factoryId: row.factory_id,
-    challanNumber: Number(row.challan_number),
+    challanNumber: row.challan_number,
     challanDate: row.challan_date,
     customerId: row.customer_id,
     customerNameSnapshot: row.customer_name_snapshot,
@@ -261,6 +286,7 @@ function mapItem(row: ChallanItemRow): ChallanItem {
     brickTypeId: row.brick_type_id,
     brickParticularsSnapshot: row.brick_particulars_snapshot,
     quantity: Number(row.quantity),
+    pricingMode: row.pricing_mode,
     ratePer1000Bricks: Number(row.rate_per_1000_bricks),
     pricingUnit: row.pricing_unit,
     lineCategory: "BRICK_REVENUE",
@@ -302,13 +328,23 @@ function mapFlexibleLine(row: ChallanFlexibleLineRow): ChallanFlexibleLine {
 function rpcItems(items: ChallanItemInput[]): Array<{
   brick_type_id: string;
   quantity: number;
-  rate: number;
+  pricing_mode: "RATE" | "AMOUNT";
+  rate?: number;
+  amount?: string;
 }> {
-  return items.map((item) => ({
-    brick_type_id: item.brickTypeId,
-    quantity: item.quantity,
-    rate: item.ratePer1000Bricks,
-  }));
+  return items.map((item) => item.pricingMode === "AMOUNT"
+    ? {
+        brick_type_id: item.brickTypeId,
+        quantity: item.quantity,
+        pricing_mode: "AMOUNT",
+        amount: normalizeMoneyDecimal(item.lineAmount, "lineAmount"),
+      }
+    : {
+        brick_type_id: item.brickTypeId,
+        quantity: item.quantity,
+        pricing_mode: "RATE",
+        rate: item.ratePer1000Bricks,
+      });
 }
 
 async function listChallanItems(
@@ -438,6 +474,7 @@ async function listChallanLines(factoryId: string, challanId: string): Promise<{
 }
 
 function validateMutationInput(input: CreateChallanInput): {
+  challanNumber: string | null;
   items: ReturnType<typeof rpcItems>;
   flexibleLines: ReturnType<typeof rpcFlexibleLines>;
 } {
@@ -448,8 +485,13 @@ function validateMutationInput(input: CreateChallanInput): {
   if (input.tripLabourWage !== null) {
     assertMoney(input.tripLabourWage, "tripLabourWage", false);
   }
+  const challanNumber = input.challanNumber?.trim() || null;
+  if (challanNumber && (challanNumber.length > 100 || /[\u0000-\u001f\u007f]/.test(challanNumber))) {
+    throw new Error("challanNumber must be at most 100 characters and stay on one line.");
+  }
   validateItems(input.items);
   return {
+    challanNumber,
     items: rpcItems(input.items),
     flexibleLines: rpcFlexibleLines(input.flexibleLines),
   };
@@ -506,7 +548,8 @@ export async function listChallans(factoryId: string): Promise<ChallanHeader[]> 
     .select(CHALLAN_COLUMNS)
     .eq("factory_id", factoryId)
     .order("challan_date", { ascending: false })
-    .order("challan_number", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false });
 
   if (error) throw new ChallanServiceError(error);
   return (data ?? []).map(mapHeader);
@@ -534,6 +577,7 @@ export async function createChallan(input: CreateChallanInput): Promise<Challan>
   const validated = validateMutationInput(input);
   const { data, error } = await supabase.rpc("create_challan", {
     p_factory_id: input.factoryId,
+    p_challan_number: validated.challanNumber,
     p_challan_date: input.challanDate,
     p_customer_id: input.customerId,
     p_vehicle_id: input.vehicleId,
@@ -553,6 +597,7 @@ export async function updateChallan(input: UpdateChallanInput): Promise<Challan>
   const { data, error } = await supabase.rpc("update_challan", {
     p_factory_id: input.factoryId,
     p_challan_id: input.challanId,
+    p_challan_number: validated.challanNumber,
     p_challan_date: input.challanDate,
     p_customer_id: input.customerId,
     p_vehicle_id: input.vehicleId,
