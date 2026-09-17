@@ -1,12 +1,9 @@
 import { supabase } from "../../../lib/supabase/client.ts";
 import type { WageEarningsDateRange } from "../wage-earnings-date-range.ts";
 import { isWageEarningsDateRange } from "../wage-earnings-date-range.ts";
-import type { ProductionCrewAssignment } from "./production-crew-assignment-service.ts";
-import { getCurrentProductionCrewAssignment } from "./production-crew-service.ts";
 import { calculateProductionWage } from "./production-wage-calculation.ts";
 import {
-  getCurrentCrewProductionWageRate,
-  getCurrentLabourerProductionWageRateOverride,
+  getCurrentLabourerProductionWageRate,
   type ProductionWageRate,
 } from "./production-wage-rate-read-service.ts";
 
@@ -19,14 +16,21 @@ export type ProductionRangeDay = {
   productionDate: string;
   quantity: number;
   ratePer1000Bricks: number;
-  rateSource: "individual_override" | "crew_default";
-  productionCrewId: string | null;
+  rateSource: "direct_labourer";
   earned: number;
+};
+
+export type ProductionRangeRatePeriod = {
+  productionWageRateId: string;
+  ratePer1000Bricks: number;
+  fromDate: string;
+  toDate: string;
 };
 
 export type ProductionRangeSummary = {
   rangeProduction: number;
   rangeEarned: number;
+  ratePeriods: ProductionRangeRatePeriod[];
   days: ProductionRangeDay[];
 };
 
@@ -67,14 +71,16 @@ export async function listLabourerProductionEntriesForRange({
 export function calculateProductionRangeSummary({
   labourerId,
   entries,
-  crewAssignments,
   wageRates,
+  range,
 }: Readonly<{
   labourerId: string;
   entries: readonly ProductionRangeEntry[];
-  crewAssignments: readonly ProductionCrewAssignment[];
   wageRates: readonly ProductionWageRate[];
+  range: WageEarningsDateRange;
 }>): ProductionRangeSummary {
+  if (!labourerId) throw new Error("Labourer is required.");
+  if (!isWageEarningsDateRange(range)) throw new Error("A valid inclusive date range is required.");
   const quantityByDate = new Map<string, number>();
   for (const entry of entries) {
     quantityByDate.set(
@@ -86,53 +92,46 @@ export function calculateProductionRangeSummary({
   const days = [...quantityByDate]
     .sort(([leftDate], [rightDate]) => leftDate.localeCompare(rightDate))
     .map(([productionDate, quantity]) => {
-      const override = getCurrentLabourerProductionWageRateOverride(
+      const directRate = getCurrentLabourerProductionWageRate(
         wageRates,
         labourerId,
         productionDate,
       );
-      if (override) {
-        return {
-          productionDate,
-          quantity,
-          ratePer1000Bricks: override.ratePer1000Bricks,
-          rateSource: "individual_override" as const,
-          productionCrewId: null,
-          earned: calculateProductionWage(quantity, override.ratePer1000Bricks),
-        };
+      if (!directRate) {
+        throw new Error(`Rate not set for this labourer on ${productionDate}.`);
       }
-
-      const assignment = getCurrentProductionCrewAssignment(
-        crewAssignments,
-        labourerId,
-        productionDate,
-      );
-      if (!assignment) {
-        throw new Error(`No production crew assignment applies to this labourer on ${productionDate}.`);
-      }
-
-      const crewRate = getCurrentCrewProductionWageRate(
-        wageRates,
-        assignment.productionCrewId,
-        productionDate,
-      );
-      if (!crewRate) {
-        throw new Error(`No crew-default production rate applies on ${productionDate}.`);
-      }
-
       return {
         productionDate,
         quantity,
-        ratePer1000Bricks: crewRate.ratePer1000Bricks,
-        rateSource: "crew_default" as const,
-        productionCrewId: assignment.productionCrewId,
-        earned: calculateProductionWage(quantity, crewRate.ratePer1000Bricks),
+        ratePer1000Bricks: directRate.ratePer1000Bricks,
+        rateSource: "direct_labourer" as const,
+        earned: calculateProductionWage(quantity, directRate.ratePer1000Bricks),
       };
     });
+
+  const usedRateIds = new Set<string>();
+  const ratePeriods = days.flatMap((day) => {
+    const directRate = getCurrentLabourerProductionWageRate(
+      wageRates,
+      labourerId,
+      day.productionDate,
+    );
+    if (!directRate || usedRateIds.has(directRate.id)) return [];
+    usedRateIds.add(directRate.id);
+    return [{
+      productionWageRateId: directRate.id,
+      ratePer1000Bricks: directRate.ratePer1000Bricks,
+      fromDate: directRate.effectiveFrom > range.fromDate ? directRate.effectiveFrom : range.fromDate,
+      toDate: directRate.effectiveTo !== null && directRate.effectiveTo < range.toDate
+        ? directRate.effectiveTo
+        : range.toDate,
+    }];
+  }).sort((left, right) => left.fromDate.localeCompare(right.fromDate));
 
   return {
     rangeProduction: days.reduce((total, day) => total + day.quantity, 0),
     rangeEarned: days.reduce((total, day) => total + day.earned, 0),
+    ratePeriods,
     days,
   };
 }

@@ -81,6 +81,7 @@ const historicalChallan: Challan = {
   companyPoliceStationSnapshot: "Kotwali",
   companyDistrictSnapshot: "Jaipur",
   companyStateSnapshot: "Rajasthan",
+  companyGstinSnapshot: null,
   vehicleId: null,
   vehicleNumberSnapshot: null,
   deliveryWageApplicableSnapshot: false,

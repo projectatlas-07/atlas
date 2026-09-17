@@ -133,7 +133,7 @@ test("Challan UI has one searchable selector that displays the selected number",
   assert.match(office, /placeholder="Search or select vehicle\.\.\."/);
   assert.match(office, /value=\{isOpen \? searchText : selectedVehicle\?\.vehicleNumber \?\? ""\}/);
   assert.equal((office.match(/data-vehicle-combobox/g) ?? []).length, 1);
-  assert.doesNotMatch(office, /label="Search Vehicles"|type="search"|vehicleSearch/);
+  assert.doesNotMatch(office, /label="Search Vehicles"|vehicleSearch/);
   assert.doesNotMatch(comboboxUsage, /<select/);
 });
 

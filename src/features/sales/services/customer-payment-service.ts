@@ -46,10 +46,13 @@ type CustomerPaymentAllocationRow = {
   created_at: string;
 };
 
-type ChallanNumberRow = { id: string; challan_number: string | null };
-
-type OutstandingChallanRow = ChallanNumberRow & {
+type ChallanReferenceRow = {
+  id: string;
+  challan_number: string | null;
   challan_date: string;
+};
+
+type OutstandingChallanRow = ChallanReferenceRow & {
   created_at: string;
   challan_total: number | string;
   status: "active" | "void";
@@ -167,16 +170,20 @@ function validateAllocations(
 
 function mapAllocation(
   row: CustomerPaymentAllocationRow,
-  challanNumbers: ReadonlyMap<string, string | null>,
+  challanReferences: ReadonlyMap<
+    string,
+    Readonly<{ challanNumber: string | null; challanDate: string }>
+  >,
 ): CustomerPaymentAllocation {
-  if (!challanNumbers.has(row.challan_id)) throw new Error("Payment allocation Challan was not found.");
-  const challanNumber = challanNumbers.get(row.challan_id) ?? null;
+  const challanReference = challanReferences.get(row.challan_id);
+  if (!challanReference) throw new Error("Payment allocation Challan was not found.");
   return {
     id: row.id,
     factoryId: row.factory_id,
     paymentId: row.payment_id,
     challanId: row.challan_id,
-    challanNumber,
+    challanNumber: challanReference.challanNumber,
+    challanDate: challanReference.challanDate,
     allocatedAmount: Number(row.allocated_amount),
     createdAt: row.created_at,
   };
@@ -219,10 +226,10 @@ async function listPaymentAllocations(
     .order("id", { ascending: true });
 
   if (error) throw new CustomerPaymentServiceError(error);
-  return attachChallanNumbers(factoryId, (data ?? []) as CustomerPaymentAllocationRow[]);
+  return attachChallanReferences(factoryId, (data ?? []) as CustomerPaymentAllocationRow[]);
 }
 
-async function attachChallanNumbers(
+async function attachChallanReferences(
   factoryId: string,
   rows: CustomerPaymentAllocationRow[],
 ): Promise<CustomerPaymentAllocation[]> {
@@ -230,17 +237,20 @@ async function attachChallanNumbers(
   const challanIds = [...new Set(rows.map((row) => row.challan_id))];
   const { data, error } = await supabase
     .from("challans")
-    .select("id, challan_number")
+    .select("id, challan_number, challan_date")
     .eq("factory_id", factoryId)
     .in("id", challanIds);
   if (error) throw new CustomerPaymentServiceError(error);
-  const challanNumbers = new Map(
-    ((data ?? []) as ChallanNumberRow[]).map((row) => [
+  const challanReferences = new Map(
+    ((data ?? []) as ChallanReferenceRow[]).map((row) => [
       row.id,
-      row.challan_number === null ? null : String(row.challan_number),
+      {
+        challanNumber: row.challan_number === null ? null : String(row.challan_number),
+        challanDate: row.challan_date,
+      },
     ]),
   );
-  return rows.map((row) => mapAllocation(row, challanNumbers));
+  return rows.map((row) => mapAllocation(row, challanReferences));
 }
 
 export async function createCustomerPayment(
@@ -418,7 +428,7 @@ export async function listCustomerPayments(
     .order("id", { ascending: true });
 
   if (allocationError) throw new CustomerPaymentServiceError(allocationError);
-  const allocations = await attachChallanNumbers(
+  const allocations = await attachChallanReferences(
     factoryId,
     (allocationRows ?? []) as CustomerPaymentAllocationRow[],
   );

@@ -101,7 +101,7 @@ declare
   customer_summary record;
 begin
   select * into rate_challan from public.create_challan(
-    factory_id, date '2026-09-10', customer_id, null::uuid, null::numeric,
+    factory_id, null::text, date '2026-09-10', customer_id, null::uuid, null::numeric,
     jsonb_build_array(jsonb_build_object(
       'brick_type_id', brick_a_id, 'quantity', 10000,
       'pricing_mode', 'RATE', 'rate', 8000
@@ -119,7 +119,7 @@ begin
   raise notice 'PASS: existing Rate workflow still derives and saves ₹80,000';
 
   select * into amount_challan from public.create_challan(
-    factory_id, date '2026-09-10', customer_id, null::uuid, null::numeric,
+    factory_id, null::text, date '2026-09-10', customer_id, null::uuid, null::numeric,
     jsonb_build_array(jsonb_build_object(
       'brick_type_id', brick_a_id, 'quantity', 12347,
       'pricing_mode', 'AMOUNT', 'amount', '80000.00'
@@ -146,7 +146,7 @@ begin
   raise notice 'PASS: 12,347 bricks at exact Amount ₹80,000 saves, reloads, totals, and remains outstanding exactly';
 
   select * into mixed_challan from public.create_challan(
-    factory_id, date '2026-09-10', customer_id, null::uuid, null::numeric,
+    factory_id, null::text, date '2026-09-10', customer_id, null::uuid, null::numeric,
     jsonb_build_array(
       jsonb_build_object(
         'brick_type_id', brick_a_id, 'quantity', 10000,
@@ -177,7 +177,8 @@ begin
   raise notice 'PASS: mixed Rate/Amount rows, NOTE, and EXTRA_CHARGE total exactly once';
 
   select * into amount_challan from public.update_challan(
-    factory_id, amount_challan.id, amount_challan.challan_date, customer_id,
+    factory_id, amount_challan.id, amount_challan.challan_number,
+    amount_challan.challan_date, customer_id,
     null::uuid, null::numeric,
     jsonb_build_array(jsonb_build_object(
       'brick_type_id', brick_a_id, 'quantity', 12347,
@@ -190,7 +191,8 @@ begin
   end if;
 
   select * into amount_challan from public.update_challan(
-    factory_id, amount_challan.id, amount_challan.challan_date, customer_id,
+    factory_id, amount_challan.id, amount_challan.challan_number,
+    amount_challan.challan_date, customer_id,
     null::uuid, null::numeric,
     jsonb_build_array(jsonb_build_object(
       'brick_type_id', brick_a_id, 'quantity', 12347,
@@ -207,7 +209,7 @@ begin
   perform pg_temp.expect_error(
     'item cannot supply both Rate and Amount', '22023',
     format(
-      'select * from public.update_challan(%L::uuid, %L::uuid, date %L, %L::uuid, null::uuid, null::numeric, %L::jsonb, %L::jsonb)',
+      'select * from public.update_challan(%L::uuid, %L::uuid, null::text, date %L, %L::uuid, null::uuid, null::numeric, %L::jsonb, %L::jsonb)',
       factory_id, amount_challan.id, '2026-09-10', customer_id,
       jsonb_build_array(jsonb_build_object(
         'brick_type_id', brick_a_id, 'quantity', 12347,
@@ -218,7 +220,7 @@ begin
   perform pg_temp.expect_error(
     'item cannot omit both Rate and Amount', '22023',
     format(
-      'select * from public.update_challan(%L::uuid, %L::uuid, date %L, %L::uuid, null::uuid, null::numeric, %L::jsonb, %L::jsonb)',
+      'select * from public.update_challan(%L::uuid, %L::uuid, null::text, date %L, %L::uuid, null::uuid, null::numeric, %L::jsonb, %L::jsonb)',
       factory_id, amount_challan.id, '2026-09-10', customer_id,
       jsonb_build_array(jsonb_build_object(
         'brick_type_id', brick_a_id, 'quantity', 12347, 'pricing_mode', 'RATE'
@@ -228,7 +230,7 @@ begin
   perform pg_temp.expect_error(
     'Amount row cannot use another factory brick type', 'P3004',
     format(
-      'select * from public.update_challan(%L::uuid, %L::uuid, date %L, %L::uuid, null::uuid, null::numeric, %L::jsonb, %L::jsonb)',
+      'select * from public.update_challan(%L::uuid, %L::uuid, null::text, date %L, %L::uuid, null::uuid, null::numeric, %L::jsonb, %L::jsonb)',
       factory_id, amount_challan.id, '2026-09-10', customer_id,
       jsonb_build_array(jsonb_build_object(
         'brick_type_id', other_brick_id, 'quantity', 12347,
@@ -239,7 +241,7 @@ begin
   perform pg_temp.expect_error(
     'authenticated factory cannot create an Amount row for another factory', '42501',
     format(
-      'select * from public.create_challan(%L::uuid, date %L, %L::uuid, null::uuid, null::numeric, %L::jsonb, %L::jsonb)',
+      'select * from public.create_challan(%L::uuid, null::text, date %L, %L::uuid, null::uuid, null::numeric, %L::jsonb, %L::jsonb)',
       other_factory_id, '2026-09-10', other_customer_id,
       jsonb_build_array(jsonb_build_object(
         'brick_type_id', other_brick_id, 'quantity', 12347,
@@ -271,7 +273,7 @@ select set_config('request.jwt.claim.sub', current_setting('atlas_exact.user_id'
 select pg_temp.expect_error(
   'payment-locked lifecycle still blocks pricing edits', 'P3005',
   format(
-    'select * from public.update_challan(%L::uuid, %L::uuid, date %L, %L::uuid, null::uuid, null::numeric, %L::jsonb, %L::jsonb)',
+    'select * from public.update_challan(%L::uuid, %L::uuid, null::text, date %L, %L::uuid, null::uuid, null::numeric, %L::jsonb, %L::jsonb)',
     current_setting('atlas_exact.factory_id'),
     current_setting('atlas_exact.locked_challan_id'),
     '2026-09-10', current_setting('atlas_exact.customer_id'),

@@ -190,9 +190,11 @@ begin
 
   if production_definition like '%transport_%'
     or mud_definition like '%transport_%'
+    or production_definition not like '%production earnings are continuous%'
+    or production_definition not like '%p2522%'
     or not has_function_privilege(
       'authenticated',
-      'public.create_labourer_withdrawal(uuid,uuid,date,numeric)',
+      'public.create_labourer_withdrawal(uuid,uuid,date,date,numeric)',
       'EXECUTE'
     )
     or not has_function_privilege(
@@ -285,28 +287,24 @@ begin
   insert into public.labour_groups (id, factory_id, name)
   values (labour_group_id, factory_a_id, 'T7A mud regression group');
 
+  insert into public.production_wage_rates (
+    id, factory_id, production_crew_id, labourer_id,
+    rate_per_1000_bricks, effective_from
+  ) values (
+    production_rate_id, factory_a_id, null, labourer_id,
+    1000, date '2026-07-27'
+  );
+
+  insert into public.production_entries (
+    id, factory_id, labourer_id, brick_type_id, production_date, quantity
+  ) values (
+    gen_random_uuid(), factory_a_id, labourer_id, brick_type_id, date '2026-08-01', 100
+  );
+
   insert into public.wage_rates (
     id, factory_id, applies_to, rate_per_1000_bricks, effective_from
-  ) values
-    (production_rate_id, factory_a_id, 'production', 1000, date '2026-07-27'),
-    (mud_rate_id, factory_a_id, 'mud_supply', 1000, date '2026-07-27');
-
-  insert into public.weekly_earnings (
-    factory_id,
-    labourer_id,
-    week_start,
-    quantity_used,
-    wage_rate_id,
-    rate_used,
-    amount
   ) values (
-    factory_a_id,
-    labourer_id,
-    date '2026-07-27',
-    100,
-    production_rate_id,
-    1000,
-    100
+    mud_rate_id, factory_a_id, 'mud_supply', 1000, date '2026-07-27'
   );
 
   insert into public.weekly_earnings (
@@ -615,6 +613,7 @@ begin
     current_setting('atlas_t7a.factory_a_id')::uuid,
     current_setting('atlas_t7a.labourer_id')::uuid,
     date '2026-08-02',
+    date '2026-08-01',
     40
   );
   if labourer_result.available_balance <> 60 then
@@ -632,7 +631,7 @@ begin
     raise exception 'FAIL: existing mud-group balance/withdrawal changed';
   end if;
 
-  raise notice 'PASS: production labourer and mud-group financial behavior remains functional';
+  raise notice 'PASS: settlement-aware Production and legacy Mud-group financial behavior remain functional';
 end;
 $$;
 

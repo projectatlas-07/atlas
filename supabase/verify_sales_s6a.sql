@@ -122,7 +122,7 @@ begin
     factory_a_id, 'S6A Customer', 'Customer Address', '9111111111'
   );
   select * into challan from public.create_challan(
-    factory_a_id, date '2026-08-27', customer.id, 'S6A100', 0,
+    factory_a_id, null::text, date '2026-08-27', customer.id, null::uuid, 0,
     jsonb_build_array(
       jsonb_build_object('brick_type_id', brick_a_id, 'quantity', 1000, 'rate', 100000)
     )
@@ -202,13 +202,13 @@ begin
     factory_a_id, 'S6A Multi Customer', '', ''
   );
   select * into multi_one from public.create_challan(
-    factory_a_id, date '2026-08-29', multi_customer.id, 'S6A201', 0,
+    factory_a_id, null::text, date '2026-08-29', multi_customer.id, null::uuid, 0,
     jsonb_build_array(
       jsonb_build_object('brick_type_id', brick_a_id, 'quantity', 1000, 'rate', 30000)
     )
   );
   select * into multi_two from public.create_challan(
-    factory_a_id, date '2026-08-29', multi_customer.id, 'S6A202', 0,
+    factory_a_id, null::text, date '2026-08-29', multi_customer.id, null::uuid, 0,
     jsonb_build_array(
       jsonb_build_object('brick_type_id', brick_a_id, 'quantity', 1000, 'rate', 30000)
     )

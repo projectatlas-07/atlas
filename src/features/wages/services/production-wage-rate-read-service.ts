@@ -78,3 +78,6 @@ export function getCurrentLabourerProductionWageRateOverride(
     && appliesOnDate(rate, asOfDate),
   ) ?? null;
 }
+
+export const getCurrentLabourerProductionWageRate =
+  getCurrentLabourerProductionWageRateOverride;

@@ -13,32 +13,23 @@ import { TransportOfficeSection } from "@/features/office/components/transport-o
 import { StaffOfficeSection } from "@/features/office/components/staff-office-section";
 import { SoilOfficeSection } from "@/features/office/components/soil-office-section";
 import { SalesOfficeSection } from "@/features/office/components/sales-office-section";
+import { CoalPurchaseOfficeSection } from "@/features/office/components/coal-purchase-office-section";
+import { VehicleMaintenanceOfficeSection } from "@/features/office/components/vehicle-maintenance-office-section";
+import { VehicleFuelOfficeSection } from "@/features/office/components/vehicle-fuel-office-section";
 import { ExpensesOfficeSection } from "@/features/office/components/expenses-office-section";
 import { CashBookOfficeSection } from "@/features/office/components/cash-book-office-section";
+import { MudGroupManagement } from "@/features/office/components/mud-group-management";
 import { listTransportDailyOperations } from "@/features/transport/services/transport-daily-operations-service";
 import type { TransportDailyOperationsEntry } from "@/features/transport/types";
-import { CreateWageRateError, createWageRate } from "@/features/wages/services/wage-rate-create-service";
-import { getWageRatesForFactory } from "@/features/wages/services/wage-rate-read-service";
-import { assertMondayWeekStart, getActiveRate, getWageRateHistoryStatus, WageRateResolutionError, type WageRate, type WageRateAppliesTo, type WageRateHistory } from "@/features/wages/services/wage-rate-service";
-import { assertCompletedWageWeek } from "@/features/wages/services/completed-wage-week-validation";
-import { CalculateProductionWagesError, calculateProductionWages, type ProductionWageCalculationSummary } from "@/features/wages/services/production-wage-calculation-service";
 import { getLabourerEarningsHistory } from "@/features/wages/services/labourer-earnings-history-service";
 import { getLabourerAvailableBalance } from "@/features/wages/services/labourer-available-balance-service";
-import { CreateLabourerWithdrawalError, createLabourerWithdrawal } from "@/features/wages/services/labourer-withdrawal-create-service";
+import { CreateLabourerWithdrawalError, createLabourerWithdrawal, getDefaultSettlementCutoff } from "@/features/wages/services/labourer-withdrawal-create-service";
 import { getLabourerWithdrawalHistory } from "@/features/wages/services/labourer-withdrawal-history-service";
-import { getLabourGroups, type LabourGroup } from "@/features/wages/services/labour-group-read-service";
-import { LabourGroupMutationError, createLabourGroup, setLabourGroupActive } from "@/features/wages/services/labour-group-mutation-service";
-import { CalculateMudSupplyWagesError, calculateMudSupplyWages } from "@/features/wages/services/mud-supply-wage-calculation-service";
-import { calculateInformationalPerMemberShare } from "@/features/wages/services/mud-supply-wage-calculation";
-import { calculateMudSupplyRangeSummary, listMudSupplyProductionForRange, type MudSupplyRangeSummary } from "@/features/wages/services/mud-supply-range-summary-service";
-import { getMudSupplyWeeklyEarning, type MudSupplyWeeklyEarning } from "@/features/wages/services/mud-supply-weekly-earning-read-service";
-import { getLabourGroupAvailableBalance } from "@/features/wages/services/labour-group-available-balance-service";
-import { CreateLabourGroupWithdrawalError, createLabourGroupWithdrawal } from "@/features/wages/services/labour-group-withdrawal-create-service";
-import { getLabourGroupWithdrawalHistory } from "@/features/wages/services/labour-group-withdrawal-history-service";
 import { assignLabourerToProductionCrew, endLabourerProductionCrewAssignment, ProductionCrewAssignmentMutationError, type ProductionCrewAssignment } from "@/features/wages/services/production-crew-assignment-service";
 import { createProductionCrew, getCurrentProductionCrewAssignment, getProductionCrewAssignments, getProductionCrews, ProductionCrewMutationError, setProductionCrewActive, type ProductionCrew } from "@/features/wages/services/production-crew-service";
 import { CreateProductionWageRateError, createLabourerProductionWageRateOverride, createProductionCrewWageRate } from "@/features/wages/services/production-wage-rate-create-service";
-import { getCurrentCrewProductionWageRate, getCurrentLabourerProductionWageRateOverride, getProductionWageRatesForFactory, type ProductionWageRate } from "@/features/wages/services/production-wage-rate-read-service";
+import { getCurrentCrewProductionWageRate, getCurrentLabourerProductionWageRate, getCurrentLabourerProductionWageRateOverride, getProductionWageRatesForFactory, type ProductionWageRate } from "@/features/wages/services/production-wage-rate-read-service";
+import { ProductionRateConfigurationError, setProductionLabourerOrigin, setProductionLabourerRates } from "@/features/wages/services/production-rate-configuration-service";
 import { calculateProductionRangeSummary, listLabourerProductionEntriesForRange, type ProductionRangeSummary } from "@/features/wages/services/production-range-summary-service";
 import { DEFAULT_WAGE_EARNINGS_DATE_PRESET, resolveWageEarningsDateRange, type WageEarningsDatePreset } from "@/features/wages/wage-earnings-date-range";
 import { getLocalDate } from "@/lib/local-date";
@@ -57,6 +48,7 @@ type ManagedLabourer = {
   name: string;
   brickTypeId: string;
   brickTypeName: string;
+  originLabel: string | null;
   isActive: boolean;
 };
 
@@ -95,11 +87,6 @@ export function OfficeDashboard() {
     }),
     enabled: factoryId !== null,
     refetchInterval: 30_000,
-  });
-  const { data: wageRates = [], error: wageRatesError, isLoading: isLoadingWageRates } = useQuery({
-    queryKey: ["office-wage-rates", factoryId],
-    queryFn: () => getWageRatesForFactory(factoryId!),
-    enabled: factoryId !== null,
   });
   const [brickTypes, setBrickTypes] = useState<readonly BrickType[]>([]);
   const [labourers, setLabourers] = useState<readonly ManagedLabourer[]>([]);
@@ -145,7 +132,7 @@ export function OfficeDashboard() {
     setLabourersError("");
     setBrickTypesError("");
     const [{ data: labourerRows, error: labourerError }, { data: brickTypeRows, error: brickTypeError }] = await Promise.all([
-      supabase.from("labourers").select("id, name, assigned_brick_type_id, is_active").eq("factory_id", factoryId).order("name"),
+      supabase.from("labourers").select("id, name, assigned_brick_type_id, production_origin_label, is_active").eq("factory_id", factoryId).order("name"),
       supabase.from("brick_types").select("id, name, is_active").eq("factory_id", factoryId).order("name"),
     ]);
     if (labourerError || brickTypeError) {
@@ -170,6 +157,7 @@ export function OfficeDashboard() {
       name: labourer.name,
       brickTypeId: labourer.assigned_brick_type_id,
       brickTypeName: brickTypeNames.get(labourer.assigned_brick_type_id) ?? "Unknown brick type",
+      originLabel: labourer.production_origin_label,
       isActive: labourer.is_active,
     })));
     setIsLoadingLabourers(false);
@@ -312,7 +300,6 @@ export function OfficeDashboard() {
   const brickTypeTotals = [...brickTypeTotalsById.values()]
     .sort((left, right) => left.name.localeCompare(right.name, "en-IN"));
   const productionErrorMessage = productionError instanceof Error ? productionError.message : "Could not load today’s production.";
-  const wageRatesErrorMessage = wageRatesError instanceof Error ? wageRatesError.message : "Could not load wage rates.";
   const activeBrickTypes = brickTypes.filter((brickType) => brickType.isActive);
 
   if (factoryAccessStatus === "loading") {
@@ -387,19 +374,15 @@ export function OfficeDashboard() {
           brickTypesError={brickTypesError}
         />
 
+        <CoalPurchaseOfficeSection factoryId={factoryId!} />
+
+        <VehicleMaintenanceOfficeSection factoryId={factoryId!} />
+
+        <VehicleFuelOfficeSection factoryId={factoryId!} />
+
         <ExpensesOfficeSection factoryId={factoryId!} />
 
         <CashBookOfficeSection factoryId={factoryId!} />
-
-        <WageRatesSection
-          factoryId={factoryId!}
-          rates={wageRates}
-          isLoading={isLoadingWageRates}
-          errorMessage={wageRatesError ? wageRatesErrorMessage : ""}
-          currentDate={getMondayWeekStart(getLocalDate())}
-        />
-
-        <CalculateWagesSection factoryId={factoryId!} />
 
         <AddBrickTypeForm factoryId={factoryId!} onAdded={loadLabourers} />
         <BrickTypeManagement
@@ -408,7 +391,6 @@ export function OfficeDashboard() {
           updatingBrickTypeId={updatingBrickTypeId}
           onToggle={toggleBrickType}
         />
-        <ProductionCrewManagement factoryId={factoryId!} />
         <AddLabourerForm factoryId={factoryId!} brickTypes={activeBrickTypes} onAdded={loadLabourers} />
         <LabourerManagement
           factoryId={factoryId!}
@@ -428,13 +410,9 @@ export function OfficeDashboard() {
           onOpenNameEdit={(labourer) => { setEditingLabourerId(""); setSelectedBrickTypeId(""); setEditingLabourerNameId(labourer.id); setLabourersError(""); }}
           onSaveName={saveLabourerName}
           onCancelNameEdit={() => { setEditingLabourerNameId(""); setLabourersError(""); }}
+          onOriginChanged={loadLabourers}
         />
-        <LabourGroupManagement
-          factoryId={factoryId!}
-          wageRates={wageRates}
-          wageRatesLoading={isLoadingWageRates}
-          wageRatesError={Boolean(wageRatesError)}
-        />
+        <MudGroupManagement factoryId={factoryId!} />
         <SoilOfficeSection factoryId={factoryId!} />
         <StaffOfficeSection factoryId={factoryId!} />
         <TransportOfficeSection factoryId={factoryId!} />
@@ -444,216 +422,6 @@ export function OfficeDashboard() {
       </div>
     </main>
   );
-}
-
-function CalculateWagesSection({ factoryId }: Readonly<{ factoryId: string }>) {
-  const [weekStart, setWeekStart] = useState("");
-  const [submitError, setSubmitError] = useState("");
-  const [result, setResult] = useState<ProductionWageCalculationSummary | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (isSubmitting) return;
-
-    if (!weekStart) {
-      setSubmitError("Week-start date is required.");
-      return;
-    }
-
-    try {
-      assertCompletedWageWeek(weekStart, getLocalDate());
-    } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Choose a completed Monday–Sunday week.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setSubmitError("");
-    setResult(null);
-    try {
-      setResult(await calculateProductionWages({ factoryId, weekStart }));
-    } catch (error) {
-      if (error instanceof CalculateProductionWagesError) {
-        setSubmitError(error.message);
-      } else {
-        setSubmitError(error instanceof Error ? error.message : "Could not calculate production wages.");
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  return (
-    <section aria-labelledby="calculate-wages-heading" className="mt-8 max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 id="calculate-wages-heading" className="text-xl font-bold">Calculate Wages</h2>
-      <form className="mt-5 space-y-4" onSubmit={(event) => void submit(event)}>
-        <label className="block text-sm font-medium text-slate-700">
-          Week start
-          <input type="date" value={weekStart} onChange={(event) => { setWeekStart(event.target.value); setSubmitError(""); setResult(null); }} required disabled={isSubmitting} className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
-        </label>
-        {submitError && <p role="alert" className="text-sm font-medium text-red-700">{submitError}</p>}
-        <button type="submit" disabled={isSubmitting} className="h-11 rounded-lg bg-slate-950 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Calculating..." : "Calculate Wages"}</button>
-        {result && <p role="status" className="text-sm font-medium text-emerald-700">Calculation complete: {result.labourersCalculated} labourers calculated; {result.rowsSkipped} rows skipped.</p>}
-      </form>
-    </section>
-  );
-}
-
-function WageRatesSection({ factoryId, rates, isLoading, errorMessage, currentDate }: Readonly<{
-  factoryId: string;
-  rates: readonly WageRateHistory[];
-  isLoading: boolean;
-  errorMessage: string;
-  currentDate: string;
-}>) {
-  const productionHistory = rates.filter((rate) => rate.applies_to === "production");
-  const mudSupplyHistory = rates.filter((rate) => rate.applies_to === "mud_supply");
-  const mudSupplyCurrentRate = resolveCurrentRate(mudSupplyHistory, "mud_supply", currentDate);
-
-  return (
-    <section aria-labelledby="wage-rates-heading" className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 id="wage-rates-heading" className="text-xl font-bold">Wage Rates</h2>
-      {isLoading && <p className="mt-4 text-sm text-slate-500">Loading wage rates...</p>}
-      {errorMessage && <p role="alert" className="mt-4 text-sm font-medium text-red-700">Could not load wage rates: {errorMessage}</p>}
-      {!isLoading && !errorMessage && <>
-        <p className="mt-3 text-sm text-slate-600">New production wages use production crew defaults and optional individual overrides below. Legacy production rows remain read-only.</p>
-        <AddMudSupplyWageRateForm factoryId={factoryId} />
-        <div className="mt-5 max-w-xl">
-          <CurrentWageRateCard title="Mud-supply wage rate" missingMessage="No mud-supply wage rate configured for this week" currentRate={mudSupplyCurrentRate} />
-        </div>
-        <div className="mt-8 grid gap-8 lg:grid-cols-2">
-          <WageRateHistory title="Legacy production rate history (read-only)" rates={productionHistory} currentDate={currentDate} />
-          <WageRateHistory title="Mud-supply rate history" rates={mudSupplyHistory} currentDate={currentDate} />
-        </div>
-      </>}
-    </section>
-  );
-}
-
-function AddMudSupplyWageRateForm({ factoryId }: Readonly<{ factoryId: string }>) {
-  const queryClient = useQueryClient();
-  const [ratePer1000Bricks, setRatePer1000Bricks] = useState("");
-  const [effectiveFrom, setEffectiveFrom] = useState("");
-  const [submitError, setSubmitError] = useState("");
-  const [isSaved, setIsSaved] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (isSubmitting) return;
-
-    const rate = Number(ratePer1000Bricks);
-    if (!ratePer1000Bricks || !Number.isFinite(rate) || rate <= 0) {
-      setSubmitError("Rate per 1,000 bricks must be greater than zero.");
-      return;
-    }
-    if (!effectiveFrom) {
-      setSubmitError("Effective-from date is required.");
-      return;
-    }
-    try {
-      assertMondayWeekStart(effectiveFrom);
-    } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Effective-from date must be a Monday.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setSubmitError("");
-    setIsSaved(false);
-    try {
-      await createWageRate({ factoryId, appliesTo: "mud_supply", ratePer1000Bricks: rate, effectiveFrom });
-      await queryClient.invalidateQueries({ queryKey: ["office-wage-rates", factoryId] });
-      setRatePer1000Bricks("");
-      setEffectiveFrom("");
-      setIsSaved(true);
-    } catch (error) {
-      if (error instanceof CreateWageRateError) {
-        setSubmitError(error.message);
-      } else {
-        setSubmitError(error instanceof Error ? error.message : "Could not create wage rate.");
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  return (
-    <form className="mt-5 grid gap-4 rounded-lg border border-slate-200 p-4 md:grid-cols-3 md:items-end" onSubmit={(event) => void submit(event)}>
-      <label className="block text-sm font-medium text-slate-700">
-        Rate per 1,000 bricks
-        <input type="number" min="0" step="any" value={ratePer1000Bricks} onChange={(event) => { setRatePer1000Bricks(event.target.value); setIsSaved(false); setSubmitError(""); }} required className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950" />
-      </label>
-      <label className="block text-sm font-medium text-slate-700">
-        Effective from
-        <input type="date" value={effectiveFrom} onChange={(event) => { setEffectiveFrom(event.target.value); setIsSaved(false); setSubmitError(""); }} required className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950" />
-      </label>
-      <button type="submit" disabled={isSubmitting} className="h-11 rounded-lg bg-slate-950 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Adding..." : "Add Mud-Supply Rate"}</button>
-      {submitError && <p role="alert" className="text-sm font-medium text-red-700 md:col-span-3">{submitError}</p>}
-      {isSaved && <p role="status" className="text-sm font-medium text-emerald-700 md:col-span-3">Mud-supply wage rate added.</p>}
-    </form>
-  );
-}
-
-function CurrentWageRateCard({ title, missingMessage, currentRate }: Readonly<{
-  title: string;
-  missingMessage: string;
-  currentRate: CurrentRateResolution;
-}>) {
-  return (
-    <article className="rounded-lg border border-slate-200 p-5">
-      <h3 className="font-semibold">{title}</h3>
-      {currentRate.status === "missing" && <p className="mt-3 text-sm text-slate-500">{missingMessage}</p>}
-      {currentRate.status === "error" && <p role="alert" className="mt-3 text-sm font-medium text-red-700">Wage-rate configuration error: {currentRate.error}</p>}
-      {currentRate.status === "resolved" && <>
-        <p className="mt-3 text-2xl font-bold tabular-nums">{formatWageRate(currentRate.rate.rate_per_1000_bricks)}</p>
-        <p className="mt-2 text-sm text-slate-600">Effective from {formatDate(currentRate.rate.effective_from)}</p>
-      </>}
-    </article>
-  );
-}
-
-function WageRateHistory({ title, rates, currentDate }: Readonly<{ title: string; rates: readonly WageRateHistory[]; currentDate: string }>) {
-  return (
-    <div>
-      <h3 className="font-semibold">{title}</h3>
-      {rates.length === 0 ? <p className="mt-3 text-sm text-slate-500">No rates configured.</p> : <ul className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200">
-        {rates.map((rate) => {
-          const status = getWageRateHistoryStatus(rate, currentDate);
-          const period = status === "current"
-            ? "Current"
-            : status === "future"
-              ? `Future · Effective from ${formatDate(rate.effective_from)}`
-              : `${formatDate(rate.effective_from)} — ${formatDate(rate.effective_to!)}`;
-
-          return <li key={rate.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
-          <span className="font-semibold tabular-nums">{formatWageRate(rate.rate_per_1000_bricks)}</span>
-          <span className="text-right text-slate-600">{period}</span>
-        </li>;
-        })}
-      </ul>}
-    </div>
-  );
-}
-
-type CurrentRateResolution =
-  | { status: "resolved"; rate: WageRate }
-  | { status: "missing" }
-  | { status: "error"; error: string };
-
-function resolveCurrentRate(rates: readonly WageRateHistory[], appliesTo: WageRateAppliesTo, currentDate: string): CurrentRateResolution {
-  try {
-    return { status: "resolved", rate: getActiveRate([...rates], appliesTo, currentDate) };
-  } catch (error) {
-    if (error instanceof WageRateResolutionError && error.failure === "missing") {
-      return { status: "missing" };
-    }
-    return {
-      status: "error",
-      error: error instanceof Error ? error.message : "Could not determine the current wage rate.",
-    };
-  }
 }
 
 function formatWageRate(rate: number) {
@@ -670,17 +438,6 @@ function formatStoredCurrency(value: number) {
 
 function formatCurrencyWithTwoDecimals(value: number) {
   return `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function getMondayWeekStart(localDate: string) {
-  const [year, month, day] = localDate.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-  date.setDate(day - ((date.getDay() + 6) % 7));
-
-  const mondayYear = date.getFullYear();
-  const mondayMonth = String(date.getMonth() + 1).padStart(2, "0");
-  const mondayDay = String(date.getDate()).padStart(2, "0");
-  return `${mondayYear}-${mondayMonth}-${mondayDay}`;
 }
 
 function ProductionCrewManagement({ factoryId }: Readonly<{ factoryId: string }>) {
@@ -896,445 +653,6 @@ function ProductionRateHistory({ title, rates, asOfDate }: Readonly<{ title: str
   );
 }
 
-function LabourGroupManagement({ factoryId, wageRates, wageRatesLoading, wageRatesError }: Readonly<{
-  factoryId: string;
-  wageRates: readonly WageRateHistory[];
-  wageRatesLoading: boolean;
-  wageRatesError: boolean;
-}>) {
-  const queryClient = useQueryClient();
-  const { data: groups = [], error, isLoading } = useQuery({
-    queryKey: ["office-labour-groups", factoryId],
-    queryFn: () => getLabourGroups(factoryId),
-  });
-  const [name, setName] = useState("");
-  const [memberNames, setMemberNames] = useState("");
-  const [memberCount, setMemberCount] = useState("");
-  const [mutationError, setMutationError] = useState("");
-  const [isSaved, setIsSaved] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [updatingGroupId, setUpdatingGroupId] = useState("");
-
-  function clearFeedback() {
-    setMutationError("");
-    setIsSaved(false);
-  }
-
-  function getMutationErrorMessage(caught: unknown, fallback: string) {
-    if (caught instanceof LabourGroupMutationError) return caught.message;
-    return caught instanceof Error ? caught.message : fallback;
-  }
-
-  async function addGroup(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (isSubmitting) return;
-
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      setMutationError("Group name is required.");
-      return;
-    }
-    const numericMemberCount = Number(memberCount);
-    if (!memberCount || !Number.isInteger(numericMemberCount) || numericMemberCount <= 0) {
-      setMutationError("Number of members must be a positive integer.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    clearFeedback();
-    try {
-      await createLabourGroup({
-        factoryId,
-        name: trimmedName,
-        memberNames: memberNames.trim() || null,
-        memberCount: numericMemberCount,
-      });
-      setName("");
-      setMemberNames("");
-      setMemberCount("");
-      setIsSaved(true);
-      await queryClient.invalidateQueries({ queryKey: ["office-labour-groups", factoryId] });
-    } catch (caught) {
-      setMutationError(getMutationErrorMessage(caught, "Could not add labour group."));
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function toggleGroup(group: LabourGroup) {
-    if (updatingGroupId) return;
-
-    setUpdatingGroupId(group.groupId);
-    clearFeedback();
-    try {
-      await setLabourGroupActive({
-        factoryId,
-        groupId: group.groupId,
-        isActive: !group.isActive,
-      });
-      await queryClient.invalidateQueries({ queryKey: ["office-labour-groups", factoryId] });
-    } catch (caught) {
-      setMutationError(getMutationErrorMessage(caught, "Could not update labour group."));
-    } finally {
-      setUpdatingGroupId("");
-    }
-  }
-
-  const loadErrorMessage = error instanceof Error ? error.message : "Could not load labour groups.";
-
-  return (
-    <section className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-xl font-bold">Labour Groups</h2>
-      <form className="mt-5 grid gap-4 md:grid-cols-4 md:items-end" onSubmit={(event) => void addGroup(event)}>
-        <label className="block text-sm font-medium text-slate-700">
-          Group name
-          <input value={name} onChange={(event) => { setName(event.target.value); clearFeedback(); }} required disabled={isSubmitting} className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
-        </label>
-        <label className="block text-sm font-medium text-slate-700">
-          Member names (optional)
-          <input value={memberNames} onChange={(event) => { setMemberNames(event.target.value); clearFeedback(); }} disabled={isSubmitting} className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
-        </label>
-        <label className="block text-sm font-medium text-slate-700">
-          Number of members
-          <input type="number" min="1" step="1" value={memberCount} onChange={(event) => { setMemberCount(event.target.value); clearFeedback(); }} required disabled={isSubmitting} className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
-        </label>
-        <button type="submit" disabled={isSubmitting} className="h-11 rounded-lg bg-slate-950 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Adding..." : "Add Labour Group"}</button>
-        {mutationError && <p role="alert" className="text-sm font-medium text-red-700 md:col-span-4">{mutationError}</p>}
-        {isSaved && <p role="status" className="text-sm font-medium text-emerald-700 md:col-span-4">Labour group added.</p>}
-      </form>
-
-      {isLoading && <p className="mt-5 text-sm text-slate-500">Loading labour groups...</p>}
-      {error && <p role="alert" className="mt-5 text-sm font-medium text-red-700">Could not load labour groups: {loadErrorMessage}</p>}
-      {!isLoading && !error && groups.length === 0 && <p className="mt-5 text-sm text-slate-500">No labour groups configured.</p>}
-      {!isLoading && !error && groups.length > 0 && <div className="mt-5 space-y-3">
-        {groups.map((group) => {
-          const isUpdating = updatingGroupId === group.groupId;
-          return <article key={group.groupId} className="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h3 className="font-semibold">{group.name}</h3>
-              <p className="mt-1 text-sm text-slate-600">{group.memberNames || "No member names recorded."}</p>
-              <p className="mt-1 text-sm text-slate-600">Members: {group.memberCount ?? "Not set"}</p>
-              <p className={`mt-1 text-sm font-medium ${group.isActive ? "text-emerald-700" : "text-slate-500"}`}>{group.isActive ? "Active" : "Inactive"}</p>
-            </div>
-            <button type="button" disabled={Boolean(updatingGroupId)} onClick={() => void toggleGroup(group)} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-60">
-              {isUpdating ? "Updating..." : group.isActive ? "Deactivate" : "Reactivate"}
-            </button>
-          </article>;
-        })}
-      </div>}
-      <MudSupplyWageCalculation
-        factoryId={factoryId}
-        groups={groups}
-        isLoadingGroups={isLoading}
-        groupsLoadFailed={Boolean(error)}
-        wageRates={wageRates}
-        wageRatesLoading={wageRatesLoading}
-        wageRatesError={wageRatesError}
-      />
-    </section>
-  );
-}
-
-function MudSupplyWageCalculation({ factoryId, groups, isLoadingGroups, groupsLoadFailed, wageRates, wageRatesLoading, wageRatesError }: Readonly<{
-  factoryId: string;
-  groups: readonly LabourGroup[];
-  isLoadingGroups: boolean;
-  groupsLoadFailed: boolean;
-  wageRates: readonly WageRateHistory[];
-  wageRatesLoading: boolean;
-  wageRatesError: boolean;
-}>) {
-  const activeGroup = groups.find((group) => group.isActive) ?? null;
-  const [rangeToday] = useState(() => getLocalDate());
-  const [rangePreset, setRangePreset] = useState<WageEarningsDatePreset>(
-    DEFAULT_WAGE_EARNINGS_DATE_PRESET,
-  );
-  const [customFrom, setCustomFrom] = useState(rangeToday);
-  const [customTo, setCustomTo] = useState(rangeToday);
-  const mudRange = resolveWageEarningsDateRange(
-    rangePreset,
-    rangeToday,
-    customFrom,
-    customTo,
-  );
-  const mudRangeProductionQuery = useQuery({
-    queryKey: [
-      "mud-supply-range-summary",
-      factoryId,
-      mudRange?.fromDate,
-      mudRange?.toDate,
-    ],
-    queryFn: () => listMudSupplyProductionForRange({ factoryId, range: mudRange! }),
-    enabled: mudRange !== null && !wageRatesLoading && !wageRatesError,
-    refetchInterval: 30_000,
-  });
-  let mudRangeSummary: MudSupplyRangeSummary | null = null;
-  let mudRangeCalculationError = "";
-  if (mudRangeProductionQuery.data && !wageRatesLoading && !wageRatesError) {
-    try {
-      mudRangeSummary = calculateMudSupplyRangeSummary({
-        entries: mudRangeProductionQuery.data,
-        wageRates,
-      });
-    } catch (calculationError) {
-      mudRangeCalculationError = calculationError instanceof Error
-        ? calculationError.message
-        : "Could not calculate the Mud range.";
-    }
-  }
-  const [weekStart, setWeekStart] = useState("");
-  const [submitError, setSubmitError] = useState("");
-  const [readError, setReadError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-  const [earning, setEarning] = useState<MudSupplyWeeklyEarning | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (isSubmitting || !activeGroup) return;
-
-    if (!weekStart) {
-      setSubmitError("Week-start date is required.");
-      return;
-    }
-
-    try {
-      assertCompletedWageWeek(weekStart, getLocalDate());
-    } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Choose a completed Monday–Sunday week.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setSubmitError("");
-    setReadError("");
-    setSuccessMessage("");
-    setEarning(null);
-    try {
-      const summary = await calculateMudSupplyWages({
-        factoryId,
-        labourGroupId: activeGroup.groupId,
-        weekStart,
-      });
-
-      setSuccessMessage(summary.groupsCalculated === 1
-        ? "Mud wage calculated and locked."
-        : summary.rowsSkipped === 1
-          ? "This week’s mud earning was already calculated and remains locked."
-          : "Mud wage calculation completed.");
-
-      try {
-        setEarning(await getMudSupplyWeeklyEarning({
-          factoryId,
-          weeklyEarningId: summary.weeklyEarningId,
-          weekStart,
-        }));
-      } catch (error) {
-        setReadError(error instanceof Error ? error.message : "Could not load the stored mud earning.");
-      }
-    } catch (error) {
-      if (error instanceof CalculateMudSupplyWagesError) {
-        setSubmitError(error.message);
-      } else {
-        setSubmitError(error instanceof Error ? error.message : "Could not calculate the mud wage.");
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  const earningGroup = earning
-    ? groups.find((group) => group.groupId === earning.labourGroupId)
-    : undefined;
-  const perMemberShare = earning && earningGroup?.memberCount
-    ? calculateInformationalPerMemberShare(earning.amount, earningGroup.memberCount)
-    : null;
-  const calculationDisabled = isSubmitting || isLoadingGroups || groupsLoadFailed || !activeGroup;
-
-  return (
-    <div className="mt-6 border-t border-slate-200 pt-6">
-      <section aria-label="Mud range summary" className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-xs font-medium text-amber-900">Earnings period</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {productionRangePresets.map((option) => <button
-                key={option.value}
-                type="button"
-                aria-pressed={rangePreset === option.value}
-                onClick={() => setRangePreset(option.value)}
-                className={`h-9 rounded-lg border px-3 text-sm font-semibold ${rangePreset === option.value ? "border-amber-700 bg-amber-700 text-white" : "border-amber-300 bg-white text-slate-700"}`}
-              >{option.label}</button>)}
-            </div>
-          </div>
-          {mudRange && <p className="text-xs text-amber-900">{formatDate(mudRange.fromDate)} → {formatDate(mudRange.toDate)}, inclusive</p>}
-        </div>
-
-        {rangePreset === "custom" && <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
-          <label className="text-xs font-medium text-amber-900">From<input type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm text-slate-950" /></label>
-          <label className="text-xs font-medium text-amber-900">To<input type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm text-slate-950" /></label>
-        </div>}
-        {rangePreset === "custom" && !mudRange && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">Choose a valid inclusive date range. From date cannot be after To date.</p>}
-        {wageRatesLoading && <p className="mt-3 text-sm text-slate-600">Loading historical Mud rates...</p>}
-        {wageRatesError && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">Historical Mud rate data is unavailable.</p>}
-        {mudRangeProductionQuery.isLoading && <p className="mt-3 text-sm text-slate-600">Loading Mud range...</p>}
-        {mudRangeProductionQuery.error && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{mudRangeProductionQuery.error instanceof Error ? mudRangeProductionQuery.error.message : "Could not load the Mud range."}</p>}
-        {mudRangeCalculationError && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{mudRangeCalculationError}</p>}
-        {mudRange && mudRangeSummary && !mudRangeProductionQuery.error && !mudRangeCalculationError && <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-lg bg-white p-4"><p className="text-sm text-slate-600">Range Production</p><p className="mt-1 text-xl font-bold tabular-nums">{formatStoredNumber(mudRangeSummary.rangeProduction)}</p></div>
-          <div className="rounded-lg bg-white p-4"><p className="text-sm text-slate-600">Range Earned</p><p className="mt-1 text-xl font-bold tabular-nums">{formatStoredCurrency(mudRangeSummary.rangeEarned)}</p></div>
-        </div>}
-        <p className="mt-3 text-xs text-amber-900">Factory-level informational summary. It is not attributed to a labour group and does not change locked weekly earnings or group balances.</p>
-      </section>
-
-      <h3 className="mt-6 text-lg font-bold">Calculate Mud-Supply Wage</h3>
-      {isLoadingGroups && <p className="mt-3 text-sm text-slate-500">Loading the active labour group...</p>}
-      {!isLoadingGroups && groupsLoadFailed && <p className="mt-3 text-sm text-slate-500">Labour groups could not be loaded, so mud wages cannot be calculated.</p>}
-      {!isLoadingGroups && !groupsLoadFailed && !activeGroup && <p className="mt-3 text-sm text-slate-500">No active labour group. Activate or add one before calculating mud wages or recording group withdrawals.</p>}
-      {activeGroup && <p className="mt-3 text-sm text-slate-600">Active group: <span className="font-semibold text-slate-900">{activeGroup.name}</span></p>}
-
-      <form className="mt-4 flex max-w-xl flex-col gap-4 sm:flex-row sm:items-end" onSubmit={(event) => void submit(event)}>
-        <label className="block flex-1 text-sm font-medium text-slate-700">
-          Week start
-          <input type="date" value={weekStart} onChange={(event) => { setWeekStart(event.target.value); setSubmitError(""); setReadError(""); setSuccessMessage(""); setEarning(null); }} required disabled={isSubmitting} className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
-        </label>
-        <button type="submit" disabled={calculationDisabled} className="h-11 rounded-lg bg-slate-950 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Calculating..." : "Calculate Mud Wage"}</button>
-      </form>
-
-      {submitError && <p role="alert" className="mt-3 text-sm font-medium text-red-700">{submitError}</p>}
-      {successMessage && <p role="status" className="mt-3 text-sm font-medium text-emerald-700">{successMessage}</p>}
-      {readError && <p role="alert" className="mt-3 text-sm font-medium text-red-700">Mud wage was locked, but the stored earning could not be loaded: {readError}</p>}
-
-      {earning && <div className="mt-5 rounded-lg border border-slate-200 p-4">
-        <h4 className="font-semibold">Locked Mud Earning</h4>
-        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-          <div><dt className="text-slate-500">Week</dt><dd className="mt-1 font-semibold">{formatDate(earning.weekStart)}</dd></div>
-          <div><dt className="text-slate-500">Group name</dt><dd className="mt-1 font-semibold">{earningGroup?.name ?? "Unknown labour group"}</dd></div>
-          <div><dt className="text-slate-500">Eligible quantity used</dt><dd className="mt-1 font-semibold tabular-nums">{formatStoredNumber(earning.quantityUsed)}</dd></div>
-          <div><dt className="text-slate-500">Mud rate per 1,000</dt><dd className="mt-1 font-semibold tabular-nums">{formatStoredCurrency(earning.rateUsed)}</dd></div>
-          <div><dt className="text-slate-500">Group earning</dt><dd className="mt-1 font-semibold tabular-nums">{formatStoredCurrency(earning.amount)}</dd></div>
-          <div><dt className="text-slate-500">Member count</dt><dd className="mt-1 font-semibold tabular-nums">{earningGroup?.memberCount ?? "Unavailable"}</dd></div>
-          <div><dt className="text-slate-500">Per member (informational)</dt><dd className="mt-1 font-semibold tabular-nums">{perMemberShare === null ? "Unavailable" : formatStoredCurrency(perMemberShare)}</dd></div>
-        </dl>
-      </div>}
-
-      {activeGroup && <LabourGroupWithdrawalPanel key={activeGroup.groupId} factoryId={factoryId} labourGroup={activeGroup} />}
-    </div>
-  );
-}
-
-function LabourGroupWithdrawalPanel({ factoryId, labourGroup }: Readonly<{
-  factoryId: string;
-  labourGroup: LabourGroup;
-}>) {
-  const queryClient = useQueryClient();
-  const asOfDate = getLocalDate();
-  const { data: balance, error: balanceError, isLoading: isLoadingBalance } = useQuery({
-    queryKey: ["labour-group-available-balance", factoryId, labourGroup.groupId, asOfDate],
-    queryFn: () => getLabourGroupAvailableBalance({ factoryId, labourGroupId: labourGroup.groupId, asOfDate }),
-  });
-  const { data: withdrawals = [], error: withdrawalsError, isLoading: isLoadingWithdrawals } = useQuery({
-    queryKey: ["labour-group-withdrawal-history", factoryId, labourGroup.groupId],
-    queryFn: () => getLabourGroupWithdrawalHistory(factoryId, labourGroup.groupId),
-  });
-  const [withdrawalDate, setWithdrawalDate] = useState(() => getLocalDate());
-  const [amount, setAmount] = useState("");
-  const [submitError, setSubmitError] = useState("");
-  const [isSaved, setIsSaved] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (isSubmitting) return;
-
-    if (!withdrawalDate) {
-      setSubmitError("Withdrawal date is required.");
-      return;
-    }
-
-    const numericAmount = Number(amount);
-    if (!amount || !Number.isFinite(numericAmount) || numericAmount <= 0) {
-      setSubmitError("Amount must be greater than zero.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setSubmitError("");
-    setIsSaved(false);
-    try {
-      await createLabourGroupWithdrawal({
-        factoryId,
-        labourGroupId: labourGroup.groupId,
-        withdrawalDate,
-        amount: numericAmount,
-      });
-      setAmount("");
-      setIsSaved(true);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["labour-group-available-balance", factoryId, labourGroup.groupId, asOfDate] }),
-        queryClient.invalidateQueries({ queryKey: ["labour-group-withdrawal-history", factoryId, labourGroup.groupId] }),
-      ]);
-    } catch (error) {
-      if (error instanceof CreateLabourGroupWithdrawalError) {
-        setSubmitError(error.message);
-      } else {
-        setSubmitError(error instanceof Error ? error.message : "Could not record group withdrawal.");
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  const balanceErrorMessage = balanceError instanceof Error ? balanceError.message : "Could not load group balance.";
-  const withdrawalsErrorMessage = withdrawalsError instanceof Error ? withdrawalsError.message : "Could not load group withdrawal history.";
-
-  return (
-    <section aria-label="Labour group balance and withdrawals" className="mt-6 border-t border-slate-200 pt-6">
-      <h3 className="text-lg font-bold">Group Balance &amp; Withdrawals</h3>
-      <p className="mt-2 text-sm text-slate-600">Active group: <span className="font-semibold text-slate-900">{labourGroup.name}</span></p>
-
-      {isLoadingBalance && <p className="mt-3 text-sm text-slate-500">Loading group balance...</p>}
-      {balanceError && <p role="alert" className="mt-3 text-sm font-medium text-red-700">Could not load group balance: {balanceErrorMessage}</p>}
-      {!isLoadingBalance && !balanceError && balance && <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg bg-slate-50 p-4"><p className="text-sm text-slate-500">Available Balance</p><p className="mt-1 text-xl font-bold tabular-nums">{formatStoredCurrency(balance.availableBalance)}</p></div>
-        <div className="rounded-lg bg-slate-50 p-4"><p className="text-sm text-slate-500">Total Earned</p><p className="mt-1 font-semibold tabular-nums">{formatStoredCurrency(balance.totalEarned)}</p></div>
-        <div className="rounded-lg bg-slate-50 p-4"><p className="text-sm text-slate-500">Total Withdrawn</p><p className="mt-1 font-semibold tabular-nums">{formatStoredCurrency(balance.totalWithdrawn)}</p></div>
-      </div>}
-
-      <form className="mt-5 grid gap-4 rounded-lg border border-slate-200 p-4 sm:grid-cols-3 sm:items-end" onSubmit={(event) => void submit(event)}>
-        <label className="block text-sm font-medium text-slate-700">
-          Withdrawal date
-          <input type="date" value={withdrawalDate} onChange={(event) => { setWithdrawalDate(event.target.value); setSubmitError(""); setIsSaved(false); }} required disabled={isSubmitting} className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
-        </label>
-        <label className="block text-sm font-medium text-slate-700">
-          Amount
-          <input type="number" min="0" step="any" value={amount} onChange={(event) => { setAmount(event.target.value); setSubmitError(""); setIsSaved(false); }} required disabled={isSubmitting} className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
-        </label>
-        <button type="submit" disabled={isSubmitting} className="h-11 rounded-lg bg-slate-950 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Saving..." : "Record Group Withdrawal"}</button>
-        {submitError && <p role="alert" className="text-sm font-medium text-red-700 sm:col-span-3">{submitError}</p>}
-        {isSaved && <p role="status" className="text-sm font-medium text-emerald-700 sm:col-span-3">Group withdrawal recorded.</p>}
-      </form>
-
-      <h4 className="mt-6 font-semibold">Withdrawal History</h4>
-      {isLoadingWithdrawals && <p className="mt-3 text-sm text-slate-500">Loading withdrawal history...</p>}
-      {withdrawalsError && <p role="alert" className="mt-3 text-sm font-medium text-red-700">Could not load withdrawal history: {withdrawalsErrorMessage}</p>}
-      {!isLoadingWithdrawals && !withdrawalsError && withdrawals.length === 0 && <p className="mt-3 text-sm text-slate-500">No withdrawals recorded.</p>}
-      {!isLoadingWithdrawals && !withdrawalsError && withdrawals.length > 0 && <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
-        <table className="w-full border-collapse text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-600">
-            <tr><th className="px-4 py-3">Withdrawal date</th><th className="px-4 py-3 text-right">Amount</th></tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {withdrawals.map((withdrawal) => <tr key={withdrawal.withdrawalId}>
-              <td className="px-4 py-3 font-medium">{formatDate(withdrawal.withdrawalDate)}</td>
-              <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatCurrencyWithTwoDecimals(withdrawal.amount)}</td>
-            </tr>)}
-          </tbody>
-        </table>
-      </div>}
-    </section>
-  );
-}
 
 function AddBrickTypeForm({ factoryId, onAdded }: Readonly<{ factoryId: string; onAdded: () => Promise<void> }>) {
   const [submitError, setSubmitError] = useState("");
@@ -1473,7 +791,7 @@ function BrickTypeManagement({ brickTypes, error, updatingBrickTypeId, onToggle 
   );
 }
 
-function LabourerManagement({ factoryId, labourers, isLoading, error, updatingLabourerId, onToggle, activeBrickTypes, editingLabourerId, selectedBrickTypeId, onOpenBrickTypeChange, onSelectedBrickTypeChange, onSaveBrickTypeChange, onCancelBrickTypeChange, editingLabourerNameId, onOpenNameEdit, onSaveName, onCancelNameEdit }: Readonly<{
+function LabourerManagement({ factoryId, labourers, isLoading, error, updatingLabourerId, onToggle, activeBrickTypes, editingLabourerId, selectedBrickTypeId, onOpenBrickTypeChange, onSelectedBrickTypeChange, onSaveBrickTypeChange, onCancelBrickTypeChange, editingLabourerNameId, onOpenNameEdit, onSaveName, onCancelNameEdit, onOriginChanged }: Readonly<{
   factoryId: string;
   labourers: readonly ManagedLabourer[];
   isLoading: boolean;
@@ -1491,43 +809,52 @@ function LabourerManagement({ factoryId, labourers, isLoading, error, updatingLa
   onOpenNameEdit: (labourer: ManagedLabourer) => void;
   onSaveName: (labourer: ManagedLabourer, name: string) => Promise<void>;
   onCancelNameEdit: () => void;
+  onOriginChanged: () => Promise<void>;
 }>) {
-  const queryClient = useQueryClient();
   const asOfDate = getLocalDate();
-  const { data: productionCrews = [], error: productionCrewsError, isLoading: isLoadingProductionCrews } = useQuery({
-    queryKey: ["office-production-crews", factoryId],
-    queryFn: () => getProductionCrews(factoryId),
-  });
-  const { data: crewAssignments = [], error: crewAssignmentsError, isLoading: isLoadingCrewAssignments } = useQuery({
-    queryKey: ["office-production-crew-assignments", factoryId],
-    queryFn: () => getProductionCrewAssignments(factoryId),
-  });
   const { data: productionWageRates = [], error: productionWageRatesError, isLoading: isLoadingProductionWageRates } = useQuery({
     queryKey: ["office-production-wage-rates", factoryId],
     queryFn: () => getProductionWageRatesForFactory(factoryId),
   });
   const [earningsLabourerId, setEarningsLabourerId] = useState("");
-  const [crewLabourerId, setCrewLabourerId] = useState("");
-  const [overrideLabourerId, setOverrideLabourerId] = useState("");
-  const activeProductionCrews = productionCrews.filter((crew) => crew.isActive);
-  const productionCrewsById = new Map(productionCrews.map((crew) => [crew.id, crew]));
-  const productionCrewsErrorMessage = productionCrewsError instanceof Error ? productionCrewsError.message : "Could not load production crews.";
-  const crewAssignmentsErrorMessage = crewAssignmentsError instanceof Error ? crewAssignmentsError.message : "Could not load production crew assignments.";
+  const [rateLabourerId, setRateLabourerId] = useState("");
+  const [originLabourerId, setOriginLabourerId] = useState("");
+  const [originValue, setOriginValue] = useState("");
+  const [originError, setOriginError] = useState("");
+  const [isSavingOrigin, setIsSavingOrigin] = useState(false);
   const productionWageRatesErrorMessage = productionWageRatesError instanceof Error ? productionWageRatesError.message : "Could not load production wage rates.";
 
-  async function refreshCrewAssignments() {
-    await queryClient.invalidateQueries({ queryKey: ["office-production-crew-assignments", factoryId] });
+  async function saveOrigin(labourer: ManagedLabourer) {
+    if (isSavingOrigin) return;
+    setIsSavingOrigin(true);
+    setOriginError("");
+    try {
+      await setProductionLabourerOrigin({
+        factoryId,
+        labourerId: labourer.id,
+        originLabel: originValue.trim() || null,
+      });
+      await onOriginChanged();
+      setOriginLabourerId("");
+      setOriginValue("");
+    } catch (caught) {
+      setOriginError(caught instanceof Error ? caught.message : "Could not save Production origin.");
+    } finally {
+      setIsSavingOrigin(false);
+    }
   }
 
   return (
     <section className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <h2 className="text-xl font-bold">Labourers</h2>
       {error && <p role="alert" className="mt-3 text-sm font-medium text-red-700">{error}</p>}
-      {productionCrewsError && <p role="alert" className="mt-3 text-sm font-medium text-red-700">Could not load production crews: {productionCrewsErrorMessage}</p>}
-      {crewAssignmentsError && <p role="alert" className="mt-3 text-sm font-medium text-red-700">Could not load production crew assignments: {crewAssignmentsErrorMessage}</p>}
       {productionWageRatesError && <p role="alert" className="mt-3 text-sm font-medium text-red-700">Could not load production wage rates: {productionWageRatesErrorMessage}</p>}
-      <p className="mt-3 text-sm text-slate-600">Individual override takes priority over the crew rate.</p>
+      <p className="mt-3 text-sm text-slate-600">Production earnings use each labourer&apos;s direct effective-dated rate.</p>
       {activeBrickTypes.length === 0 && <p className="mt-3 text-sm text-slate-500">No active brick types available — activate one first.</p>}
+      {!isLoading && <ProductionLabourerRateControls
+        factoryId={factoryId}
+        labourers={labourers}
+      />}
       {isLoading ? <p className="mt-4 text-sm text-slate-500">Loading labourers...</p> : (
         <div className="mt-4 space-y-3">
           {labourers.map((labourer) => {
@@ -1535,20 +862,15 @@ function LabourerManagement({ factoryId, labourers, isLoading, error, updatingLa
             const isEditingBrickType = editingLabourerId === labourer.id;
             const isEditingName = editingLabourerNameId === labourer.id;
             const isCurrentBrickTypeActive = activeBrickTypes.some((brickType) => brickType.id === labourer.brickTypeId);
-            const currentCrewAssignment = getCurrentProductionCrewAssignment(crewAssignments, labourer.id, asOfDate);
-            const openCrewAssignment = crewAssignments.find((assignment) => assignment.labourerId === labourer.id && assignment.effectiveTo === null) ?? null;
-            const currentCrew = currentCrewAssignment ? productionCrewsById.get(currentCrewAssignment.productionCrewId) : null;
-            const currentCrewLabel = currentCrew ? `${currentCrew.name}${currentCrew.isActive ? "" : " (Inactive)"}` : currentCrewAssignment ? "Unknown crew" : "Not assigned";
-            const isLoadingCrewState = isLoadingProductionCrews || isLoadingCrewAssignments;
-            const currentOverride = getCurrentLabourerProductionWageRateOverride(productionWageRates, labourer.id, asOfDate);
-            const labourerOverrideHistory = productionWageRates.filter((rate) => rate.labourerId === labourer.id && rate.productionCrewId === null);
+            const currentRate = getCurrentLabourerProductionWageRate(productionWageRates, labourer.id, asOfDate);
+            const labourerRateHistory = productionWageRates.filter((rate) => rate.labourerId === labourer.id && rate.productionCrewId === null);
             return (
               <article key={labourer.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 <div>
                   <h3 className="font-semibold">{labourer.name}</h3>
                   <p className="text-sm text-slate-600">{labourer.brickTypeName}</p>
-                  <p className="mt-1 text-sm text-slate-600">Production Crew: {isLoadingCrewState ? "Loading..." : currentCrewLabel}</p>
-                  <p className="mt-1 text-sm text-slate-600">Production Rate: {isLoadingProductionWageRates ? "Loading..." : productionWageRatesError ? "Unavailable" : currentOverride ? `Override ${formatWageRate(currentOverride.ratePer1000Bricks)}` : "Uses crew rate"}</p>
+                  {labourer.originLabel && <p className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">{labourer.originLabel}</p>}
+                  <p className="mt-1 text-sm text-slate-600">Production Rate: {isLoadingProductionWageRates ? "Loading..." : productionWageRatesError ? "Unavailable" : currentRate ? formatWageRate(currentRate.ratePer1000Bricks) : "Rate not set"}</p>
                   <p className={`mt-1 text-sm font-medium ${labourer.isActive ? "text-emerald-700" : "text-slate-500"}`}>{labourer.isActive ? "Active" : "Inactive"}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -1557,32 +879,28 @@ function LabourerManagement({ factoryId, labourers, isLoading, error, updatingLa
                   </button>
                   {!isEditingBrickType && !isEditingName && <button type="button" disabled={isUpdating} onClick={() => onOpenNameEdit(labourer)} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-60">Edit Name</button>}
                   {!isEditingBrickType && !isEditingName && <button type="button" disabled={isUpdating || activeBrickTypes.length === 0} onClick={() => onOpenBrickTypeChange(labourer)} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-60">Change Brick Type</button>}
-                  {!isEditingBrickType && !isEditingName && <button type="button" disabled={isUpdating || isLoadingCrewState || Boolean(productionCrewsError) || Boolean(crewAssignmentsError)} onClick={() => setCrewLabourerId((current) => current === labourer.id ? "" : labourer.id)} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-60">{crewLabourerId === labourer.id ? "Hide Crew" : "Manage Crew"}</button>}
-                  {!isEditingBrickType && !isEditingName && <button type="button" disabled={isUpdating || isLoadingProductionWageRates || Boolean(productionWageRatesError)} onClick={() => setOverrideLabourerId((current) => current === labourer.id ? "" : labourer.id)} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-60">{overrideLabourerId === labourer.id ? "Hide Override" : "Manage Override"}</button>}
+                  {!isEditingBrickType && !isEditingName && <button type="button" disabled={isUpdating || !labourer.isActive || isLoadingProductionWageRates || Boolean(productionWageRatesError)} onClick={() => setRateLabourerId((current) => current === labourer.id ? "" : labourer.id)} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-60">{rateLabourerId === labourer.id ? "Hide Rate" : "Set Rate"}</button>}
+                  {!isEditingBrickType && !isEditingName && <button type="button" disabled={isUpdating} onClick={() => { setOriginLabourerId((current) => current === labourer.id ? "" : labourer.id); setOriginValue(labourer.originLabel ?? ""); setOriginError(""); }} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-60">{originLabourerId === labourer.id ? "Hide Origin" : "Edit Origin"}</button>}
                   {!isEditingBrickType && !isEditingName && <button type="button" disabled={isUpdating} onClick={() => setEarningsLabourerId((current) => current === labourer.id ? "" : labourer.id)} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-60">{earningsLabourerId === labourer.id ? "Hide Earnings" : "View Earnings"}</button>}
                 </div>
-                {crewLabourerId === labourer.id && <LabourerCrewAssignmentControls
+                {rateLabourerId === labourer.id && <ProductionLabourerRateControls
                   factoryId={factoryId}
-                  labourer={labourer}
-                  currentAssignment={currentCrewAssignment}
-                  openAssignment={openCrewAssignment}
-                  openCrewName={openCrewAssignment ? productionCrewsById.get(openCrewAssignment.productionCrewId)?.name ?? "Unknown crew" : ""}
-                  activeCrews={activeProductionCrews}
-                  onChanged={refreshCrewAssignments}
+                  labourers={labourers}
+                  fixedLabourer={labourer}
+                  rateHistory={labourerRateHistory}
                 />}
-                {overrideLabourerId === labourer.id && <LabourerProductionRateOverrideControls
-                  factoryId={factoryId}
-                  labourer={labourer}
-                  history={labourerOverrideHistory}
-                  asOfDate={asOfDate}
-                />}
+                {originLabourerId === labourer.id && <div className="w-full border-t border-slate-200 pt-4">
+                  <label className="block text-sm font-medium text-slate-700">Origin / group (optional)<input value={originValue} maxLength={100} onChange={(event) => { setOriginValue(event.target.value); setOriginError(""); }} placeholder="Jharkhand, Bengal, or blank" disabled={isSavingOrigin} className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:bg-slate-100" /></label>
+                  <div className="mt-3 flex gap-2"><button type="button" disabled={isSavingOrigin} onClick={() => void saveOrigin(labourer)} className="h-10 rounded-lg bg-slate-950 px-4 font-semibold text-white disabled:opacity-60">{isSavingOrigin ? "Saving..." : "Save Origin"}</button><button type="button" disabled={isSavingOrigin} onClick={() => { setOriginLabourerId(""); setOriginError(""); }} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold">Cancel</button></div>
+                  {originError && <p role="alert" className="mt-2 text-sm font-medium text-red-700">{originError}</p>}
+                  <p className="mt-2 text-xs text-slate-500">For identification and rate selection only. It never changes wage calculations.</p>
+                </div>}
                 {earningsLabourerId === labourer.id && <LabourerEarningsHistory
                   factoryId={factoryId}
                   labourerId={labourer.id}
-                  crewAssignments={crewAssignments}
                   wageRates={productionWageRates}
-                  historicalDataLoading={isLoadingCrewAssignments || isLoadingProductionWageRates}
-                  historicalDataError={Boolean(crewAssignmentsError || productionWageRatesError)}
+                  historicalDataLoading={isLoadingProductionWageRates}
+                  historicalDataError={Boolean(productionWageRatesError)}
                 />}
                 {isEditingName && <EditLabourerNameForm labourer={labourer} isUpdating={isUpdating} onSave={onSaveName} onCancel={onCancelNameEdit} />}
                 {isEditingBrickType && (
@@ -1607,6 +925,116 @@ function LabourerManagement({ factoryId, labourers, isLoading, error, updatingLa
         </div>
       )}
     </section>
+  );
+}
+
+function ProductionLabourerRateControls({ factoryId, labourers, fixedLabourer, rateHistory = [] }: Readonly<{
+  factoryId: string;
+  labourers: readonly ManagedLabourer[];
+  fixedLabourer?: ManagedLabourer;
+  rateHistory?: readonly ProductionWageRate[];
+}>) {
+  const queryClient = useQueryClient();
+  const today = getLocalDate();
+  const [selectionMode, setSelectionMode] = useState<"all" | "manual">("all");
+  const [selectedLabourerIds, setSelectedLabourerIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [originFilter, setOriginFilter] = useState("all");
+  const [ratePer1000Bricks, setRatePer1000Bricks] = useState("");
+  const [effectiveFrom, setEffectiveFrom] = useState(today);
+  const [submitError, setSubmitError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const activeLabourers = labourers.filter((labourer) => labourer.isActive);
+  const originOptions = [...new Set(activeLabourers.map((labourer) => labourer.originLabel).filter((origin): origin is string => Boolean(origin)))].sort((left, right) => left.localeCompare(right));
+  const visibleLabourers = activeLabourers.filter((labourer) => {
+    if (originFilter === "all") return true;
+    if (originFilter === "none") return labourer.originLabel === null;
+    return labourer.originLabel === originFilter;
+  });
+  const labourerIds = fixedLabourer
+    ? [fixedLabourer.id]
+    : selectionMode === "all"
+      ? visibleLabourers.map((labourer) => labourer.id)
+      : visibleLabourers.filter((labourer) => selectedLabourerIds.has(labourer.id)).map((labourer) => labourer.id);
+  const numericRate = Number(ratePer1000Bricks);
+
+  function clearFeedback() {
+    setSubmitError("");
+    setSuccessMessage("");
+  }
+
+  function toggleLabourer(labourerId: string) {
+    setSelectedLabourerIds((current) => {
+      const next = new Set(current);
+      if (next.has(labourerId)) next.delete(labourerId);
+      else next.add(labourerId);
+      return next;
+    });
+    clearFeedback();
+  }
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isSubmitting) return;
+    if (labourerIds.length === 0) {
+      setSubmitError("Choose at least one active labourer.");
+      return;
+    }
+    if (!ratePer1000Bricks || !Number.isFinite(numericRate) || numericRate <= 0) {
+      setSubmitError("Rate per 1,000 bricks must be greater than zero.");
+      return;
+    }
+    if (!effectiveFrom) {
+      setSubmitError("Effective-from date is required.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    clearFeedback();
+    try {
+      await setProductionLabourerRates({ factoryId, labourerIds, ratePer1000Bricks: numericRate, effectiveFrom });
+      setRatePer1000Bricks("");
+      setSelectedLabourerIds(new Set());
+      setSuccessMessage(`Rate saved for ${labourerIds.length.toLocaleString("en-IN")} ${labourerIds.length === 1 ? "labourer" : "labourers"}.`);
+      await queryClient.invalidateQueries({ queryKey: ["office-production-wage-rates", factoryId] });
+    } catch (caught) {
+      setSubmitError(caught instanceof ProductionRateConfigurationError ? caught.message : caught instanceof Error ? caught.message : "Could not save Production rate.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div className={fixedLabourer ? "w-full border-t border-slate-200 pt-4" : "mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4"}>
+      <h3 className="font-semibold">Set Rate{fixedLabourer ? ` · ${fixedLabourer.name}` : ""}</h3>
+      {!fixedLabourer && <>
+        <div className="mt-3 flex flex-wrap gap-4">
+          <label className="flex items-center gap-2 text-sm font-medium"><input type="radio" name="production-rate-selection" checked={selectionMode === "all"} onChange={() => { setSelectionMode("all"); clearFeedback(); }} />Select All</label>
+          <label className="flex items-center gap-2 text-sm font-medium"><input type="radio" name="production-rate-selection" checked={selectionMode === "manual"} onChange={() => { setSelectionMode("manual"); clearFeedback(); }} />Select Manually</label>
+        </div>
+        <label className="mt-3 block max-w-sm text-sm font-medium text-slate-700">Filter by origin
+          <select value={originFilter} onChange={(event) => { setOriginFilter(event.target.value); clearFeedback(); }} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-950">
+            <option value="all">All origins</option>
+            <option value="none">No origin</option>
+            {originOptions.map((origin) => <option key={origin} value={origin}>{origin}</option>)}
+          </select>
+        </label>
+        {selectionMode === "manual" && <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {visibleLabourers.map((labourer) => <label key={labourer.id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><input type="checkbox" checked={selectedLabourerIds.has(labourer.id)} onChange={() => toggleLabourer(labourer.id)} />{labourer.name}{labourer.originLabel ? ` · ${labourer.originLabel}` : ""}</label>)}
+          {visibleLabourers.length === 0 && <p className="text-sm text-slate-500">No active labourers match this origin.</p>}
+        </div>}
+      </>}
+      <form className="mt-3 grid gap-3 md:grid-cols-3 md:items-end" onSubmit={(event) => void submit(event)}>
+        <label className="block text-sm font-medium text-slate-700">Rate per 1,000 bricks<input type="number" min="0" step="any" value={ratePer1000Bricks} onChange={(event) => { setRatePer1000Bricks(event.target.value); clearFeedback(); }} required disabled={isSubmitting} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-950 disabled:bg-slate-100" /></label>
+        <label className="block text-sm font-medium text-slate-700">Effective From<input type="date" value={effectiveFrom} onChange={(event) => { setEffectiveFrom(event.target.value); clearFeedback(); }} required disabled={isSubmitting} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-950 disabled:bg-slate-100" /></label>
+        <button type="submit" disabled={isSubmitting || labourerIds.length === 0 || Boolean(fixedLabourer && !fixedLabourer.isActive)} className="h-10 rounded-lg bg-slate-950 px-4 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Saving..." : "Save Rate"}</button>
+        {labourerIds.length > 0 && ratePer1000Bricks && Number.isFinite(numericRate) && numericRate > 0 && effectiveFrom && <p className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-700 md:col-span-3">{labourerIds.length.toLocaleString("en-IN")} {labourerIds.length === 1 ? "labourer" : "labourers"} · {formatWageRate(numericRate)} · effective from {formatDate(effectiveFrom)}</p>}
+        {effectiveFrom && effectiveFrom < today && <p className="text-sm font-semibold text-amber-800 md:col-span-3">Backdated change: live historical range earnings from this date may change.</p>}
+        {submitError && <p role="alert" className="text-sm font-medium text-red-700 md:col-span-3">{submitError}</p>}
+        {successMessage && <p role="status" className="text-sm font-medium text-emerald-700 md:col-span-3">{successMessage}</p>}
+      </form>
+      {fixedLabourer && <div className="mt-4"><ProductionRateHistory title="Direct Production rate history" rates={rateHistory} asOfDate={today} /></div>}
+    </div>
   );
 }
 
@@ -1794,14 +1222,12 @@ function LabourerCrewAssignmentControls({ factoryId, labourer, currentAssignment
 function LabourerEarningsHistory({
   factoryId,
   labourerId,
-  crewAssignments,
   wageRates,
   historicalDataLoading,
   historicalDataError,
 }: Readonly<{
   factoryId: string;
   labourerId: string;
-  crewAssignments: readonly ProductionCrewAssignment[];
   wageRates: readonly ProductionWageRate[];
   historicalDataLoading: boolean;
   historicalDataError: boolean;
@@ -1843,8 +1269,8 @@ function LabourerEarningsHistory({
       productionRangeSummary = calculateProductionRangeSummary({
         labourerId,
         entries: productionRangeEntriesQuery.data,
-        crewAssignments,
         wageRates,
+        range: productionRange!,
       });
     } catch (calculationError) {
       productionRangeCalculationError = calculationError instanceof Error
@@ -1893,27 +1319,34 @@ function LabourerEarningsHistory({
         </div>}
         {rangePreset === "custom" && !productionRange && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">Choose a valid inclusive date range. From date cannot be after To date.</p>}
         {historicalDataLoading && <p className="mt-3 text-sm text-slate-600">Loading historical Production rates...</p>}
-        {historicalDataError && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">Historical Production crew or rate data is unavailable.</p>}
+        {historicalDataError && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">Production rate data is unavailable.</p>}
         {productionRangeEntriesQuery.isLoading && <p className="mt-3 text-sm text-slate-600">Loading Production range...</p>}
         {productionRangeEntriesQuery.error && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{productionRangeEntriesQuery.error instanceof Error ? productionRangeEntriesQuery.error.message : "Could not load Production range."}</p>}
         {productionRangeCalculationError && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{productionRangeCalculationError}</p>}
-        {productionRange && productionRangeSummary && !productionRangeEntriesQuery.error && !productionRangeCalculationError && <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {productionRange && productionRangeSummary && !productionRangeEntriesQuery.error && !productionRangeCalculationError && <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div className="rounded-lg bg-white p-4"><p className="text-sm text-slate-600">Range Production</p><p className="mt-1 text-xl font-bold tabular-nums">{formatStoredNumber(productionRangeSummary.rangeProduction)}</p></div>
           <div className="rounded-lg bg-white p-4"><p className="text-sm text-slate-600">Range Earned</p><p className="mt-1 text-xl font-bold tabular-nums">{formatStoredCurrency(productionRangeSummary.rangeEarned)}</p></div>
+          <div className="rounded-lg bg-white p-4"><p className="text-sm text-slate-600">Rate(s) Used</p>{productionRangeSummary.ratePeriods.length === 0 ? <p className="mt-1 text-sm font-semibold text-slate-500">No production in this period</p> : <ul className="mt-1 space-y-1">{productionRangeSummary.ratePeriods.map((period) => <li key={period.productionWageRateId} className="text-sm font-semibold tabular-nums">{formatWageRate(period.ratePer1000Bricks)}{productionRangeSummary.ratePeriods.length > 1 ? ` · ${formatDate(period.fromDate)} — ${formatDate(period.toDate)}` : ""}</li>)}</ul>}</div>
         </div>}
-        <p className="mt-3 text-xs text-amber-900">Informational only. Uses editable Production records and does not change locked weekly earnings or Available Balance.</p>
+        <p className="mt-3 text-xs text-amber-900">Informational only. Available Balance uses all settled and live Production through today, independent of this range.</p>
       </section>
 
       <h3 className="mt-6 font-semibold">Available Balance</h3>
       {isLoadingBalance && <p className="mt-3 text-sm text-slate-500">Loading available balance...</p>}
       {balanceError && <p role="alert" className="mt-3 text-sm font-medium text-red-700">Could not load available balance: {balanceErrorMessage}</p>}
-      {!isLoadingBalance && !balanceError && balance && <div className="mt-3 grid gap-3 sm:grid-cols-3">
+      {!isLoadingBalance && !balanceError && balance && <div className="mt-3 grid gap-3 sm:grid-cols-4">
         <div className="rounded-lg bg-slate-50 p-4"><p className="text-sm text-slate-500">Available balance</p><p className="mt-1 text-xl font-bold tabular-nums">{formatStoredCurrency(balance.availableBalance)}</p></div>
-        <div className="rounded-lg bg-slate-50 p-4"><p className="text-sm text-slate-500">Total earned</p><p className="mt-1 font-semibold tabular-nums">{formatStoredCurrency(balance.totalEarned)}</p></div>
+        <div className="rounded-lg bg-slate-50 p-4"><p className="text-sm text-slate-500">Settled earned</p><p className="mt-1 font-semibold tabular-nums">{formatStoredCurrency(balance.settledEarned)}</p></div>
+        <div className="rounded-lg bg-slate-50 p-4"><p className="text-sm text-slate-500">Live earned</p><p className="mt-1 font-semibold tabular-nums">{formatStoredCurrency(balance.liveEarned)}</p></div>
         <div className="rounded-lg bg-slate-50 p-4"><p className="text-sm text-slate-500">Total withdrawn</p><p className="mt-1 font-semibold tabular-nums">{formatStoredCurrency(balance.totalWithdrawn)}</p></div>
       </div>}
 
-      <LabourerWithdrawalForm factoryId={factoryId} labourerId={labourerId} asOfDate={asOfDate} />
+      <LabourerWithdrawalForm
+        factoryId={factoryId}
+        labourerId={labourerId}
+        asOfDate={asOfDate}
+        latestSettlementCutoff={balance?.latestSettlementCutoff ?? null}
+      />
 
       <h3 className="mt-6 font-semibold">Withdrawal History</h3>
       {isLoadingWithdrawals && <p className="mt-3 text-sm text-slate-500">Loading withdrawal history...</p>}
@@ -1956,17 +1389,26 @@ function LabourerEarningsHistory({
   );
 }
 
-function LabourerWithdrawalForm({ factoryId, labourerId, asOfDate }: Readonly<{
+function LabourerWithdrawalForm({ factoryId, labourerId, asOfDate, latestSettlementCutoff }: Readonly<{
   factoryId: string;
   labourerId: string;
   asOfDate: string;
+  latestSettlementCutoff: string | null;
 }>) {
   const queryClient = useQueryClient();
   const [withdrawalDate, setWithdrawalDate] = useState(() => getLocalDate());
+  const [settlementCutoff, setSettlementCutoff] = useState(() => getDefaultSettlementCutoff(getLocalDate(), null));
   const [amount, setAmount] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [isSaved, setIsSaved] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!latestSettlementCutoff) return;
+    setSettlementCutoff((current) => current >= latestSettlementCutoff
+      ? current
+      : getDefaultSettlementCutoff(withdrawalDate, latestSettlementCutoff));
+  }, [latestSettlementCutoff, withdrawalDate]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1974,6 +1416,18 @@ function LabourerWithdrawalForm({ factoryId, labourerId, asOfDate }: Readonly<{
 
     if (!withdrawalDate) {
       setSubmitError("Withdrawal date is required.");
+      return;
+    }
+    if (!settlementCutoff) {
+      setSubmitError("Settlement cutoff is required.");
+      return;
+    }
+    if (settlementCutoff > withdrawalDate) {
+      setSubmitError("Settlement cutoff cannot be after the withdrawal date.");
+      return;
+    }
+    if (latestSettlementCutoff && settlementCutoff < latestSettlementCutoff) {
+      setSubmitError(`Settlement cutoff cannot be before ${formatDate(latestSettlementCutoff)}.`);
       return;
     }
 
@@ -1987,13 +1441,15 @@ function LabourerWithdrawalForm({ factoryId, labourerId, asOfDate }: Readonly<{
     setSubmitError("");
     setIsSaved(false);
     try {
-      await createLabourerWithdrawal({
+      const saved = await createLabourerWithdrawal({
         factoryId,
         labourerId,
         withdrawalDate,
+        settlementCutoff,
         amount: numericAmount,
       });
       setAmount("");
+      setSettlementCutoff(saved.settledThrough);
       setIsSaved(true);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["labourer-available-balance", factoryId, labourerId, asOfDate] }),
@@ -2015,13 +1471,18 @@ function LabourerWithdrawalForm({ factoryId, labourerId, asOfDate }: Readonly<{
     <form className="mt-5 grid gap-4 rounded-lg border border-slate-200 p-4 sm:grid-cols-3 sm:items-end" onSubmit={(event) => void submit(event)}>
       <label className="block text-sm font-medium text-slate-700">
         Withdrawal date
-        <input type="date" value={withdrawalDate} onChange={(event) => { setWithdrawalDate(event.target.value); setSubmitError(""); setIsSaved(false); }} required disabled={isSubmitting} className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
+        <input type="date" max={getLocalDate()} value={withdrawalDate} onChange={(event) => { const nextDate = event.target.value; setWithdrawalDate(nextDate); setSettlementCutoff(getDefaultSettlementCutoff(nextDate, latestSettlementCutoff)); setSubmitError(""); setIsSaved(false); }} required disabled={isSubmitting} className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
+      </label>
+      <label className="block text-sm font-medium text-slate-700">
+        Settlement cutoff
+        <input type="date" min={latestSettlementCutoff ?? undefined} max={withdrawalDate || undefined} value={settlementCutoff} onChange={(event) => { setSettlementCutoff(event.target.value); setSubmitError(""); setIsSaved(false); }} required disabled={isSubmitting} className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
       </label>
       <label className="block text-sm font-medium text-slate-700">
         Amount
         <input type="number" min="0" step="any" value={amount} onChange={(event) => { setAmount(event.target.value); setSubmitError(""); setIsSaved(false); }} required disabled={isSubmitting} className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100" />
       </label>
-      <button type="submit" disabled={isSubmitting} className="h-11 rounded-lg bg-slate-950 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Saving..." : "Record Withdrawal"}</button>
+      <p className="text-sm text-slate-600 sm:col-span-3">This withdrawal will settle Production through <span className="font-semibold text-slate-900">{settlementCutoff ? formatDate(settlementCutoff) : "the chosen cutoff"}</span>.</p>
+      <button type="submit" disabled={isSubmitting} className="h-11 rounded-lg bg-slate-950 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-3">{isSubmitting ? "Saving..." : "Record Withdrawal"}</button>
       {submitError && <p role="alert" className="text-sm font-medium text-red-700 sm:col-span-3">{submitError}</p>}
       {isSaved && <p role="status" className="text-sm font-medium text-emerald-700 sm:col-span-3">Withdrawal recorded.</p>}
     </form>

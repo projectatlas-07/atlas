@@ -111,6 +111,7 @@ export async function listSalesRegister(
     .gte("challan_date", range.fromDate)
     .lte("challan_date", range.toDate)
     .order("challan_date", { ascending: false })
+    .order("created_at", { ascending: false })
     .order("id", { ascending: false });
 
   if (error) throw new SalesRegisterServiceError(error);

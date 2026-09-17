@@ -98,6 +98,7 @@ declare
   slash_challan public.challans%rowtype;
   blank_challan public.challans%rowtype;
   second_blank_challan public.challans%rowtype;
+  duplicate_challan public.challans%rowtype;
   exact_challan public.challans%rowtype;
   payment public.customer_payments%rowtype;
 begin
@@ -134,13 +135,15 @@ begin
   end if;
   raise notice 'PASS: numeric text, alphanumeric, slash, edge trim, and multiple blank references round-trip';
 
-  perform pg_temp.expect_error(
-    'duplicate non-NULL manual number remains factory-scoped unique', '23505',
-    format(
-      'select * from public.create_challan(%L::uuid, %L::text, date %L, %L::uuid, null::uuid, null::numeric, %L::jsonb, %L::jsonb)',
-      factory_id, '145', '2026-09-11', customer_id, basic_items, '[]'
-    )
+  select * into duplicate_challan from public.create_challan(
+    factory_id, '145', date '2026-09-11', customer_id,
+    null::uuid, null::numeric, basic_items, '[]'::jsonb
   );
+  if duplicate_challan.challan_number <> manual_challan.challan_number
+    or duplicate_challan.id = manual_challan.id then
+    raise exception 'FAIL: duplicate visible reference did not retain separate UUID identity';
+  end if;
+  raise notice 'PASS: duplicate manual references are valid display data while UUID remains identity';
 
   select * into manual_challan from public.update_challan(
     factory_id, manual_challan.id, '  MAN-145/A  ', manual_challan.challan_date,

@@ -17,6 +17,7 @@ import {
   emptyChallanFlexibleLine,
   emptyChallanLine,
   factoryProfileFormFromSaved,
+  filterChallansByNumber,
   getChallanEligibility,
   getChallanFormError,
   getSavedCustomerSnapshot,
@@ -67,6 +68,7 @@ const savedChallan: Challan = {
   companyPoliceStationSnapshot: null,
   companyDistrictSnapshot: null,
   companyStateSnapshot: null,
+  companyGstinSnapshot: null,
   vehicleId: "vehicle-a",
   vehicleNumberSnapshot: "RJ14AB1234",
   deliveryWageApplicableSnapshot: true,
@@ -118,6 +120,7 @@ const savedProfile = {
   state: "Rajasthan",
   address: "Factory Road",
   mobile: "9000000000",
+  gstin: "19ABCDE1234F1Z5",
   createdAt: "2026-08-01T00:00:00Z",
   updatedAt: "2026-08-26T00:00:00Z",
 };
@@ -142,6 +145,7 @@ test("S2.1 loads existing profile values and prepares the controlled save input"
     district: "Jaipur",
     state: "Rajasthan",
     mobile: "9000000000",
+    gstin: "19ABCDE1234F1Z5",
   });
   assert.deepEqual(buildFactoryProfileInput("factory-a", {
     name: "  Atlas   Bricks ",
@@ -152,6 +156,7 @@ test("S2.1 loads existing profile values and prepares the controlled save input"
     district: " Jaipur ",
     state: " Rajasthan ",
     mobile: " 9000000000 ",
+    gstin: " 19abcde1234f1z5 ",
   }), {
     factoryId: "factory-a",
     name: "Atlas Bricks",
@@ -162,6 +167,7 @@ test("S2.1 loads existing profile values and prepares the controlled save input"
     district: "Jaipur",
     state: "Rajasthan",
     mobile: "9000000000",
+    gstin: "19ABCDE1234F1Z5",
   });
   assert.match(sectionSource, /getFactoryPrintableProfile/);
   assert.match(sectionSource, /await updateFactoryPrintableProfile\(input\)/);
@@ -551,6 +557,24 @@ test("optional manual Challan numbers preserve operator text and blank stores as
     buildCreateChallanInput("factory-a", { ...baseForm, challanNumber: "   " })?.challanNumber,
     null,
   );
+});
+
+test("Challan-number search returns every duplicate with its separate internal identity", () => {
+  const duplicateA = { ...savedChallan, id: "challan-duplicate-a", challanNumber: "11" };
+  const duplicateB = {
+    ...savedChallan,
+    id: "challan-duplicate-b",
+    challanNumber: "11",
+    customerNameSnapshot: "Customer B",
+  };
+  const other = { ...savedChallan, id: "challan-other", challanNumber: "12" };
+  assert.deepEqual(
+    filterChallansByNumber([duplicateA, duplicateB, other], " 11 ").map((row) => row.id),
+    ["challan-duplicate-a", "challan-duplicate-b"],
+  );
+  assert.match(sectionSource, /Search Challan No\./);
+  assert.match(sectionSource, /visibleChallans\.map/);
+  assert.match(sectionSource, /openChallan\(challan\.id\)/);
 });
 
 test("saved data populates edit form while detail display keeps historical snapshots", () => {

@@ -10,6 +10,141 @@ type WageRateRow = {
   created_at: string;
 };
 
+type MudGroupTermRow = {
+  id: string;
+  factory_id: string;
+  labour_group_id: string;
+  member_count: number;
+  effective_from: string;
+  effective_to: string | null;
+  created_at: string;
+};
+
+type MudGroupRateRow = {
+  id: string;
+  factory_id: string;
+  labour_group_id: string;
+  rate_per_1000_bricks: number;
+  effective_from: string;
+  effective_to: string | null;
+  created_at: string;
+};
+
+type MudGroupDailyAllocationRow = {
+  labour_group_id: string;
+  member_count: number;
+  total_active_members: number;
+  eligible_factory_production: number;
+  allocated_production: number;
+  mud_group_rate_id: string;
+  rate_per_1000_bricks: number;
+  earned_amount: number;
+};
+
+type MudAccountingMode = "LEGACY_WEEKLY" | "SHADOW" | "SETTLEMENT";
+
+type MudAccountingStateRow = {
+  factory_id: string;
+  accounting_mode: MudAccountingMode;
+  updated_at: string;
+};
+
+type MudAccountingModeTransitionRow = {
+  id: string;
+  factory_id: string;
+  old_mode: MudAccountingMode;
+  new_mode: MudAccountingMode;
+  changed_at: string;
+  actor: string;
+};
+
+type MudGroupConfigurationRow = {
+  labour_group_id: string;
+  group_name: string;
+  current_member_count: number | null;
+  current_rate_per_1000_bricks: number | null;
+  is_earning: boolean;
+  current_term_id: string | null;
+  current_rate_id: string | null;
+  accounting_mode: MudAccountingMode;
+};
+
+type MudGroupRangeAllocationRow = MudGroupDailyAllocationRow & {
+  production_date: string;
+};
+
+type MudShadowWeeklyComparisonRow = {
+  week_start: string;
+  labour_group_id: string;
+  legacy_weekly_earning_id: string;
+  legacy_earning: number;
+  new_engine_earning: number | null;
+  difference: number | null;
+  status: "PARITY_OK" | "EXPECTED_RATE_CHANGE_DIFFERENCE" | "UNEXPECTED_MISMATCH" | "CONFIGURATION_ERROR";
+  detail: string;
+};
+
+type MudShadowCertificationRow = {
+  certification_status: "READY" | "WAITING_FOR_COMPLETED_WEEK" | "CONFIGURATION_ERROR" | "UNEXPECTED_MISMATCH";
+  certification_week: string | null;
+  legacy_earning: number | null;
+  new_engine_earning: number | null;
+  difference: number | null;
+  parity_status: MudShadowWeeklyComparisonRow["status"] | null;
+  reason: string;
+};
+
+type MudCutoverReadinessRow = {
+  readiness_status: "READY_FOR_CUTOVER" | "BLOCKED";
+  reason: string;
+  certification_week: string | null;
+  final_legacy_week_start: string | null;
+  final_legacy_week_end: string | null;
+  proposed_legacy_cutoff: string | null;
+  settlement_start_date: string | null;
+  labour_group_id: string | null;
+  group_name: string | null;
+  legacy_locked_earning_total: number | null;
+  existing_withdrawals: number | null;
+  proposed_opening_amount: number | null;
+  resulting_balance: number | null;
+};
+
+type MudSettlementAccountRow = {
+  settled_earned: number;
+  live_earned: number;
+  total_earned: number;
+  total_withdrawn: number;
+  available_balance: number;
+  latest_settlement_cutoff: string | null;
+};
+
+type MudSettlementWithdrawalRow = {
+  withdrawal_id: string;
+  settlement_id: string;
+  previous_cutoff: string;
+  settled_through: string;
+  withdrawal_date: string;
+  withdrawal_amount: number;
+  settled_earned: number;
+  total_withdrawn: number;
+  settled_available_balance: number;
+  daily_snapshots: number;
+  group_snapshots: number;
+  was_replayed: boolean;
+};
+
+type MudSettlementCutoverRow = {
+  legacy_opening_settlement_id: string;
+  final_legacy_week_start: string;
+  legacy_cutoff: string;
+  settlement_start_date: string;
+  group_openings: number;
+  transition_audit_id: string;
+  actor: string;
+  cutover_at: string;
+};
+
 type ProductionWageRateRow = {
   id: string;
   factory_id: string;
@@ -33,6 +168,33 @@ type ProductionWeeklyEarningDetailRow = {
   rate_source: "crew_default" | "individual_override";
   production_crew_id: string | null;
   amount: number;
+  created_at: string;
+};
+
+type ProductionEarningSettlementRow = {
+  id: string;
+  factory_id: string;
+  labourer_id: string;
+  previous_settled_through: string | null;
+  settled_through: string;
+  total_quantity: number;
+  total_earned: number;
+  settlement_type: "legacy_opening" | "withdrawal";
+  withdrawal_id: string | null;
+  created_at: string;
+};
+
+type ProductionEarningSettlementDetailRow = {
+  id: string;
+  settlement_id: string;
+  factory_id: string;
+  labourer_id: string;
+  production_entry_id: string;
+  work_date: string;
+  quantity: number;
+  production_wage_rate_id: string;
+  rate_per_1000_bricks: number;
+  earned_amount: number;
   created_at: string;
 };
 
@@ -316,6 +478,7 @@ type ChallanRow = {
   company_police_station_snapshot: string | null;
   company_district_snapshot: string | null;
   company_state_snapshot: string | null;
+  company_gstin_snapshot: string | null;
   vehicle_id: string | null;
   vehicle_number_snapshot: string | null;
   delivery_wage_applicable_snapshot: boolean;
@@ -452,6 +615,140 @@ type ExpensePaymentAllocationRow = {
   created_at: string;
 };
 
+type CoalReferenceValueRow = {
+  id: string;
+  factory_id: string;
+  kind: "coal_name" | "source_location";
+  display_value: string;
+  created_at: string;
+  created_by: string;
+};
+
+type CoalPurchaseRow = {
+  id: string;
+  factory_id: string;
+  coal_name_reference_id: string;
+  source_reference_id: string;
+  coal_name_snapshot: string;
+  source_location_snapshot: string;
+  coal_challan_number: string | null;
+  vehicle_number_snapshot: string;
+  quantity: number;
+  rate: number;
+  coal_amount: number;
+  separate_freight_amount: number;
+  created_at: string;
+  created_by: string;
+};
+
+type CoalPurchaseDetailRow = {
+  id: string;
+  factory_id: string;
+  purchase_date: string;
+  seller_id: string;
+  seller_name_snapshot: string;
+  seller_address_snapshot: string | null;
+  seller_mobile_snapshot: string | null;
+  coal_name_reference_id: string;
+  coal_name_snapshot: string;
+  source_reference_id: string;
+  source_location_snapshot: string;
+  coal_challan_number: string | null;
+  vehicle_number_snapshot: string;
+  quantity: number;
+  rate: number;
+  coal_amount: number;
+  separate_freight_amount: number;
+  final_total: number;
+  status: "active" | "void";
+  is_locked: boolean;
+  total_paid: number;
+  outstanding_amount: number;
+  payment_state: "unpaid" | "partially_paid" | "paid";
+  voided_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type VehicleMaintenanceRow = {
+  id: string;
+  factory_id: string;
+  vehicle_id: string;
+  vehicle_number_snapshot: string;
+  work_description: string;
+  created_at: string;
+  created_by: string;
+};
+
+type VehicleMaintenanceDetailRow = {
+  id: string;
+  factory_id: string;
+  maintenance_date: string;
+  vehicle_id: string;
+  vehicle_number_snapshot: string;
+  garage_id: string;
+  garage_name_snapshot: string;
+  garage_address_snapshot: string | null;
+  garage_mobile_snapshot: string | null;
+  work_description: string;
+  total_amount: number;
+  status: "active" | "void";
+  is_locked: boolean;
+  total_paid: number;
+  outstanding_amount: number;
+  payment_state: "unpaid" | "partially_paid" | "paid";
+  voided_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type VehicleFuelRow = {
+  id: string;
+  factory_id: string;
+  vehicle_id: string;
+  vehicle_number_snapshot: string;
+  fuel_time: string;
+  fuel_type: "DIESEL" | "PETROL";
+  litres: number;
+  rate_per_litre: number;
+  created_at: string;
+  created_by: string;
+};
+
+type VehicleFuelDetailRow = {
+  id: string;
+  factory_id: string;
+  fuel_date: string;
+  fuel_time: string;
+  vehicle_id: string;
+  vehicle_number_snapshot: string;
+  pump_id: string;
+  pump_name_snapshot: string;
+  pump_address_snapshot: string | null;
+  pump_mobile_snapshot: string | null;
+  fuel_type: "DIESEL" | "PETROL";
+  litres: number;
+  rate_per_litre: number;
+  fuel_amount: number;
+  status: "active" | "void";
+  is_locked: boolean;
+  total_paid: number;
+  outstanding_amount: number;
+  payment_state: "unpaid" | "partially_paid" | "paid";
+  voided_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type SupplierRoleRow = {
+  id: string;
+  factory_id: string;
+  supplier_id: string;
+  role: "COAL_SELLER" | "GARAGE" | "FUEL_PUMP";
+  created_at: string;
+  created_by: string;
+};
+
 type CustomerPaymentAllocationRow = {
   id: string;
   factory_id: string;
@@ -465,9 +762,9 @@ export type Database = {
   public: {
     Tables: {
       factories: {
-        Row: { id: string; name: string; business_description: string; village: string; post_office: string; police_station: string; district: string; state: string; address: string; mobile: string; created_at: string; updated_at: string };
-        Insert: { id?: string; name: string; business_description?: string; village?: string; post_office?: string; police_station?: string; district?: string; state?: string; address?: string; mobile?: string; created_at?: string; updated_at?: string };
-        Update: { id?: string; name?: string; business_description?: string; village?: string; post_office?: string; police_station?: string; district?: string; state?: string; address?: string; mobile?: string; created_at?: string; updated_at?: string };
+        Row: { id: string; name: string; business_description: string; village: string; post_office: string; police_station: string; district: string; state: string; address: string; mobile: string; gstin: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; name: string; business_description?: string; village?: string; post_office?: string; police_station?: string; district?: string; state?: string; address?: string; mobile?: string; gstin?: string | null; created_at?: string; updated_at?: string };
+        Update: { id?: string; name?: string; business_description?: string; village?: string; post_office?: string; police_station?: string; district?: string; state?: string; address?: string; mobile?: string; gstin?: string | null; created_at?: string; updated_at?: string };
         Relationships: [];
       };
       factory_users: {
@@ -558,6 +855,7 @@ export type Database = {
           company_police_station_snapshot?: string | null;
           company_district_snapshot?: string | null;
           company_state_snapshot?: string | null;
+          company_gstin_snapshot?: string | null;
           vehicle_id?: string | null;
           vehicle_number_snapshot?: string | null;
           delivery_wage_applicable_snapshot?: boolean;
@@ -747,10 +1045,74 @@ export type Database = {
           { foreignKeyName: "expense_payment_allocations_record_factory_fkey"; columns: ["expense_record_id", "factory_id"]; isOneToOne: false; referencedRelation: "expense_records"; referencedColumns: ["id", "factory_id"] }
         ];
       };
+      coal_reference_values: {
+        Row: CoalReferenceValueRow;
+        Insert: {
+          id?: string; factory_id: string; kind: "coal_name" | "source_location";
+          display_value: string; created_at?: string; created_by: string;
+        };
+        Update: Partial<CoalReferenceValueRow>;
+        Relationships: [{ foreignKeyName: "coal_reference_values_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] }];
+      };
+      coal_purchases: {
+        Row: CoalPurchaseRow;
+        Insert: {
+          id: string; factory_id: string; coal_name_reference_id: string;
+          source_reference_id: string; coal_name_snapshot: string;
+          source_location_snapshot: string; coal_challan_number?: string | null;
+          vehicle_number_snapshot: string; quantity: number; rate: number;
+          coal_amount: number; separate_freight_amount?: number;
+          created_at?: string; created_by: string;
+        };
+        Update: Partial<CoalPurchaseRow>;
+        Relationships: [
+          { foreignKeyName: "coal_purchases_expense_record_factory_fkey"; columns: ["id", "factory_id"]; isOneToOne: true; referencedRelation: "expense_records"; referencedColumns: ["id", "factory_id"] },
+          { foreignKeyName: "coal_purchases_name_reference_factory_fkey"; columns: ["coal_name_reference_id", "factory_id"]; isOneToOne: false; referencedRelation: "coal_reference_values"; referencedColumns: ["id", "factory_id"] },
+          { foreignKeyName: "coal_purchases_source_reference_factory_fkey"; columns: ["source_reference_id", "factory_id"]; isOneToOne: false; referencedRelation: "coal_reference_values"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      vehicle_maintenance_records: {
+        Row: VehicleMaintenanceRow;
+        Insert: {
+          id: string; factory_id: string; vehicle_id: string;
+          vehicle_number_snapshot: string; work_description: string;
+          created_at?: string; created_by: string;
+        };
+        Update: Partial<VehicleMaintenanceRow>;
+        Relationships: [
+          { foreignKeyName: "vehicle_maintenance_records_expense_factory_fkey"; columns: ["id", "factory_id"]; isOneToOne: true; referencedRelation: "expense_records"; referencedColumns: ["id", "factory_id"] },
+          { foreignKeyName: "vehicle_maintenance_records_vehicle_factory_fkey"; columns: ["vehicle_id", "factory_id"]; isOneToOne: false; referencedRelation: "vehicles"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      vehicle_fuel_records: {
+        Row: VehicleFuelRow;
+        Insert: {
+          id: string; factory_id: string; vehicle_id: string;
+          vehicle_number_snapshot: string; fuel_time: string;
+          fuel_type: "DIESEL" | "PETROL"; litres: number;
+          rate_per_litre: number; created_at?: string; created_by: string;
+        };
+        Update: Partial<VehicleFuelRow>;
+        Relationships: [
+          { foreignKeyName: "vehicle_fuel_records_expense_factory_fkey"; columns: ["id", "factory_id"]; isOneToOne: true; referencedRelation: "expense_records"; referencedColumns: ["id", "factory_id"] },
+          { foreignKeyName: "vehicle_fuel_records_vehicle_factory_fkey"; columns: ["vehicle_id", "factory_id"]; isOneToOne: false; referencedRelation: "vehicles"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      supplier_roles: {
+        Row: SupplierRoleRow;
+        Insert: {
+          id?: string; factory_id: string; supplier_id: string;
+          role: "COAL_SELLER" | "GARAGE" | "FUEL_PUMP"; created_at?: string; created_by: string;
+        };
+        Update: Partial<SupplierRoleRow>;
+        Relationships: [
+          { foreignKeyName: "supplier_roles_supplier_factory_fkey"; columns: ["supplier_id", "factory_id"]; isOneToOne: false; referencedRelation: "suppliers"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
       labourers: {
-        Row: { id: string; factory_id: string; name: string; assigned_brick_type_id: string; is_active: boolean; created_at: string; updated_at: string };
-        Insert: { id?: string; factory_id: string; name: string; assigned_brick_type_id: string; is_active?: boolean; created_at?: string; updated_at?: string };
-        Update: { id?: string; factory_id?: string; name?: string; assigned_brick_type_id?: string; is_active?: boolean; created_at?: string; updated_at?: string };
+        Row: { id: string; factory_id: string; name: string; assigned_brick_type_id: string; production_origin_label: string | null; is_active: boolean; created_at: string; updated_at: string };
+        Insert: { id?: string; factory_id: string; name: string; assigned_brick_type_id: string; production_origin_label?: string | null; is_active?: boolean; created_at?: string; updated_at?: string };
+        Update: { id?: string; factory_id?: string; name?: string; assigned_brick_type_id?: string; production_origin_label?: string | null; is_active?: boolean; created_at?: string; updated_at?: string };
         Relationships: [
           { foreignKeyName: "labourers_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
           { foreignKeyName: "labourers_assigned_brick_type_factory_fkey"; columns: ["assigned_brick_type_id", "factory_id"]; isOneToOne: false; referencedRelation: "brick_types"; referencedColumns: ["id", "factory_id"] }
@@ -954,6 +1316,40 @@ export type Database = {
         Update: { id?: string; factory_id?: string; name?: string; member_names?: string | null; member_count?: number | null; is_active?: boolean; created_at?: string };
         Relationships: [{ foreignKeyName: "labour_groups_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] }];
       };
+      mud_group_terms: {
+        Row: MudGroupTermRow;
+        Insert: { id?: string; factory_id: string; labour_group_id: string; member_count: number; effective_from: string; effective_to?: string | null; created_at?: string };
+        Update: Partial<MudGroupTermRow>;
+        Relationships: [
+          { foreignKeyName: "mud_group_terms_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "mud_group_terms_group_factory_fkey"; columns: ["labour_group_id", "factory_id"]; isOneToOne: false; referencedRelation: "labour_groups"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      mud_group_rates: {
+        Row: MudGroupRateRow;
+        Insert: { id?: string; factory_id: string; labour_group_id: string; rate_per_1000_bricks: number; effective_from: string; effective_to?: string | null; created_at?: string };
+        Update: Partial<MudGroupRateRow>;
+        Relationships: [
+          { foreignKeyName: "mud_group_rates_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "mud_group_rates_group_factory_fkey"; columns: ["labour_group_id", "factory_id"]; isOneToOne: false; referencedRelation: "labour_groups"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      mud_accounting_states: {
+        Row: MudAccountingStateRow;
+        Insert: { factory_id: string; accounting_mode?: MudAccountingMode; updated_at?: string };
+        Update: { factory_id?: string; accounting_mode?: MudAccountingMode; updated_at?: string };
+        Relationships: [
+          { foreignKeyName: "mud_accounting_states_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: true; referencedRelation: "factories"; referencedColumns: ["id"] }
+        ];
+      };
+      mud_accounting_mode_transitions: {
+        Row: MudAccountingModeTransitionRow;
+        Insert: { id?: string; factory_id: string; old_mode: MudAccountingMode; new_mode: MudAccountingMode; changed_at?: string; actor: string };
+        Update: Partial<MudAccountingModeTransitionRow>;
+        Relationships: [
+          { foreignKeyName: "mud_accounting_mode_transitions_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] }
+        ];
+      };
       production_entries: {
         Row: { id: string; factory_id: string; labourer_id: string; brick_type_id: string; production_date: string; quantity: number; created_at: string; updated_at: string };
         Insert: { id: string; factory_id: string; labourer_id: string; brick_type_id: string; production_date: string; quantity: number; created_at?: string; updated_at?: string };
@@ -962,6 +1358,49 @@ export type Database = {
           { foreignKeyName: "production_entries_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
           { foreignKeyName: "production_entries_labourer_factory_fkey"; columns: ["labourer_id", "factory_id"]; isOneToOne: false; referencedRelation: "labourers"; referencedColumns: ["id", "factory_id"] },
           { foreignKeyName: "production_entries_brick_type_factory_fkey"; columns: ["brick_type_id", "factory_id"]; isOneToOne: false; referencedRelation: "brick_types"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      production_earning_settlements: {
+        Row: ProductionEarningSettlementRow;
+        Insert: {
+          id?: string;
+          factory_id: string;
+          labourer_id: string;
+          previous_settled_through?: string | null;
+          settled_through: string;
+          total_quantity: number;
+          total_earned: number;
+          settlement_type: "legacy_opening" | "withdrawal";
+          withdrawal_id?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<ProductionEarningSettlementRow>;
+        Relationships: [
+          { foreignKeyName: "production_earning_settlements_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "production_earning_settlements_labourer_factory_fkey"; columns: ["labourer_id", "factory_id"]; isOneToOne: false; referencedRelation: "labourers"; referencedColumns: ["id", "factory_id"] },
+          { foreignKeyName: "production_earning_settlements_withdrawal_fkey"; columns: ["withdrawal_id"]; isOneToOne: true; referencedRelation: "withdrawals"; referencedColumns: ["id"] }
+        ];
+      };
+      production_earning_settlement_details: {
+        Row: ProductionEarningSettlementDetailRow;
+        Insert: {
+          id?: string;
+          settlement_id: string;
+          factory_id: string;
+          labourer_id: string;
+          production_entry_id: string;
+          work_date: string;
+          quantity: number;
+          production_wage_rate_id: string;
+          rate_per_1000_bricks: number;
+          earned_amount: number;
+          created_at?: string;
+        };
+        Update: Partial<ProductionEarningSettlementDetailRow>;
+        Relationships: [
+          { foreignKeyName: "production_earning_settlement_details_settlement_fkey"; columns: ["settlement_id", "factory_id", "labourer_id"]; isOneToOne: false; referencedRelation: "production_earning_settlements"; referencedColumns: ["id", "factory_id", "labourer_id"] },
+          { foreignKeyName: "production_earning_settlement_details_rate_fkey"; columns: ["production_wage_rate_id", "factory_id"]; isOneToOne: false; referencedRelation: "production_wage_rates"; referencedColumns: ["id", "factory_id"] },
+          { foreignKeyName: "production_earning_settlement_details_production_entry_id_fkey"; columns: ["production_entry_id"]; isOneToOne: false; referencedRelation: "production_entries"; referencedColumns: ["id"] }
         ];
       };
       production_weekly_earning_details: {
@@ -1038,6 +1477,7 @@ export type Database = {
           p_district: string;
           p_state: string;
           p_mobile: string;
+          p_gstin: string | null;
         };
         Returns: Database["public"]["Tables"]["factories"]["Row"];
       };
@@ -1274,6 +1714,219 @@ export type Database = {
           total_paid: number; total_outstanding: number;
         }[];
       };
+      create_coal_reference_value: {
+        Args: { p_factory_id: string; p_kind: "coal_name" | "source_location"; p_display_value: string };
+        Returns: CoalReferenceValueRow;
+      };
+      list_coal_purchases: {
+        Args: { p_factory_id: string; p_seller_id: string | null };
+        Returns: CoalPurchaseDetailRow[];
+      };
+      create_coal_purchase: {
+        Args: {
+          p_factory_id: string; p_purchase_date: string; p_seller_id: string;
+          p_coal_name_reference_id: string; p_source_reference_id: string;
+          p_coal_challan_number: string | null; p_vehicle_number: string;
+          p_quantity: number | null; p_rate: number | null; p_coal_amount: number | null;
+          p_separate_freight_amount: number; p_initial_paid_amount: number;
+          p_initial_payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other" | null;
+        };
+        Returns: CoalPurchaseDetailRow[];
+      };
+      update_coal_purchase: {
+        Args: {
+          p_factory_id: string; p_purchase_id: string; p_purchase_date: string;
+          p_seller_id: string; p_coal_name_reference_id: string;
+          p_source_reference_id: string; p_coal_challan_number: string | null;
+          p_vehicle_number: string; p_quantity: number | null; p_rate: number | null;
+          p_coal_amount: number | null; p_separate_freight_amount: number;
+        };
+        Returns: CoalPurchaseDetailRow[];
+      };
+      void_coal_purchase: {
+        Args: { p_factory_id: string; p_purchase_id: string };
+        Returns: CoalPurchaseDetailRow[];
+      };
+      create_coal_payment: {
+        Args: {
+          p_factory_id: string; p_purchase_id: string; p_payment_date: string;
+          p_amount: number; p_payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other";
+          p_note: string | null;
+        };
+        Returns: ExpensePaymentRow;
+      };
+      list_coal_payments: {
+        Args: { p_factory_id: string; p_seller_id: string | null };
+        Returns: {
+          payment_id: string; factory_id: string; purchase_id: string;
+          seller_id: string; seller_name_snapshot: string; payment_date: string;
+          amount: number; payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other";
+          note: string | null; created_at: string;
+        }[];
+      };
+      create_coal_selective_payment: {
+        Args: {
+          p_factory_id: string; p_seller_id: string; p_from_date: string;
+          p_to_date: string; p_payment_date: string; p_payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other";
+          p_note: string | null; p_allocations: Json;
+        };
+        Returns: ExpensePaymentRow;
+      };
+      list_coal_selective_payments: {
+        Args: { p_factory_id: string; p_seller_id: string | null };
+        Returns: {
+          payment_id: string; factory_id: string; seller_id: string;
+          seller_name_snapshot: string; allocation_count: number; allocations: Json;
+          payment_date: string; amount: number;
+          payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other";
+          note: string | null; created_at: string;
+        }[];
+      };
+      list_vehicle_maintenance_records: {
+        Args: { p_factory_id: string; p_vehicle_id: string | null; p_garage_id: string | null };
+        Returns: VehicleMaintenanceDetailRow[];
+      };
+      create_vehicle_maintenance: {
+        Args: {
+          p_factory_id: string; p_maintenance_date: string; p_vehicle_id: string;
+          p_garage_id: string; p_work_description: string; p_total_amount: number;
+          p_initial_paid_amount: number;
+          p_initial_payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other" | null;
+        };
+        Returns: VehicleMaintenanceDetailRow[];
+      };
+      update_vehicle_maintenance: {
+        Args: {
+          p_factory_id: string; p_maintenance_id: string; p_maintenance_date: string;
+          p_vehicle_id: string; p_garage_id: string; p_work_description: string;
+          p_total_amount: number;
+        };
+        Returns: VehicleMaintenanceDetailRow[];
+      };
+      void_vehicle_maintenance: {
+        Args: { p_factory_id: string; p_maintenance_id: string };
+        Returns: VehicleMaintenanceDetailRow[];
+      };
+      create_vehicle_maintenance_payment: {
+        Args: {
+          p_factory_id: string; p_maintenance_id: string; p_payment_date: string;
+          p_amount: number; p_payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other";
+          p_note: string | null;
+        };
+        Returns: ExpensePaymentRow;
+      };
+      create_vehicle_maintenance_batch_payment: {
+        Args: {
+          p_factory_id: string; p_garage_id: string;
+          p_from_date: string; p_to_date: string; p_payment_date: string;
+          p_amount: number; p_payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other";
+          p_note: string | null;
+        };
+        Returns: ExpensePaymentRow;
+      };
+      list_vehicle_maintenance_payments: {
+        Args: { p_factory_id: string; p_vehicle_id: string | null; p_garage_id: string | null };
+        Returns: {
+          payment_id: string; factory_id: string; maintenance_id: string;
+          vehicle_id: string; vehicle_number_snapshot: string;
+          garage_id: string; garage_name_snapshot: string; payment_date: string;
+          amount: number; payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other";
+          note: string | null; created_at: string;
+        }[];
+      };
+      list_vehicle_maintenance_batch_payments: {
+        Args: { p_factory_id: string; p_garage_id: string | null };
+        Returns: {
+          payment_id: string; factory_id: string;
+          garage_id: string; garage_name_snapshot: string;
+          vehicle_ids: string[]; allocation_count: number; allocations: Json;
+          payment_date: string; amount: number;
+          payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other";
+          note: string | null; created_at: string;
+        }[];
+      };
+      list_vehicle_fuel_records: {
+        Args: { p_factory_id: string; p_vehicle_id: string | null; p_pump_id: string | null };
+        Returns: VehicleFuelDetailRow[];
+      };
+      get_previous_vehicle_refuel: {
+        Args: {
+          p_factory_id: string; p_vehicle_id: string; p_before_date: string;
+          p_before_time: string; p_exclude_fuel_record_id: string | null;
+        };
+        Returns: VehicleFuelDetailRow[];
+      };
+      create_vehicle_fuel: {
+        Args: {
+          p_factory_id: string; p_fuel_date: string; p_fuel_time: string;
+          p_vehicle_id: string; p_pump_id: string; p_fuel_type: "DIESEL" | "PETROL";
+          p_litres: number | null; p_rate_per_litre: number | null;
+          p_fuel_amount: number | null; p_initial_paid_amount: number;
+          p_initial_payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other" | null;
+        };
+        Returns: VehicleFuelDetailRow[];
+      };
+      update_vehicle_fuel: {
+        Args: {
+          p_factory_id: string; p_fuel_record_id: string; p_fuel_date: string;
+          p_fuel_time: string; p_vehicle_id: string; p_pump_id: string;
+          p_fuel_type: "DIESEL" | "PETROL"; p_litres: number | null;
+          p_rate_per_litre: number | null; p_fuel_amount: number | null;
+        };
+        Returns: VehicleFuelDetailRow[];
+      };
+      void_vehicle_fuel: {
+        Args: { p_factory_id: string; p_fuel_record_id: string };
+        Returns: VehicleFuelDetailRow[];
+      };
+      create_vehicle_fuel_payment: {
+        Args: {
+          p_factory_id: string; p_fuel_record_id: string; p_payment_date: string;
+          p_amount: number; p_payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other";
+          p_note: string | null;
+        };
+        Returns: ExpensePaymentRow;
+      };
+      list_vehicle_fuel_payments: {
+        Args: { p_factory_id: string; p_vehicle_id: string | null; p_pump_id: string | null };
+        Returns: {
+          payment_id: string; factory_id: string; fuel_record_id: string;
+          vehicle_id: string; vehicle_number_snapshot: string;
+          pump_id: string; pump_name_snapshot: string; payment_date: string;
+          amount: number; payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other";
+          note: string | null; created_at: string;
+        }[];
+      };
+      create_vehicle_fuel_batch_payment: {
+        Args: {
+          p_factory_id: string; p_pump_id: string;
+          p_from_date: string; p_to_date: string; p_payment_date: string;
+          p_amount: number; p_payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other";
+          p_note: string | null;
+        };
+        Returns: ExpensePaymentRow;
+      };
+      list_vehicle_fuel_batch_payments: {
+        Args: { p_factory_id: string; p_pump_id: string | null };
+        Returns: {
+          payment_id: string; factory_id: string; pump_id: string; pump_name: string;
+          vehicle_ids: string[]; allocation_count: number; allocations: Json;
+          payment_date: string;
+          amount: number; payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other";
+          note: string | null; created_at: string;
+        }[];
+      };
+      list_suppliers_by_role: {
+        Args: { p_factory_id: string; p_role: "COAL_SELLER" | "GARAGE" | "FUEL_PUMP" };
+        Returns: SupplierRow[];
+      };
+      create_or_assign_supplier_role: {
+        Args: {
+          p_factory_id: string; p_role: "COAL_SELLER" | "GARAGE" | "FUEL_PUMP";
+          p_name: string; p_address: string | null; p_mobile: string | null;
+        };
+        Returns: SupplierRow;
+      };
       assign_labourer_to_production_crew: {
         Args: { p_factory_id: string; p_labourer_id: string; p_production_crew_id: string; p_effective_from: string };
         Returns: ProductionCrewAssignmentRow;
@@ -1286,6 +1939,73 @@ export type Database = {
         Args: { p_factory_id: string; p_applies_to: "production" | "mud_supply"; p_rate_per_1000_bricks: number; p_effective_from: string };
         Returns: WageRateRow;
       };
+      get_mud_group_daily_allocation: {
+        Args: { p_factory_id: string; p_production_date: string };
+        Returns: MudGroupDailyAllocationRow[];
+      };
+      get_mud_group_range_allocation: {
+        Args: { p_factory_id: string; p_from_date: string; p_to_date: string };
+        Returns: MudGroupRangeAllocationRow[];
+      };
+      get_mud_shadow_weekly_comparisons: {
+        Args: { p_factory_id: string; p_from_week_start: string; p_to_week_start: string };
+        Returns: MudShadowWeeklyComparisonRow[];
+      };
+      get_mud_shadow_certification_status: {
+        Args: { p_factory_id: string };
+        Returns: MudShadowCertificationRow[];
+      };
+      get_mud_cutover_readiness: {
+        Args: { p_factory_id: string };
+        Returns: MudCutoverReadinessRow[];
+      };
+      get_mud_group_configuration: {
+        Args: { p_factory_id: string; p_as_of_date: string };
+        Returns: MudGroupConfigurationRow[];
+      };
+      get_mud_group_settlement_account: {
+        Args: { p_factory_id: string; p_labour_group_id: string; p_as_of_date: string };
+        Returns: MudSettlementAccountRow[];
+      };
+      create_mud_settlement_withdrawal: {
+        Args: {
+          p_factory_id: string; p_withdrawal_id: string; p_labour_group_id: string;
+          p_withdrawal_date: string; p_settlement_cutoff: string; p_amount: number;
+        };
+        Returns: MudSettlementWithdrawalRow[];
+      };
+      execute_mud_settlement_cutover: {
+        Args: { p_factory_id: string; p_proposed_legacy_cutoff: string };
+        Returns: MudSettlementCutoverRow[];
+      };
+      transition_mud_accounting_mode: {
+        Args: { p_factory_id: string; p_new_mode: MudAccountingMode };
+        Returns: MudAccountingStateRow[];
+      };
+      create_mud_group: {
+        Args: { p_factory_id: string; p_name: string; p_member_count: number; p_earning_start_date: string; p_initial_rate: number; p_rate_effective_date: string };
+        Returns: string;
+      };
+      set_mud_group_member_count: {
+        Args: { p_factory_id: string; p_labour_group_id: string; p_member_count: number; p_effective_from: string };
+        Returns: string;
+      };
+      set_mud_group_rate: {
+        Args: { p_factory_id: string; p_labour_group_id: string; p_rate_per_1000_bricks: number; p_effective_from: string };
+        Returns: string;
+      };
+      stop_mud_group_earning: {
+        Args: { p_factory_id: string; p_labour_group_id: string; p_stop_date: string };
+        Returns: string;
+      };
+      restart_mud_group_earning: {
+        Args: { p_factory_id: string; p_labour_group_id: string; p_member_count: number; p_restart_date: string };
+        Returns: string;
+      };
+      set_mud_supply_rate: {
+        Args: { p_factory_id: string; p_rate_per_1000_bricks: number; p_effective_from: string };
+        Returns: WageRateRow;
+      };
       create_production_crew_wage_rate: {
         Args: { p_factory_id: string; p_production_crew_id: string; p_rate_per_1000_bricks: number; p_effective_from: string };
         Returns: ProductionWageRateRow;
@@ -1293,6 +2013,14 @@ export type Database = {
       create_labourer_production_wage_rate_override: {
         Args: { p_factory_id: string; p_labourer_id: string; p_rate_per_1000_bricks: number; p_effective_from: string };
         Returns: ProductionWageRateRow;
+      };
+      set_production_labourer_rates: {
+        Args: { p_factory_id: string; p_labourer_ids: string[]; p_rate_per_1000_bricks: number; p_effective_from: string };
+        Returns: ProductionWageRateRow[];
+      };
+      set_production_labourer_origin: {
+        Args: { p_factory_id: string; p_labourer_id: string; p_origin_label: string | null };
+        Returns: Database["public"]["Tables"]["labourers"]["Row"];
       };
       create_transport_crew_wage_rate: {
         Args: { p_factory_id: string; p_transport_crew_id: string; p_effective_from: string; p_rate_per_paya: number };
@@ -1444,7 +2172,7 @@ export type Database = {
         Returns: { weekly_earning_id: string; groups_calculated: number; rows_skipped: number }[];
       };
       create_labourer_withdrawal: {
-        Args: { p_factory_id: string; p_labourer_id: string; p_withdrawal_date: string; p_amount: number };
+        Args: { p_factory_id: string; p_labourer_id: string; p_withdrawal_date: string; p_settlement_cutoff: string; p_amount: number };
         Returns: {
           withdrawal_id: string;
           withdrawal_factory_id: string;
@@ -1453,7 +2181,31 @@ export type Database = {
           withdrawal_amount: number;
           created_at: string;
           available_balance: number;
+          settlement_id: string;
+          settled_through: string;
         }[];
+      };
+      get_production_labourer_account: {
+        Args: { p_factory_id: string; p_labourer_id: string; p_as_of_date: string };
+        Returns: {
+          settled_earned: number;
+          live_earned: number;
+          total_earned: number;
+          total_withdrawn: number;
+          available_balance: number;
+          latest_settlement_cutoff: string | null;
+        }[];
+      };
+      save_production_entry: {
+        Args: {
+          p_factory_id: string;
+          p_entry_id: string;
+          p_labourer_id: string;
+          p_brick_type_id: string;
+          p_production_date: string;
+          p_quantity: number;
+        };
+        Returns: Database["public"]["Tables"]["production_entries"]["Row"][];
       };
       create_labour_group_withdrawal: {
         Args: { p_factory_id: string; p_labour_group_id: string; p_withdrawal_date: string; p_amount: number };
@@ -1468,7 +2220,11 @@ export type Database = {
         }[];
       };
     };
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
+    Enums: {
+      mud_accounting_mode: MudAccountingMode;
+    };
+    CompositeTypes: {
+      coal_purchase_detail: CoalPurchaseDetailRow;
+    };
   };
 };

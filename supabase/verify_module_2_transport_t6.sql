@@ -155,7 +155,8 @@ begin
   if daily_save_definition ilike '%transport_weekly_%'
     or production_definition ilike '%transport_weekly_%'
     or mud_definition ilike '%transport_weekly_%'
-    or production_definition not ilike '%resolve_production_wage_rate%'
+    or production_definition not ilike '%production earnings are continuous%'
+    or production_definition not ilike '%p2522%'
     or mud_definition not ilike '%mud_supply%' then
     raise exception 'FAIL: T2B, production, or mud wage behavior was modified';
   end if;

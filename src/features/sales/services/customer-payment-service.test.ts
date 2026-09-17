@@ -117,8 +117,8 @@ const allocationRows = [{
 }];
 
 const challanNumberRows = [
-  { id: "challan-1", challan_number: "41" },
-  { id: "challan-2", challan_number: "42" },
+  { id: "challan-1", challan_number: "41", challan_date: "2026-08-25" },
+  { id: "challan-2", challan_number: "42", challan_date: "2026-08-26" },
 ];
 
 test("creates one payment through the controlled RPC with explicit multi-Challan allocations", async () => {
@@ -151,6 +151,9 @@ test("creates one payment through the controlled RPC with explicit multi-Challan
   assert.deepEqual(result.allocations.map((allocation: { challanNumber: string | null }) => (
     allocation.challanNumber
   )), ["42", "41"]);
+  assert.deepEqual(result.allocations.map((allocation: { challanDate: string }) => (
+    allocation.challanDate
+  )), ["2026-08-26", "2026-08-25"]);
   assert.deepEqual(calls[0], ["rpc", "create_customer_payment", {
     p_factory_id: "factory-a",
     p_customer_id: "customer-a",

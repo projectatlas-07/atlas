@@ -16,7 +16,7 @@ import {
 
 const candidates: CustomerOutstandingChallan[] = [{
   challanId: "challan-1",
-  challanNumber: "41",
+  challanNumber: "11",
   challanDate: "2026-08-25",
   createdAt: "2026-08-25T10:00:00Z",
   challanStatus: "active",
@@ -28,7 +28,7 @@ const candidates: CustomerOutstandingChallan[] = [{
   brickLines: [{ itemId: "item-1", particularsSnapshot: "Historical 1st Class", quantity: 1500 }],
 }, {
   challanId: "challan-2",
-  challanNumber: "42",
+  challanNumber: "11",
   challanDate: "2026-08-26",
   createdAt: "2026-08-26T10:00:00Z",
   challanStatus: "active",
@@ -105,10 +105,10 @@ test("new customer payments require a supported persisted payment mode", () => {
   );
 });
 
-test("successful payment locks only affected Challans and preserves unrelated object state", () => {
+test("payment locks only the selected ID when visible Challan numbers are duplicates", () => {
   const headers = [
-    { id: "challan-1", isLocked: false },
-    { id: "challan-2", isLocked: false },
+    { id: "challan-1", challanNumber: "11", isLocked: false },
+    { id: "challan-2", challanNumber: "11", isLocked: false },
   ] as ChallanHeader[];
   const payment = {
     allocations: [{ challanId: "challan-1" }],

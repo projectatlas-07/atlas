@@ -153,6 +153,7 @@ test("editing uses current live Vehicle configuration while saved detail remains
     companyPoliceStationSnapshot: "Police",
     companyDistrictSnapshot: "District",
     companyStateSnapshot: "State",
+    companyGstinSnapshot: null,
     vehicleId: onVehicle.id,
     vehicleNumberSnapshot: onVehicle.normalizedVehicleNumber,
     deliveryWageApplicableSnapshot: true,

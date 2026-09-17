@@ -12,7 +12,7 @@ export type PrintablePaymentReceipt = {
   amount: number;
   paymentMode: CustomerPaymentMode;
   note: string | null;
-  allocations: Array<{ challanNumber: ChallanNumber; amount: number }>;
+  allocations: Array<{ challanNumber: ChallanNumber; challanDate: string; amount: number }>;
 };
 
 export function buildPrintablePaymentReceipt(
@@ -36,6 +36,7 @@ export function buildPrintablePaymentReceipt(
     note: payment.note,
     allocations: payment.allocations.map((allocation) => ({
       challanNumber: allocation.challanNumber,
+      challanDate: allocation.challanDate,
       amount: allocation.allocatedAmount,
     })),
   };

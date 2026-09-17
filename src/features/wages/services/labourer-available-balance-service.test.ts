@@ -1,119 +1,93 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 
-type QueryCall = [table: string, method: string, column?: string, value?: string];
-type DatedAmount = { date: string; amount: number };
+type AccountRow = {
+  settled_earned: number;
+  live_earned: number;
+  total_earned: number;
+  total_withdrawn: number;
+  available_balance: number;
+  latest_settlement_cutoff: string | null;
+};
 
-const calls: QueryCall[] = [];
-let earningRows: DatedAmount[] = [];
-let withdrawalRows: DatedAmount[] = [];
-let earningsError: { message: string } | null = null;
-let withdrawalsError: { message: string } | null = null;
+type RpcArgs = { p_factory_id: string; p_labourer_id: string; p_as_of_date: string };
+const calls: Array<[string, RpcArgs]> = [];
+let response: { data: AccountRow[] | null; error: { message: string } | null } = { data: [], error: null };
 
 const fakeSupabase = {
-  from(table: "weekly_earnings" | "withdrawals") {
-    return {
-      select(columns: string) {
-        calls.push([table, "select", columns]);
-        return {
-          eq(column: string, value: string) {
-            calls.push([table, "eq", column, value]);
-            return this;
-          },
-          lte(column: string, value: string) {
-            calls.push([table, "lte", column, value]);
-            const rows = table === "weekly_earnings" ? earningRows : withdrawalRows;
-            const error = table === "weekly_earnings" ? earningsError : withdrawalsError;
-            return Promise.resolve({
-              data: error ? null : rows.filter((row) => row.date <= value).map((row) => ({ amount: row.amount })),
-              error,
-            });
-          },
-        };
-      },
-    };
+  rpc(functionName: string, args: RpcArgs) {
+    calls.push([functionName, args]);
+    return Promise.resolve(response);
   },
 };
 
 await mock.module("../../../lib/supabase/client.ts", { namedExports: { supabase: fakeSupabase } });
 const { getLabourerAvailableBalance } = await import("./labourer-available-balance-service.ts");
 
-function setRows(earnings: DatedAmount[], withdrawals: DatedAmount[]) {
+test("uses the authoritative Production account and maps settled plus live earnings", async () => {
   calls.length = 0;
-  earningRows = earnings;
-  withdrawalRows = withdrawals;
-  earningsError = null;
-  withdrawalsError = null;
-}
-
-test("sums only locked earnings whose Sunday has ended by the supplied date", async () => {
-  setRows(
-    [
-      { date: "2026-08-03", amount: 795 },
-      { date: "2026-08-10", amount: 530 },
-    ],
-    [],
-  );
+  response = { data: [{
+    settled_earned: 1_250,
+    live_earned: 400,
+    total_earned: 1_650,
+    total_withdrawn: 500,
+    available_balance: 1_150,
+    latest_settlement_cutoff: "2026-09-12",
+  }], error: null };
 
   assert.deepEqual(
-    await getLabourerAvailableBalance({ factoryId: "factory-a", labourerId: "labourer-a", asOfDate: "2026-08-09" }),
-    { totalEarned: 795, totalWithdrawn: 0, availableBalance: 795 },
+    await getLabourerAvailableBalance({ factoryId: "factory-a", labourerId: "labourer-a", asOfDate: "2026-09-15" }),
+    {
+      settledEarned: 1_250,
+      liveEarned: 400,
+      totalEarned: 1_650,
+      totalWithdrawn: 500,
+      availableBalance: 1_150,
+      latestSettlementCutoff: "2026-09-12",
+    },
   );
-  assert.deepEqual(calls, [
-    ["weekly_earnings", "select", "amount"],
-    ["weekly_earnings", "eq", "factory_id", "factory-a"],
-    ["weekly_earnings", "eq", "labourer_id", "labourer-a"],
-    ["weekly_earnings", "lte", "week_start", "2026-08-03"],
-    ["withdrawals", "select", "amount"],
-    ["withdrawals", "eq", "factory_id", "factory-a"],
-    ["withdrawals", "eq", "labourer_id", "labourer-a"],
-    ["withdrawals", "lte", "withdrawal_date", "2026-08-09"],
-  ]);
+  assert.deepEqual(calls, [["get_production_labourer_account", {
+    p_factory_id: "factory-a",
+    p_labourer_id: "labourer-a",
+    p_as_of_date: "2026-09-15",
+  }]]);
 });
 
-test("subtracts withdrawals through the date and excludes future withdrawals", async () => {
-  setRows(
-    [{ date: "2026-08-03", amount: 1000 }],
-    [
-      { date: "2026-08-08", amount: 250 },
-      { date: "2026-08-10", amount: 100 },
-    ],
-  );
+test("supports a fully live account before its first settlement", async () => {
+  calls.length = 0;
+  response = { data: [{
+    settled_earned: 0,
+    live_earned: 800,
+    total_earned: 800,
+    total_withdrawn: 0,
+    available_balance: 800,
+    latest_settlement_cutoff: null,
+  }], error: null };
 
-  assert.deepEqual(
-    await getLabourerAvailableBalance({ factoryId: "factory-a", labourerId: "labourer-a", asOfDate: "2026-08-09" }),
-    { totalEarned: 1000, totalWithdrawn: 250, availableBalance: 750 },
-  );
+  const account = await getLabourerAvailableBalance({
+    factoryId: "factory-a", labourerId: "labourer-b", asOfDate: "2026-09-15",
+  });
+  assert.equal(account.liveEarned, 800);
+  assert.equal(account.latestSettlementCutoff, null);
 });
 
-test("returns zero totals when no data exists", async () => {
-  setRows([], []);
-
-  assert.deepEqual(
-    await getLabourerAvailableBalance({ factoryId: "factory-a", labourerId: "labourer-a", asOfDate: "2026-08-09" }),
-    { totalEarned: 0, totalWithdrawn: 0, availableBalance: 0 },
-  );
-});
-
-test("surfaces earnings and withdrawal request failures clearly", async () => {
-  setRows([], []);
-  earningsError = { message: "Earnings request failed." };
+test("surfaces account failures and empty responses clearly", async () => {
+  calls.length = 0;
+  response = { data: null, error: { message: "Rate not set for labourer on 2026-09-14." } };
   await assert.rejects(
-    () => getLabourerAvailableBalance({ factoryId: "factory-a", labourerId: "labourer-a", asOfDate: "2026-08-09" }),
-    /Could not load locked earnings: Earnings request failed/,
+    () => getLabourerAvailableBalance({ factoryId: "factory-a", labourerId: "labourer-a", asOfDate: "2026-09-15" }),
+    /Could not load Production account: Rate not set/,
   );
 
-  setRows([], []);
-  withdrawalsError = { message: "Withdrawals request failed." };
+  response = { data: [], error: null };
   await assert.rejects(
-    () => getLabourerAvailableBalance({ factoryId: "factory-a", labourerId: "labourer-a", asOfDate: "2026-08-09" }),
-    /Could not load withdrawals: Withdrawals request failed/,
+    () => getLabourerAvailableBalance({ factoryId: "factory-a", labourerId: "labourer-a", asOfDate: "2026-09-15" }),
+    /returned no account/,
   );
 });
 
 test("rejects invalid local calendar dates before querying", async () => {
-  setRows([], []);
-
+  calls.length = 0;
   await assert.rejects(
     () => getLabourerAvailableBalance({ factoryId: "factory-a", labourerId: "labourer-a", asOfDate: "2026-02-30" }),
     /asOfDate must be a valid YYYY-MM-DD date/,

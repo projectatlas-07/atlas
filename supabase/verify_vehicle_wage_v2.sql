@@ -120,6 +120,7 @@ begin
   select * into saved
   from public.create_challan(
     current_setting('atlas_vw2.factory_a_id')::uuid,
+    null::text,
     date '2026-09-01',
     current_setting('atlas_vw2.customer_a_id')::uuid,
     p_vehicle_id,
@@ -150,6 +151,7 @@ begin
   from public.update_challan(
     current_setting('atlas_vw2.factory_a_id')::uuid,
     p_challan_id,
+    null::text,
     date '2026-09-01',
     current_setting('atlas_vw2.customer_a_id')::uuid,
     p_vehicle_id,

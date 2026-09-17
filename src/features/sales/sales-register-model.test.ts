@@ -79,6 +79,27 @@ test("active and void Challans both remain visible in the register", () => {
   assert.match(registerSource, /entry\.status === "void" \? "Void" : "Active"/);
 });
 
+test("duplicate visible numbers remain separate Sales Register transactions", () => {
+  const duplicates = [
+    { ...entries[0]!, challanId: "duplicate-a", challanNumber: "11" },
+    {
+      ...entries[2]!,
+      challanId: "duplicate-b",
+      challanNumber: "11",
+      customerNameSnapshot: "Another Customer",
+    },
+  ];
+  assert.deepEqual(duplicates.map((entry) => entry.challanId), ["duplicate-a", "duplicate-b"]);
+  assert.deepEqual(summarizeSalesRegister(duplicates), {
+    brickRevenue: 5000,
+    otherRevenue: 321.09,
+    totalRevenue: 5321.09,
+    activeChallans: 2,
+    totalBrickQuantity: 2750,
+    voidChallans: 0,
+  });
+});
+
 test("void Challans are excluded from every active Sales summary total", () => {
   assert.deepEqual(summarizeSalesRegister(entries), {
     brickRevenue: 5000,

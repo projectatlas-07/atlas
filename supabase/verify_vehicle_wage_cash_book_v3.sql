@@ -221,6 +221,7 @@ begin
   );
   select * into challan from public.create_challan(
     factory_id,
+    null::text,
     date '2026-09-01',
     customer.id,
     vehicle.id,

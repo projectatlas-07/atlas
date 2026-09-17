@@ -108,7 +108,7 @@ test("rejects invalid range input before reading Production", async () => {
   assert.deepEqual(calls, []);
 });
 
-test("Wednesday through next Thursday resolves each date's Monday and both historical rates", () => {
+test("a range spanning a mid-week change uses each date's exact historical Mud rate", () => {
   const entries = [
     "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-12", "2026-09-13",
     "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17",
@@ -116,21 +116,21 @@ test("Wednesday through next Thursday resolves each date's Monday and both histo
   const result = calculateMudSupplyRangeSummary({
     entries,
     wageRates: [
-      mudRate("week-a", 230, "2026-09-07", "2026-09-13"),
-      mudRate("week-b", 250, "2026-09-14", "2026-09-20"),
-      mudRate("current", 300, "2026-09-21", null),
+      mudRate("rate-a", 230, "2026-09-01", "2026-09-14"),
+      mudRate("rate-b", 250, "2026-09-15", null),
       { id: "production", applies_to: "production", rate_per_1000_bricks: 900, effective_from: "2026-09-07", effective_to: null },
     ],
+    range: { fromDate: "2026-09-09", toDate: "2026-09-17" },
   });
 
   assert.equal(result.rangeProduction, 9_000);
-  assert.equal(result.rangeEarned, 2_150);
-  assert.deepEqual(result.days.map((day) => day.weekStart), [
-    "2026-09-07", "2026-09-07", "2026-09-07", "2026-09-07", "2026-09-07",
-    "2026-09-14", "2026-09-14", "2026-09-14", "2026-09-14",
-  ]);
+  assert.equal(result.rangeEarned, 2_130);
   assert.deepEqual(result.days.map((day) => day.ratePer1000Bricks), [
-    230, 230, 230, 230, 230, 250, 250, 250, 250,
+    230, 230, 230, 230, 230, 230, 250, 250, 250,
+  ]);
+  assert.deepEqual(result.ratePeriods, [
+    { wageRateId: "rate-a", ratePer1000Bricks: 230, fromDate: "2026-09-09", toDate: "2026-09-14" },
+    { wageRateId: "rate-b", ratePer1000Bricks: 250, fromDate: "2026-09-15", toDate: "2026-09-17" },
   ]);
 });
 
@@ -140,17 +140,23 @@ test("daily quantities are summed before applying the existing no-rounding Mud f
       { productionDate: "2026-09-09", quantity: 500 },
       { productionDate: "2026-09-09", quantity: 243 },
     ],
-    wageRates: [mudRate("week-a", 230, "2026-09-07", null)],
+    wageRates: [mudRate("rate-a", 230, "2026-09-07", null)],
+    range: { fromDate: "2026-09-09", toDate: "2026-09-09" },
   });
 
   assert.equal(result.rangeProduction, 743);
   assert.equal(result.rangeEarned, 170.89);
   assert.deepEqual(result.days, [{
     productionDate: "2026-09-09",
-    weekStart: "2026-09-07",
     quantity: 743,
     ratePer1000Bricks: 230,
     earned: 170.89,
+  }]);
+  assert.deepEqual(result.ratePeriods, [{
+    wageRateId: "rate-a",
+    ratePer1000Bricks: 230,
+    fromDate: "2026-09-09",
+    toDate: "2026-09-09",
   }]);
 });
 
@@ -162,6 +168,7 @@ test("an unchanged complete week reconciles and unfinished source edits remain i
       { productionDate: "2026-09-06", quantity: 4_000 },
     ],
     wageRates,
+    range: { fromDate: "2026-08-31", toDate: "2026-09-06" },
   });
   const lockedWeeklyEarning = { quantityUsed: 7_000, amount: 1_610 };
   assert.deepEqual(
@@ -172,10 +179,12 @@ test("an unchanged complete week reconciles and unfinished source edits remain i
   const current = calculateMudSupplyRangeSummary({
     entries: [{ productionDate: "2026-09-09", quantity: 5_000 }],
     wageRates,
+    range: { fromDate: "2026-09-07", toDate: "2026-09-13" },
   });
   const editedCurrent = calculateMudSupplyRangeSummary({
     entries: [{ productionDate: "2026-09-09", quantity: 5_500 }],
     wageRates,
+    range: { fromDate: "2026-09-07", toDate: "2026-09-13" },
   });
   assert.equal(current.rangeEarned, 1_150);
   assert.equal(editedCurrent.rangeEarned, 1_265);
@@ -184,8 +193,8 @@ test("an unchanged complete week reconciles and unfinished source edits remain i
 test("missing or overlapping historical Mud rates fail instead of fabricating earnings", () => {
   const entries = [{ productionDate: "2026-09-09", quantity: 1_000 }];
   assert.throws(
-    () => calculateMudSupplyRangeSummary({ entries, wageRates: [] }),
-    /No mud_supply wage rate applies/,
+    () => calculateMudSupplyRangeSummary({ entries, wageRates: [], range: { fromDate: "2026-09-09", toDate: "2026-09-09" } }),
+    /Mud rate not set for 2026-09-09/,
   );
   assert.throws(
     () => calculateMudSupplyRangeSummary({
@@ -194,12 +203,29 @@ test("missing or overlapping historical Mud rates fail instead of fabricating ea
         mudRate("a", 230, "2026-09-07", null),
         mudRate("b", 250, "2026-09-07", null),
       ],
+      range: { fromDate: "2026-09-09", toDate: "2026-09-09" },
     }),
-    /Overlapping mud_supply wage rates/,
+    /Overlapping Mud rates apply on 2026-09-09/,
   );
-  assert.deepEqual(calculateMudSupplyRangeSummary({ entries: [], wageRates: [] }), {
+});
+
+test("missing coverage is explicit even when the uncovered date has no Production", () => {
+  assert.throws(() => calculateMudSupplyRangeSummary({
+    entries: [{ productionDate: "2026-09-15", quantity: 1_000 }],
+    wageRates: [mudRate("late", 250, "2026-09-15", null)],
+    range: { fromDate: "2026-09-01", toDate: "2026-09-30" },
+  }), /Mud rate not set for 2026-09-01/);
+});
+
+test("an empty Production period stays zero but still reports its one applicable rate", () => {
+  assert.deepEqual(calculateMudSupplyRangeSummary({
+    entries: [],
+    wageRates: [mudRate("rate", 230, "2026-08-01", null)],
+    range: { fromDate: "2026-09-01", toDate: "2026-09-30" },
+  }), {
     rangeProduction: 0,
     rangeEarned: 0,
+    ratePeriods: [{ wageRateId: "rate", ratePer1000Bricks: 230, fromDate: "2026-09-01", toDate: "2026-09-30" }],
     days: [],
   });
 });

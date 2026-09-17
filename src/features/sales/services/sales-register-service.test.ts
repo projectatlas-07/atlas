@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
+import { summarizeSalesRegister } from "../sales-register-model.ts";
 
 type DatabaseError = {
   message: string;
@@ -13,6 +14,23 @@ type Call = [method: string, value?: unknown, secondValue?: unknown];
 const calls: Call[] = [];
 let response: Response = { data: [], error: null };
 const rpcResponses = new Map<string, Response>();
+
+function applyRequestedOrdering(rows: unknown[]): unknown[] {
+  const orderCalls = calls.filter(([method]) => method === "order") as Array<[
+    "order",
+    string,
+    { ascending: boolean },
+  ]>;
+  return [...rows].sort((leftValue, rightValue) => {
+    const left = leftValue as Record<string, unknown>;
+    const right = rightValue as Record<string, unknown>;
+    for (const [, column, options] of orderCalls) {
+      const comparison = String(left[column]).localeCompare(String(right[column]));
+      if (comparison !== 0) return options.ascending ? comparison : -comparison;
+    }
+    return 0;
+  });
+}
 
 function queryBuilder() {
   const builder = {
@@ -40,7 +58,10 @@ function queryBuilder() {
       onFulfilled?: ((value: Response) => TResult1 | PromiseLike<TResult1>) | null,
       onRejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
     ) {
-      return Promise.resolve(response).then(onFulfilled, onRejected);
+      const orderedResponse = response.data === null
+        ? response
+        : { ...response, data: applyRequestedOrdering(response.data) };
+      return Promise.resolve(orderedResponse).then(onFulfilled, onRejected);
     },
   };
   return builder;
@@ -73,7 +94,38 @@ function reset(): void {
   rpcResponses.clear();
 }
 
-test("Sales Register query is factory-scoped, inclusive, deterministic, and date-range limited", async () => {
+function registerRow(
+  id: string,
+  challanDate: string,
+  createdAt: string,
+  total: string,
+  status: "active" | "void",
+  noteOnly = false,
+): Record<string, unknown> {
+  return {
+    id,
+    challan_number: "11",
+    challan_date: challanDate,
+    created_at: createdAt,
+    customer_name_snapshot: id,
+    challan_total: total,
+    vehicle_number: null,
+    status,
+    challan_items: noteOnly ? [] : [{
+      brick_particulars_snapshot: "Class One",
+      quantity: "1",
+      line_amount: total,
+      line_position: 1,
+    }],
+    challan_flexible_lines: noteOnly ? [{
+      line_type: "NOTE",
+      line_category: "NON_FINANCIAL",
+      amount: "0",
+    }] : [],
+  };
+}
+
+test("Sales Register orders by business date, then newest creation, then stable internal ID", async () => {
   reset();
   await listSalesRegister("factory-a", { fromDate: "2026-08-01", toDate: "2026-08-27" });
   assert.equal(calls[0][1], "challans");
@@ -85,8 +137,62 @@ test("Sales Register query is factory-scoped, inclusive, deterministic, and date
     ["gte", "challan_date", "2026-08-01"],
     ["lte", "challan_date", "2026-08-27"],
     ["order", "challan_date", { ascending: false }],
+    ["order", "created_at", { ascending: false }],
     ["order", "id", { ascending: false }],
   ]);
+  assert.equal(
+    calls.some(([method, column]) => method === "order" && column === "challan_number"),
+    false,
+  );
+});
+
+test("same-date duplicate and note-only Challans remain newest-created-first on repeated reads", async () => {
+  reset();
+  response.data = [
+    registerRow("older-30000", "2026-09-14", "2026-09-14T09:00:00Z", "30000", "active"),
+    registerRow("note-only", "2026-09-14", "2026-09-14T10:00:00Z", "0", "active", true),
+    registerRow("middle-24000", "2026-09-14", "2026-09-14T11:00:00Z", "24000", "void"),
+    registerRow("newest-50000", "2026-09-14", "2026-09-14T12:00:00Z", "50000", "active"),
+    registerRow("newer-business-date", "2026-09-15", "2026-09-13T08:00:00Z", "1000", "active"),
+    registerRow("back-entered-old-date", "2026-09-10", "2026-09-16T08:00:00Z", "2000", "active"),
+  ];
+  rpcResponses.set("get_challan_payment_state", {
+    data: [{
+      challan_id: "payment-target",
+      challan_status: "active",
+      sale_total: "0",
+      total_paid: "0",
+      outstanding_amount: "0",
+      payment_state: "unpaid",
+    }],
+    error: null,
+  });
+
+  const range = { fromDate: "2026-09-10", toDate: "2026-09-15" };
+  const firstRead = await listSalesRegister("factory-a", range);
+  const secondRead = await listSalesRegister("factory-a", range);
+  const expectedIds = [
+    "newer-business-date",
+    "newest-50000",
+    "middle-24000",
+    "note-only",
+    "older-30000",
+    "back-entered-old-date",
+  ];
+
+  assert.deepEqual(firstRead.map((entry) => entry.challanId), expectedIds);
+  assert.deepEqual(secondRead.map((entry) => entry.challanId), expectedIds);
+  assert.equal(firstRead.every((entry) => entry.challanNumber === "11"), true);
+  assert.equal(firstRead.find((entry) => entry.challanId === "note-only")?.items.length, 0);
+  assert.equal(firstRead.find((entry) => entry.challanId === "middle-24000")?.status, "void");
+  assert.deepEqual(summarizeSalesRegister(firstRead), {
+    brickRevenue: 83000,
+    otherRevenue: 0,
+    totalRevenue: 83000,
+    activeChallans: 5,
+    totalBrickQuantity: 4,
+    voidChallans: 1,
+  });
 });
 
 test("service derives the explicit revenue split from persisted authoritative rows", async () => {

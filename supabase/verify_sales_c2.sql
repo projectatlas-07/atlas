@@ -36,6 +36,7 @@ declare
   brick_a_id uuid := gen_random_uuid();
   brick_b_id uuid := gen_random_uuid();
   factory_b_vehicle_id uuid := gen_random_uuid();
+  fixture_vehicle_number text := 'AT' || upper(substr(replace(factory_a_id::text, '-', ''), 1, 10));
 begin
   select id, user_id into mapping_id, test_user_id
   from public.factory_users
@@ -93,7 +94,7 @@ begin
     id, factory_id, vehicle_number, normalized_vehicle_number,
     delivery_wage_tracking_enabled
   ) values (
-    factory_b_vehicle_id, factory_b_id, 'WB12AB1234', 'WB12AB1234', true
+    factory_b_vehicle_id, factory_b_id, fixture_vehicle_number, fixture_vehicle_number, true
   );
 
   perform set_config('atlas_c2.user_id', test_user_id::text, true);
@@ -102,6 +103,7 @@ begin
   perform set_config('atlas_c2.customer_a_id', customer_a_id::text, true);
   perform set_config('atlas_c2.brick_a_id', brick_a_id::text, true);
   perform set_config('atlas_c2.factory_b_vehicle_id', factory_b_vehicle_id::text, true);
+  perform set_config('atlas_c2.fixture_vehicle_number', fixture_vehicle_number, true);
 end;
 $$;
 
@@ -115,6 +117,7 @@ declare
   customer_a_id uuid := current_setting('atlas_c2.customer_a_id')::uuid;
   brick_a_id uuid := current_setting('atlas_c2.brick_a_id')::uuid;
   factory_b_vehicle_id uuid := current_setting('atlas_c2.factory_b_vehicle_id')::uuid;
+  fixture_vehicle_number text := current_setting('atlas_c2.fixture_vehicle_number');
   vehicle_on_a public.vehicles%rowtype;
   vehicle_on_b public.vehicles%rowtype;
   vehicle_off public.vehicles%rowtype;
@@ -133,21 +136,25 @@ declare
   other_revenue numeric;
 begin
   select * into vehicle_on_a from public.find_or_create_vehicle(
-    factory_a_id, 'wb 12 ab 1234', true
+    factory_a_id,
+    lower(substr(fixture_vehicle_number, 1, 2) || ' '
+      || substr(fixture_vehicle_number, 3, 4) || ' '
+      || substr(fixture_vehicle_number, 7)),
+    true
   );
   select * into duplicate_vehicle from public.find_or_create_vehicle(
-    factory_a_id, 'WB12AB1234', false
+    factory_a_id, fixture_vehicle_number, false
   );
   if duplicate_vehicle.id <> vehicle_on_a.id
     or duplicate_vehicle.delivery_wage_tracking_enabled <> true
-    or vehicle_on_a.normalized_vehicle_number <> 'WB12AB1234' then
+    or vehicle_on_a.normalized_vehicle_number <> fixture_vehicle_number then
     raise exception 'FAIL: formatting variants did not resolve to the existing Vehicle';
   end if;
   if not exists (
     select 1 from public.vehicles
-    where factory_id = factory_a_id and normalized_vehicle_number = 'WB12AB1234'
+    where factory_id = factory_a_id and normalized_vehicle_number = fixture_vehicle_number
   ) or (select count(*) from public.vehicles
-        where normalized_vehicle_number = 'WB12AB1234') <> 1 then
+        where normalized_vehicle_number = fixture_vehicle_number) <> 1 then
     -- RLS exposes only Factory A here; Factory B is checked below as postgres.
     raise exception 'FAIL: normalized Vehicle identity is not unique in visible factory scope';
   end if;
@@ -168,7 +175,7 @@ begin
     'cross-factory Vehicle attachment is rejected',
     'P3102',
     format(
-      'select * from public.create_challan(%L::uuid, date %L, %L::uuid, %L::uuid, null::numeric, %L::jsonb, %L::jsonb)',
+      'select * from public.create_challan(%L::uuid, null::text, date %L, %L::uuid, %L::uuid, null::numeric, %L::jsonb, %L::jsonb)',
       factory_a_id, '2026-09-01', customer_a_id, factory_b_vehicle_id,
       jsonb_build_array(jsonb_build_object(
         'brick_type_id', brick_a_id, 'quantity', 1000, 'rate', 1000
@@ -177,7 +184,7 @@ begin
   );
 
   select * into no_vehicle_challan from public.create_challan(
-    factory_a_id, date '2026-09-01', customer_a_id, null::uuid, 999,
+    factory_a_id, null::text, date '2026-09-01', customer_a_id, null::uuid, 999,
     jsonb_build_array(jsonb_build_object(
       'brick_type_id', brick_a_id, 'quantity', 1000, 'rate', 1000
     )), '[]'::jsonb
@@ -191,7 +198,7 @@ begin
   raise notice 'PASS: no Vehicle is valid and clears all C2 wage state';
 
   select * into off_challan from public.create_challan(
-    factory_a_id, date '2026-09-01', customer_a_id, vehicle_off.id, 999,
+    factory_a_id, null::text, date '2026-09-01', customer_a_id, vehicle_off.id, 999,
     jsonb_build_array(jsonb_build_object(
       'brick_type_id', brick_a_id, 'quantity', 1000, 'rate', 1000
     )), '[]'::jsonb
@@ -208,7 +215,7 @@ begin
     'ON Vehicle requires Trip Labour Wage',
     'P3106',
     format(
-      'select * from public.create_challan(%L::uuid, date %L, %L::uuid, %L::uuid, null::numeric, %L::jsonb, %L::jsonb)',
+      'select * from public.create_challan(%L::uuid, null::text, date %L, %L::uuid, %L::uuid, null::numeric, %L::jsonb, %L::jsonb)',
       factory_a_id, '2026-09-01', customer_a_id, vehicle_on_a.id,
       jsonb_build_array(jsonb_build_object(
         'brick_type_id', brick_a_id, 'quantity', 1000, 'rate', 1000
@@ -217,7 +224,7 @@ begin
   );
 
   select * into historical_on_challan from public.create_challan(
-    factory_a_id, date '2026-09-01', customer_a_id, vehicle_on_a.id, 750,
+    factory_a_id, null::text, date '2026-09-01', customer_a_id, vehicle_on_a.id, 750,
     jsonb_build_array(jsonb_build_object(
       'brick_type_id', brick_a_id, 'quantity', 1000, 'rate', 1000
     )), '[]'::jsonb
@@ -240,7 +247,7 @@ begin
     raise exception 'FAIL: live ON-to-OFF change rewrote historical snapshot';
   end if;
   select * into future_off_challan from public.create_challan(
-    factory_a_id, date '2026-09-01', customer_a_id, vehicle_on_a.id, 999,
+    factory_a_id, null::text, date '2026-09-01', customer_a_id, vehicle_on_a.id, 999,
     jsonb_build_array(jsonb_build_object(
       'brick_type_id', brick_a_id, 'quantity', 1000, 'rate', 1000
     )), '[]'::jsonb
@@ -255,13 +262,13 @@ begin
     factory_a_id, vehicle_on_a.id, true
   );
   select * into update_target from public.create_challan(
-    factory_a_id, date '2026-09-01', customer_a_id, vehicle_on_a.id, 800,
+    factory_a_id, null::text, date '2026-09-01', customer_a_id, vehicle_on_a.id, 800,
     jsonb_build_array(jsonb_build_object(
       'brick_type_id', brick_a_id, 'quantity', 1000, 'rate', 1000
     )), '[]'::jsonb
   );
   select * into update_target from public.update_challan(
-    factory_a_id, update_target.id, date '2026-09-02', customer_a_id,
+    factory_a_id, update_target.id, null::text, date '2026-09-02', customer_a_id,
     vehicle_off.id, 800,
     jsonb_build_array(jsonb_build_object(
       'brick_type_id', brick_a_id, 'quantity', 1000, 'rate', 1000
@@ -277,7 +284,7 @@ begin
     'OFF-to-ON edit requires a new Trip Labour Wage',
     'P3106',
     format(
-      'select * from public.update_challan(%L::uuid, %L::uuid, date %L, %L::uuid, %L::uuid, null::numeric, %L::jsonb, %L::jsonb)',
+      'select * from public.update_challan(%L::uuid, %L::uuid, null::text, date %L, %L::uuid, %L::uuid, null::numeric, %L::jsonb, %L::jsonb)',
       factory_a_id, update_target.id, '2026-09-02', customer_a_id,
       vehicle_on_b.id,
       jsonb_build_array(jsonb_build_object(
@@ -286,7 +293,7 @@ begin
     )
   );
   select * into update_target from public.update_challan(
-    factory_a_id, update_target.id, date '2026-09-02', customer_a_id,
+    factory_a_id, update_target.id, null::text, date '2026-09-02', customer_a_id,
     vehicle_on_b.id, 900,
     jsonb_build_array(jsonb_build_object(
       'brick_type_id', brick_a_id, 'quantity', 1000, 'rate', 1000
@@ -298,7 +305,7 @@ begin
     raise exception 'FAIL: ON-A to ON-B edit did not snapshot Vehicle B';
   end if;
   select * into update_target from public.update_challan(
-    factory_a_id, update_target.id, date '2026-09-02', customer_a_id,
+    factory_a_id, update_target.id, null::text, date '2026-09-02', customer_a_id,
     null::uuid, 900,
     jsonb_build_array(jsonb_build_object(
       'brick_type_id', brick_a_id, 'quantity', 1000, 'rate', 1000
@@ -313,7 +320,7 @@ begin
   raise notice 'PASS: unlocked Vehicle edits re-resolve config and clear stale state';
 
   select * into void_target from public.create_challan(
-    factory_a_id, date '2026-09-01', customer_a_id, vehicle_on_b.id, 700,
+    factory_a_id, null::text, date '2026-09-01', customer_a_id, vehicle_on_b.id, 700,
     jsonb_build_array(jsonb_build_object(
       'brick_type_id', brick_a_id, 'quantity', 1000, 'rate', 1000
     )), '[]'::jsonb
@@ -338,7 +345,7 @@ begin
     'archived Vehicle is rejected for a final save',
     'P3105',
     format(
-      'select * from public.create_challan(%L::uuid, date %L, %L::uuid, %L::uuid, 700, %L::jsonb, %L::jsonb)',
+      'select * from public.create_challan(%L::uuid, null::text, date %L, %L::uuid, %L::uuid, 700, %L::jsonb, %L::jsonb)',
       factory_a_id, '2026-09-01', customer_a_id, vehicle_on_b.id,
       jsonb_build_array(jsonb_build_object(
         'brick_type_id', brick_a_id, 'quantity', 1000, 'rate', 1000
@@ -352,7 +359,7 @@ begin
   raise notice 'PASS: archive excludes future saves, preserves history, and restore works';
 
   select * into financial_challan from public.create_challan(
-    factory_a_id, date '2026-09-01', customer_a_id, vehicle_on_a.id, 750,
+    factory_a_id, null::text, date '2026-09-01', customer_a_id, vehicle_on_a.id, 750,
     jsonb_build_array(jsonb_build_object(
       'brick_type_id', brick_a_id, 'quantity', 1000, 'rate', 100000
     )),
@@ -395,7 +402,7 @@ begin
   raise notice 'PASS: ₹100,000 brick + ₹2,000 Other Revenue = ₹102,000 total; ₹750 wage remains separate; ₹60,000 payment leaves ₹42,000';
 
   select * into note_only from public.create_challan(
-    factory_a_id, date '2026-09-01', customer_a_id, null::uuid, null::numeric,
+    factory_a_id, null::text, date '2026-09-01', customer_a_id, null::uuid, null::numeric,
     '[]'::jsonb,
     jsonb_build_array(jsonb_build_object(
       'line_type', 'NOTE', 'order_index', 0, 'particulars', 'C2 A3 regression'
@@ -420,7 +427,7 @@ select pg_temp.expect_error(
   'payment-locked Challan cannot change Vehicle',
   'P3005',
   format(
-    'select * from public.update_challan(%L::uuid, %L::uuid, date %L, %L::uuid, null::uuid, null::numeric, %L::jsonb, %L::jsonb)',
+    'select * from public.update_challan(%L::uuid, %L::uuid, null::text, date %L, %L::uuid, null::uuid, null::numeric, %L::jsonb, %L::jsonb)',
     current_setting('atlas_c2.factory_a_id'),
     current_setting('atlas_c2.locked_challan_id'),
     '2026-09-02',
@@ -436,7 +443,7 @@ select pg_temp.expect_error(
   'payment-locked Challan cannot change Trip Labour Wage',
   'P3005',
   format(
-    'select * from public.update_challan(%L::uuid, %L::uuid, date %L, %L::uuid, %L::uuid, 999, %L::jsonb, %L::jsonb)',
+    'select * from public.update_challan(%L::uuid, %L::uuid, null::text, date %L, %L::uuid, %L::uuid, 999, %L::jsonb, %L::jsonb)',
     current_setting('atlas_c2.factory_a_id'),
     current_setting('atlas_c2.locked_challan_id'),
     '2026-09-02',
@@ -456,13 +463,14 @@ do $$
 declare
   factory_a_id uuid := current_setting('atlas_c2.factory_a_id')::uuid;
   factory_b_id uuid := current_setting('atlas_c2.factory_b_id')::uuid;
+  fixture_vehicle_number text := current_setting('atlas_c2.fixture_vehicle_number');
 begin
   if (select count(*) from public.vehicles
-      where normalized_vehicle_number = 'WB12AB1234') <> 2
+      where normalized_vehicle_number = fixture_vehicle_number) <> 2
     or not exists (select 1 from public.vehicles
-      where factory_id = factory_a_id and normalized_vehicle_number = 'WB12AB1234')
+      where factory_id = factory_a_id and normalized_vehicle_number = fixture_vehicle_number)
     or not exists (select 1 from public.vehicles
-      where factory_id = factory_b_id and normalized_vehicle_number = 'WB12AB1234') then
+      where factory_id = factory_b_id and normalized_vehicle_number = fixture_vehicle_number) then
     raise exception 'FAIL: same normalized number was not allowed across two factories';
   end if;
   raise notice 'PASS: same normalized Vehicle number is allowed in different factories';

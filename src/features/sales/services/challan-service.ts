@@ -13,9 +13,9 @@ import type {
 } from "../types.ts";
 
 const FACTORY_COLUMNS =
-  "id, name, business_description, village, post_office, police_station, district, state, address, mobile, created_at, updated_at";
+  "id, name, business_description, village, post_office, police_station, district, state, address, mobile, gstin, created_at, updated_at";
 const CHALLAN_COLUMNS =
-  "id, factory_id, challan_number, challan_date, customer_id, customer_name_snapshot, customer_address_snapshot, customer_mobile_snapshot, company_name_snapshot, company_business_description_snapshot, company_address_snapshot, company_mobile_snapshot, company_village_snapshot, company_post_office_snapshot, company_police_station_snapshot, company_district_snapshot, company_state_snapshot, vehicle_id, vehicle_number_snapshot, delivery_wage_applicable_snapshot, trip_labour_wage, vehicle_number, tractor_labour_rate_snapshot, challan_total, status, is_locked, voided_at, created_at, updated_at";
+  "id, factory_id, challan_number, challan_date, customer_id, customer_name_snapshot, customer_address_snapshot, customer_mobile_snapshot, company_name_snapshot, company_business_description_snapshot, company_address_snapshot, company_mobile_snapshot, company_village_snapshot, company_post_office_snapshot, company_police_station_snapshot, company_district_snapshot, company_state_snapshot, company_gstin_snapshot, vehicle_id, vehicle_number_snapshot, delivery_wage_applicable_snapshot, trip_labour_wage, vehicle_number, tractor_labour_rate_snapshot, challan_total, status, is_locked, voided_at, created_at, updated_at";
 const CHALLAN_ITEM_COLUMNS =
   "id, factory_id, challan_id, brick_type_id, brick_particulars_snapshot, quantity, pricing_mode, rate_per_1000_bricks, pricing_unit, line_amount, line_position, created_at";
 const CHALLAN_FLEXIBLE_LINE_COLUMNS =
@@ -32,6 +32,7 @@ type FactoryRow = {
   state: string;
   address: string;
   mobile: string;
+  gstin: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -54,6 +55,7 @@ type ChallanRow = {
   company_police_station_snapshot: string | null;
   company_district_snapshot: string | null;
   company_state_snapshot: string | null;
+  company_gstin_snapshot: string | null;
   vehicle_id: string | null;
   vehicle_number_snapshot: string | null;
   delivery_wage_applicable_snapshot: boolean;
@@ -107,6 +109,7 @@ export type UpdateFactoryPrintableProfileInput = {
   district: string;
   state: string;
   mobile: string;
+  gstin: string;
 };
 
 export class ChallanServiceError extends Error {
@@ -141,7 +144,7 @@ function readableChallanError(error: PostgrestError): string {
   if (error.code === "P3111") {
     return "This Challan change would overpay the Vehicle wage account. Review its payments first.";
   }
-  if (error.code === "23505") return "This Challan No. is already used in this factory.";
+  if (error.code === "23505") return "This Challan conflicts with an existing related record.";
   if (error.code === "22023" || error.code === "23514") {
     return "Check the Challan No., date, Vehicle, Trip Labour Wage, brick lines, and flexible lines.";
   }
@@ -237,6 +240,7 @@ function mapFactory(row: FactoryRow): FactoryPrintableProfile {
     state: row.state,
     address: row.address,
     mobile: row.mobile,
+    gstin: row.gstin,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -261,6 +265,7 @@ function mapHeader(row: ChallanRow): ChallanHeader {
     companyPoliceStationSnapshot: row.company_police_station_snapshot,
     companyDistrictSnapshot: row.company_district_snapshot,
     companyStateSnapshot: row.company_state_snapshot,
+    companyGstinSnapshot: row.company_gstin_snapshot,
     vehicleId: row.vehicle_id,
     vehicleNumberSnapshot: row.vehicle_number_snapshot,
     deliveryWageApplicableSnapshot: row.delivery_wage_applicable_snapshot,
@@ -522,6 +527,7 @@ export async function updateFactoryPrintableProfile({
   district,
   state,
   mobile,
+  gstin,
 }: UpdateFactoryPrintableProfileInput): Promise<FactoryPrintableProfile> {
   requireId(factoryId, "factoryId");
   const { data, error } = await supabase.rpc("update_factory_printable_profile", {
@@ -534,6 +540,7 @@ export async function updateFactoryPrintableProfile({
     p_district: requireText(district, "district"),
     p_state: requireText(state, "state"),
     p_mobile: requireText(mobile, "mobile"),
+    p_gstin: gstin.trim().toUpperCase() || null,
   });
 
   if (error) throw new ChallanServiceError(error);

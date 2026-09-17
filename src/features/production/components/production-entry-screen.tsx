@@ -79,7 +79,14 @@ function isTransientSaveFailure(error: unknown) {
 }
 
 function saveErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "The save could not be completed.";
+  const failure = errorDetails(error);
+  const message = error && typeof error === "object" && typeof (error as { message?: unknown }).message === "string"
+    ? (error as { message: string }).message
+    : "";
+  if (failure.code === "p2520" && message) return message;
+  if (failure.code === "42501") return "You do not have access to save this Production entry.";
+  if (failure.code === "22023" && message) return message;
+  return "The Production save could not be completed. Please try again.";
 }
 
 export function ProductionEntryScreen() {
@@ -232,33 +239,18 @@ export function ProductionEntryScreen() {
   }, []);
 
   async function persistProductionSave(payload: ProductionSavePayload) {
-    if (payload.savedEntryId) {
-      const { data, error } = await supabase
-        .from("production_entries")
-        .update({ quantity: payload.quantity })
-        .eq("id", payload.savedEntryId)
-        .eq("factory_id", payload.factoryId)
-        .select("id");
-      if (error) throw error;
-      if (!data || data.length === 0) throw new Error("Access denied: the production entry was not updated.");
-      if (data.length !== 1) throw new Error("Unexpected save result: more than one production entry was updated.");
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("production_entries")
-      .insert({
-        id: payload.newEntryId!,
-        factory_id: payload.factoryId,
-        labourer_id: payload.labourerId,
-        brick_type_id: payload.brickTypeId,
-        production_date: payload.productionDate,
-        quantity: payload.quantity,
-      })
-      .select("id, brick_type_id")
-      .single();
+    const { data, error } = await supabase.rpc("save_production_entry", {
+      p_factory_id: payload.factoryId,
+      p_entry_id: payload.savedEntryId ?? payload.newEntryId!,
+      p_labourer_id: payload.labourerId,
+      p_brick_type_id: payload.brickTypeId,
+      p_production_date: payload.productionDate,
+      p_quantity: payload.quantity,
+    });
     if (error) throw error;
-    return data;
+    const savedEntry = data?.[0];
+    if (!savedEntry) throw new Error("Production save returned no entry.");
+    return { id: savedEntry.id, brick_type_id: savedEntry.brick_type_id };
   }
 
   async function persistProductionSaveWithSessionRefresh(payload: ProductionSavePayload) {

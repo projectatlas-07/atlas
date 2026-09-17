@@ -24,6 +24,7 @@ import {
   factoryProfileErrorMessage,
   factoryProfileFormFromSaved,
   filterActiveVehiclesForChallan,
+  filterChallansByNumber,
   formatChallanDate,
   formatSalesMoney,
   getChallanEligibility,
@@ -124,6 +125,7 @@ export function SalesOfficeSection({
   const [actionError, setActionError] = useState("");
   const [isConfirmingVoid, setIsConfirmingVoid] = useState(false);
   const [isVoiding, setIsVoiding] = useState(false);
+  const [challanNumberSearch, setChallanNumberSearch] = useState("");
 
   const selectedChallanQuery = useQuery({
     queryKey: challanKey(factoryId, selectedChallanId),
@@ -236,6 +238,7 @@ export function SalesOfficeSection({
 
   const customers = customersQuery.data ?? [];
   const challans = challansQuery.data ?? [];
+  const visibleChallans = filterChallansByNumber(challans, challanNumberSearch);
   const selectedChallan = selectedChallanQuery.data;
   const factoryProfile = factoryProfileQuery.data;
   const vehicles = vehiclesQuery.data ?? [];
@@ -326,12 +329,16 @@ export function SalesOfficeSection({
           <div className="border-b border-slate-200 px-5 py-4">
             <h3 id="challan-history-heading" className="text-lg font-bold">Challan history</h3>
             <p className="mt-1 text-sm text-slate-500">Operational history, newest first.</p>
+            <label className="mt-3 block text-xs font-medium text-slate-600">Search Challan No.
+              <input type="search" value={challanNumberSearch} onChange={(event) => setChallanNumberSearch(event.target.value)} placeholder="11" className={inputClass} />
+            </label>
           </div>
           {challansQuery.isLoading && <p className="px-5 py-8 text-sm text-slate-500">Loading Challans...</p>}
           {challansQuery.error && <p role="alert" className="px-5 py-8 text-sm font-medium text-red-700">{salesOfficeErrorMessage(challansQuery.error, "Could not load Challans.")}</p>}
           {!challansQuery.isLoading && !challansQuery.error && challans.length === 0 && <p className="px-5 py-8 text-sm text-slate-500">No Challans yet. Create the first one.</p>}
-          {!challansQuery.isLoading && !challansQuery.error && challans.length > 0 && <ul className="max-h-[46rem] divide-y divide-slate-100 overflow-y-auto">
-            {challans.map((challan) => <li key={challan.id} className={selectedChallanId === challan.id ? "bg-cyan-50" : "bg-white"}>
+          {!challansQuery.isLoading && !challansQuery.error && challans.length > 0 && visibleChallans.length === 0 && <p className="px-5 py-8 text-sm text-slate-500">No Challans match this number.</p>}
+          {!challansQuery.isLoading && !challansQuery.error && visibleChallans.length > 0 && <ul className="max-h-[46rem] divide-y divide-slate-100 overflow-y-auto">
+            {visibleChallans.map((challan) => <li key={challan.id} className={selectedChallanId === challan.id ? "bg-cyan-50" : "bg-white"}>
               <button type="button" onClick={() => openChallan(challan.id)} className="w-full px-5 py-4 text-left hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-cyan-600">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -394,7 +401,7 @@ function FactoryProfileEditor({
     if (isSaving) return;
     const input = buildFactoryProfileInput(factoryId, form);
     if (!input) {
-      setError("Complete all eight Factory / Challan Profile fields.");
+      setError("Complete all required Factory / Challan Profile fields.");
       return;
     }
     setIsSaving(true);
@@ -433,6 +440,7 @@ function FactoryProfileEditor({
         <Detail label="District" value={profile.district} />
         <Detail label="State" value={profile.state} />
         <Detail label="Mobile" value={profile.mobile} />
+        {profile.gstin && <Detail label="GSTIN" value={profile.gstin} />}
       </div>}
 
       {isEditing && <form className="mt-4" onSubmit={(event) => void saveProfile(event)}>
@@ -446,6 +454,7 @@ function FactoryProfileEditor({
           <Field label="District"><input value={form.district} onChange={(event) => { setForm((current) => ({ ...current, district: event.target.value })); setError(""); }} disabled={isSaving} className={inputClass} /></Field>
           <Field label="State"><input value={form.state} onChange={(event) => { setForm((current) => ({ ...current, state: event.target.value })); setError(""); }} disabled={isSaving} className={inputClass} /></Field>
           <Field label="Mobile"><input inputMode="tel" value={form.mobile} onChange={(event) => { setForm((current) => ({ ...current, mobile: event.target.value })); setError(""); }} disabled={isSaving} className={inputClass} /></Field>
+          <Field label="GSTIN (optional)"><input autoCapitalize="characters" value={form.gstin} onChange={(event) => { setForm((current) => ({ ...current, gstin: event.target.value.toUpperCase() })); setError(""); }} disabled={isSaving} className={inputClass} /></Field>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button disabled={isSaving} className={primaryButton}>{isSaving ? "Saving..." : "Save profile"}</button>
@@ -1224,6 +1233,7 @@ function ChallanDetail({
         <Detail label="Company mobile snapshot" value={challan.companyMobileSnapshot} />
         <Detail label="Business description snapshot" value={challan.companyBusinessDescriptionSnapshot} />
         <Detail label="Company address snapshot" value={challan.companyAddressSnapshot} />
+        {challan.companyGstinSnapshot && <Detail label="GSTIN snapshot" value={challan.companyGstinSnapshot} />}
       </section>
 
       <section aria-label="Saved Vehicle information" className="mt-4 grid gap-4 rounded-lg border border-slate-200 p-4 sm:grid-cols-2">

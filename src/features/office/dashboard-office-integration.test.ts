@@ -31,7 +31,7 @@ test("Dashboard stays behind existing authentication and factory-access guards",
   }
 });
 
-test("Production remains the landing content and all existing sections retain their order", () => {
+test("Production remains the landing content while the separate legacy Wage Rates card stays removed", () => {
   assert.match(office, /<h1[^>]*>Production<\/h1>/);
   const sections = [
     '<SummaryCard label="Total Production"',
@@ -40,14 +40,11 @@ test("Production remains the landing content and all existing sections retain th
     "<SalesOfficeSection",
     "<ExpensesOfficeSection",
     "<CashBookOfficeSection",
-    "<WageRatesSection",
-    "<CalculateWagesSection",
     "<AddBrickTypeForm",
     "<BrickTypeManagement",
-    "<ProductionCrewManagement",
     "<AddLabourerForm",
     "<LabourerManagement",
-    "<LabourGroupManagement",
+    "<MudGroupManagement",
     "<SoilOfficeSection",
     "<StaffOfficeSection",
     "<TransportOfficeSection",
@@ -59,6 +56,10 @@ test("Production remains the landing content and all existing sections retain th
     assert.ok(index > previousIndex, `${section} remains available in its original order`);
     previousIndex = index;
   }
+  const activeDashboard = office.slice(0, office.indexOf("function SummaryCard"));
+  assert.doesNotMatch(activeDashboard, /<ProductionCrewManagement/);
+  assert.doesNotMatch(activeDashboard, /<CalculateWagesSection|Calculate Wages/);
+  assert.doesNotMatch(activeDashboard, /<WageRatesSection|Legacy production rate history/);
 });
 
 test("Office knows only DashboardFeature and adds no Dashboard loading, date, or source logic", () => {

@@ -6,6 +6,10 @@ const migration = readFileSync(
   new URL("../../../supabase/migrations/20260911000035_make_challan_number_optional_manual_text.sql", import.meta.url),
   "utf8",
 );
+const duplicateNumberMigration = readFileSync(
+  new URL("../../../supabase/migrations/20260913000037_allow_duplicate_challan_numbers.sql", import.meta.url),
+  "utf8",
+);
 const office = readFileSync(
   new URL("../office/components/sales-office-section.tsx", import.meta.url),
   "utf8",
@@ -40,10 +44,12 @@ test("automatic public numbering is retired and blank remains genuine NULL", () 
   assert.match(migration, /nullif\(btrim\(coalesce\(p_challan_number, ''\)\), ''\)/);
 });
 
-test("existing factory-scoped uniqueness stays in force and multiple NULL values remain legal", () => {
+test("the historical factory-scoped uniqueness is removed only by the later forward migration", () => {
   assert.match(migration, /comment on constraint challans_factory_number_key/);
   assert.doesNotMatch(migration, /drop constraint challans_factory_number_key/);
   assert.match(migration, /challan_number is null\s+or/);
+  assert.match(duplicateNumberMigration, /drop constraint challans_factory_number_key/);
+  assert.doesNotMatch(duplicateNumberMigration, /drop constraint challans_pkey|alter column id/i);
 });
 
 test("manual references are trimmed only at the edge and accept alphanumeric punctuation", () => {

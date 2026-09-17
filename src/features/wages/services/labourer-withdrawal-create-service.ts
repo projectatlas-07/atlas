@@ -1,10 +1,12 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "../../../lib/supabase/client.ts";
+import { isLocalDate, shiftLocalDate } from "../../../lib/local-date.ts";
 
 export type CreateLabourerWithdrawalInput = {
   factoryId: string;
   labourerId: string;
   withdrawalDate: string;
+  settlementCutoff: string;
   amount: number;
 };
 
@@ -16,6 +18,8 @@ export type CreatedLabourerWithdrawal = {
   amount: number;
   createdAt: string;
   availableBalance: number;
+  settlementId: string;
+  settledThrough: string;
 };
 
 export class CreateLabourerWithdrawalError extends Error {
@@ -36,12 +40,21 @@ export async function createLabourerWithdrawal({
   factoryId,
   labourerId,
   withdrawalDate,
+  settlementCutoff,
   amount,
 }: CreateLabourerWithdrawalInput): Promise<CreatedLabourerWithdrawal> {
+  if (!isLocalDate(withdrawalDate)) throw new Error("Choose a valid withdrawal date.");
+  if (!isLocalDate(settlementCutoff)) throw new Error("Choose a valid settlement cutoff.");
+  if (settlementCutoff > withdrawalDate) {
+    throw new Error("Settlement cutoff cannot be after the withdrawal date.");
+  }
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Amount must be greater than zero.");
+
   const { data, error } = await supabase.rpc("create_labourer_withdrawal", {
     p_factory_id: factoryId,
     p_labourer_id: labourerId,
     p_withdrawal_date: withdrawalDate,
+    p_settlement_cutoff: settlementCutoff,
     p_amount: amount,
   });
 
@@ -58,5 +71,17 @@ export async function createLabourerWithdrawal({
     amount: withdrawal.withdrawal_amount,
     createdAt: withdrawal.created_at,
     availableBalance: withdrawal.available_balance,
+    settlementId: withdrawal.settlement_id,
+    settledThrough: withdrawal.settled_through,
   };
+}
+
+export function getDefaultSettlementCutoff(
+  withdrawalDate: string,
+  latestSettlementCutoff: string | null,
+): string {
+  const previousDay = shiftLocalDate(withdrawalDate, -1);
+  if (!previousDay) return "";
+  if (latestSettlementCutoff && latestSettlementCutoff > previousDay) return latestSettlementCutoff;
+  return previousDay;
 }

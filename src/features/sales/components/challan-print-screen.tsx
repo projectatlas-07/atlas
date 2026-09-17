@@ -119,6 +119,7 @@ export function RoadChallanDocument({ challan }: Readonly<{ challan: PrintableCh
               </>
             : <p className="mt-2 text-sm">{challan.company.address}</p>}
           <p className="mt-1 text-sm font-semibold">Mob: {challan.company.mobile}</p>
+          {challan.company.gstin && <p className="mt-1 text-sm font-semibold">GSTIN: {challan.company.gstin}</p>}
         </div>
         <div className="border-t-2 border-black px-4 py-2 text-xl font-black uppercase tracking-[0.18em]">Road Challan</div>
       </header>

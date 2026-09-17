@@ -92,6 +92,7 @@ export type FactoryProfileForm = {
   district: string;
   state: string;
   mobile: string;
+  gstin: string;
 };
 
 export function factoryProfileFormFromSaved(
@@ -106,6 +107,7 @@ export function factoryProfileFormFromSaved(
     district: profile.district,
     state: profile.state,
     mobile: profile.mobile,
+    gstin: profile.gstin ?? "",
   };
 }
 
@@ -138,6 +140,7 @@ export function buildFactoryProfileInput(
   const district = form.district.trim().replace(/\s+/g, " ");
   const state = form.state.trim().replace(/\s+/g, " ");
   const mobile = form.mobile.trim().replace(/\s+/g, " ");
+  const gstin = form.gstin.trim().toUpperCase();
   if (!factoryId || !name || !businessDescription || !village || !postOffice
     || !policeStation || !district || !state || !mobile) return null;
   return {
@@ -150,6 +153,7 @@ export function buildFactoryProfileInput(
     district,
     state,
     mobile,
+    gstin,
   };
 }
 
@@ -515,6 +519,16 @@ export function upsertChallanNewestFirst(
   );
 }
 
+export function filterChallansByNumber(
+  challans: readonly ChallanHeader[],
+  searchText: string,
+): ChallanHeader[] {
+  const normalizedSearch = searchText.trim().toLocaleLowerCase("en-IN");
+  if (!normalizedSearch) return [...challans];
+  return challans.filter((challan) =>
+    challan.challanNumber?.toLocaleLowerCase("en-IN").includes(normalizedSearch));
+}
+
 export function formatSalesMoney(amount: number): string {
   return `₹${amount.toLocaleString("en-IN", {
     minimumFractionDigits: 2,
@@ -564,7 +578,9 @@ export function factoryProfileErrorMessage(error: unknown): string {
   const failure = error as { code?: unknown; message?: unknown };
   const code = typeof failure.code === "string" ? failure.code : "";
   const message = typeof failure.message === "string" ? failure.message : "";
-  if (code === "22023" || code === "23514") return "Complete all four Factory / Challan Profile fields.";
+  if (code === "22023" || code === "23514") {
+    return "Check the required Factory / Challan Profile fields and enter GSTIN without spaces.";
+  }
   if (code === "42501" || code === "401") return "You do not have access to update this factory profile.";
   if (/failed to fetch|networkerror|network request|load failed/i.test(message)) {
     return "Network problem. Check your connection and try again.";

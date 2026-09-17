@@ -584,7 +584,9 @@ begin
 
     or mud_definition like '%transport_%'
 
-    or production_definition not like '%resolve_production_wage_rate%'
+    or production_definition not like '%production earnings are continuous%'
+
+    or production_definition not like '%p2522%'
 
     or mud_definition not like '%mud_supply%' then
 

@@ -44,16 +44,18 @@ test("range values are visibly separate from the cumulative financial account", 
     "Earnings period",
     "Range Production",
     "Range Earned",
+    "Rate(s) Used",
     "Informational only",
     "Available Balance",
-    "Total earned",
+    "Settled earned",
+    "Live earned",
     "Total withdrawn",
     "Withdrawal History",
     "Locked Earnings History",
   ]) {
-    assert.match(detail, new RegExp(label));
+    assert.ok(detail.includes(label), `Expected Production detail to include ${label}`);
   }
-  assert.match(detail, /editable Production records and does not change locked weekly earnings or Available Balance/);
+  assert.match(detail, /Available Balance uses all settled and live Production through today, independent of this range/);
 });
 
 test("range selection affects only its production query and never account or withdrawal queries", () => {
@@ -66,10 +68,23 @@ test("range selection affects only its production query and never account or wit
 });
 
 test("informational calculation is read-only and reuses historical selectors plus the Production formula", () => {
-  assert.match(rangeService, /getCurrentLabourerProductionWageRateOverride/);
-  assert.match(rangeService, /getCurrentProductionCrewAssignment/);
-  assert.match(rangeService, /getCurrentCrewProductionWageRate/);
+  assert.match(rangeService, /getCurrentLabourerProductionWageRate/);
+  assert.doesNotMatch(rangeService, /getCurrentProductionCrewAssignment/);
+  assert.doesNotMatch(rangeService, /getCurrentCrewProductionWageRate/);
+  assert.match(rangeService, /ratePeriods/);
   assert.match(rangeService, /calculateProductionWage/);
   assert.doesNotMatch(rangeService, /weekly_earnings|production_weekly_earning_details/);
   assert.doesNotMatch(rangeService, /\.insert\(|\.update\(|\.delete\(|\.rpc\(/);
+});
+
+test("active labourer workflow exposes direct rate selection and hides Production crew concepts", () => {
+  const activeWorkflow = dashboard.slice(
+    dashboard.indexOf("function LabourerManagement"),
+    dashboard.indexOf("function LabourerProductionRateOverrideControls"),
+  );
+  for (const label of ["Set Rate", "Select All", "Select Manually", "Filter by origin", "Effective From", "Backdated change"]) {
+    assert.match(activeWorkflow, new RegExp(label));
+  }
+  assert.doesNotMatch(activeWorkflow, /Manage Crew|Manage Override|ProductionCrewManagement/);
+  assert.match(activeWorkflow, /setProductionLabourerRates/);
 });

@@ -251,7 +251,7 @@ begin
     factory_id, 'WB12AB1234', true
   );
   select * into challan from public.create_challan(
-    factory_id, date '2026-09-01', customer.id, vehicle.id, 2000,
+    factory_id, null::text, date '2026-09-01', customer.id, vehicle.id, 2000,
     jsonb_build_array(jsonb_build_object(
       'brick_type_id', brick_id, 'quantity', 1000, 'rate', 1000
     )),
@@ -437,7 +437,7 @@ begin
     factory_id, 'WB12GUARD04', true
   );
   select * into challan from public.create_challan(
-    factory_id, date '2026-09-01', customer.id, vehicle.id, 1000,
+    factory_id, null::text, date '2026-09-01', customer.id, vehicle.id, 1000,
     jsonb_build_array(jsonb_build_object(
       'brick_type_id', brick_id, 'quantity', 1000, 'rate', 1000
     )),
@@ -454,7 +454,7 @@ begin
   );
 
   select * into challan from public.update_challan(
-    factory_id, challan.id, date '2026-09-01', customer.id,
+    factory_id, challan.id, null::text, date '2026-09-01', customer.id,
     vehicle.id, 800,
     jsonb_build_array(jsonb_build_object(
       'brick_type_id', brick_id, 'quantity', 1000, 'rate', 1000
@@ -467,7 +467,7 @@ begin
   perform pg_temp.expect_error(
     'Challan guard rejects Earned below effective Paid after reversal', 'P3111',
     format(
-      'select * from public.update_challan(%L::uuid,%L::uuid,date %L,%L::uuid,%L::uuid,799,jsonb_build_array(jsonb_build_object(''brick_type_id'',%L::uuid,''quantity'',1000,''rate'',1000)),''[]''::jsonb)',
+      'select * from public.update_challan(%L::uuid,%L::uuid,null::text,date %L,%L::uuid,%L::uuid,799,jsonb_build_array(jsonb_build_object(''brick_type_id'',%L::uuid,''quantity'',1000,''rate'',1000)),''[]''::jsonb)',
       factory_id, challan.id, '2026-09-01', customer.id, vehicle.id, brick_id
     )
   );

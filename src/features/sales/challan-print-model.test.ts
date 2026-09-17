@@ -42,6 +42,7 @@ const savedChallan: Challan = {
   companyPoliceStationSnapshot: null,
   companyDistrictSnapshot: null,
   companyStateSnapshot: null,
+  companyGstinSnapshot: null,
   vehicleId: "vehicle-a",
   vehicleNumberSnapshot: "RJ14AB1234",
   deliveryWageApplicableSnapshot: true,
@@ -95,6 +96,7 @@ test("printable model uses only saved company and customer snapshots", () => {
     addressKind: "legacy",
     address: "Historical Factory Address",
     mobile: "9000000000",
+    gstin: null,
   });
   assert.deepEqual(printable.customer, {
     name: "Historical Customer",
@@ -130,6 +132,7 @@ test("structured snapshots render without consulting or using the legacy address
     name: "Historical Atlas Bricks",
     businessDescription: "Manufacturers of quality bricks",
     mobile: "9000000000",
+    gstin: null,
     addressKind: "structured",
     village: "Rampur",
     postOffice: "Rampur Head",
@@ -137,6 +140,46 @@ test("structured snapshots render without consulting or using the legacy address
     district: "Jaipur",
     state: "Rajasthan",
   });
+});
+
+test("GSTIN comes only from the immutable Challan snapshot and is optional for legacy rows", () => {
+  const withGstin = buildPrintableChallan({
+    ...savedChallan,
+    companyGstinSnapshot: "19ABCDE1234F1Z5",
+  });
+  assert.equal(withGstin.company.gstin, "19ABCDE1234F1Z5");
+  assert.equal(buildPrintableChallan(savedChallan).company.gstin, null);
+  assert.match(documentSource, /challan\.company\.gstin &&/);
+  assert.doesNotMatch(documentSource, /FactoryPrintableProfile|getFactory|factories/);
+});
+
+test("duplicate visible numbers print each Challan's own UUID-resolved content", () => {
+  const first = buildPrintableChallan({
+    ...savedChallan,
+    id: "duplicate-a",
+    challanNumber: "11",
+    challanDate: "2026-09-12",
+    customerNameSnapshot: "Customer A",
+    challanTotal: 3000.01,
+  });
+  const second = buildPrintableChallan({
+    ...savedChallan,
+    id: "duplicate-b",
+    challanNumber: "11",
+    challanDate: "2026-09-13",
+    customerNameSnapshot: "Customer B",
+    vehicleNumberSnapshot: "WB58A1234",
+    challanTotal: 4321.09,
+  });
+  assert.equal(first.challanNumber, second.challanNumber);
+  assert.deepEqual(
+    [first.customer.name, first.challanDate, first.total],
+    ["Customer A", "2026-09-12", 3000.01],
+  );
+  assert.deepEqual(
+    [second.customer.name, second.challanDate, second.vehicleNumber, second.total],
+    ["Customer B", "2026-09-13", "WB58A1234", 4321.09],
+  );
 });
 
 test("all brick snapshot rows and authoritative saved amounts pass through unchanged", () => {

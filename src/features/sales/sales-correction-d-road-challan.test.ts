@@ -107,6 +107,7 @@ function savedChallan(overrides: Partial<Challan> = {}): Challan {
     companyPoliceStationSnapshot: "Kotwali",
     companyDistrictSnapshot: "Jaipur",
     companyStateSnapshot: "Rajasthan",
+    companyGstinSnapshot: null,
     vehicleId: "vehicle-a",
     vehicleNumberSnapshot: "WB12AB1234",
     deliveryWageApplicableSnapshot: true,
@@ -316,6 +317,7 @@ test("structured company and legacy fallback both stay historical", () => {
     name: "Historical Atlas Bricks",
     businessDescription: "Manufacturers of quality bricks",
     mobile: "9000000000",
+    gstin: null,
     addressKind: "legacy",
     address: "Historical Legacy Factory Address",
   });

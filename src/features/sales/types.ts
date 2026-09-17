@@ -10,6 +10,7 @@ export type FactoryPrintableProfile = {
   /** Legacy generic address retained during the structured-profile transition. */
   address: string;
   mobile: string;
+  gstin: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -67,6 +68,7 @@ export type ChallanHeader = {
   companyPoliceStationSnapshot: string | null;
   companyDistrictSnapshot: string | null;
   companyStateSnapshot: string | null;
+  companyGstinSnapshot: string | null;
   vehicleId: string | null;
   vehicleNumberSnapshot: string | null;
   deliveryWageApplicableSnapshot: boolean;
@@ -203,6 +205,7 @@ export type CustomerPaymentAllocation = {
   paymentId: string;
   challanId: string;
   challanNumber: ChallanNumber;
+  challanDate: string;
   allocatedAmount: number;
   createdAt: string;
 };

@@ -97,6 +97,7 @@ const factoryRow = {
   state: "Rajasthan",
   address: "Factory Road",
   mobile: "9000000000",
+  gstin: "19ABCDE1234F1Z5",
   created_at: "2026-08-01T00:00:00Z",
   updated_at: "2026-08-26T10:00:00Z",
 };
@@ -119,6 +120,7 @@ const challanRow = {
   company_police_station_snapshot: "Kotwali",
   company_district_snapshot: "Jaipur",
   company_state_snapshot: "Rajasthan",
+  company_gstin_snapshot: "19ABCDE1234F1Z5",
   vehicle_id: "vehicle-a",
   vehicle_number_snapshot: "RJ14AB1234",
   delivery_wage_applicable_snapshot: true,
@@ -228,12 +230,13 @@ test("printable profile loads existing values and saves only through its control
     state: "Rajasthan",
     address: "Factory Road",
     mobile: "9000000000",
+    gstin: "19ABCDE1234F1Z5",
     createdAt: "2026-08-01T00:00:00Z",
     updatedAt: "2026-08-26T10:00:00Z",
   });
   assert.deepEqual(calls, [
     ["from", "factories"],
-    ["select", "id, name, business_description, village, post_office, police_station, district, state, address, mobile, created_at, updated_at"],
+    ["select", "id, name, business_description, village, post_office, police_station, district, state, address, mobile, gstin, created_at, updated_at"],
     ["eq", "id", "factory-a"],
     ["maybeSingle"],
   ]);
@@ -250,6 +253,7 @@ test("printable profile loads existing values and saves only through its control
     district: " Jaipur ",
     state: " Rajasthan ",
     mobile: " 9000000000 ",
+    gstin: " 19abcde1234f1z5 ",
   });
   assert.deepEqual(calls, [["rpc", "update_factory_printable_profile", {
     p_factory_id: "factory-a",
@@ -261,7 +265,24 @@ test("printable profile loads existing values and saves only through its control
     p_district: "Jaipur",
     p_state: "Rajasthan",
     p_mobile: "9000000000",
+    p_gstin: "19ABCDE1234F1Z5",
   }]]);
+
+  reset();
+  rpcResponse.data = { ...factoryRow, gstin: null };
+  assert.equal((await updateFactoryPrintableProfile({
+    factoryId: "factory-a",
+    name: "Atlas Bricks",
+    businessDescription: "Brick manufacturer",
+    village: "Rampur",
+    postOffice: "Rampur Head",
+    policeStation: "Kotwali",
+    district: "Jaipur",
+    state: "Rajasthan",
+    mobile: "9000000000",
+    gstin: "   ",
+  })).gstin, null);
+  assert.equal((calls[0]?.[2] as Row).p_gstin, null);
 });
 
 test("customer master writes use controlled RPCs and normalized profile values", async () => {

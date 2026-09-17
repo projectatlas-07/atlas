@@ -30,6 +30,7 @@ type PrintableCompanyBase = {
   name: string;
   businessDescription: string;
   mobile: string;
+  gstin: string | null;
 };
 
 export type PrintableCompany = PrintableCompanyBase & ({
@@ -73,6 +74,7 @@ export function buildPrintableChallan(challan: Challan): PrintableChallan {
       name: challan.companyNameSnapshot,
       businessDescription: challan.companyBusinessDescriptionSnapshot,
       mobile: challan.companyMobileSnapshot,
+      gstin: challan.companyGstinSnapshot,
       addressKind: "structured",
       village: challan.companyVillageSnapshot as string,
       postOffice: challan.companyPostOfficeSnapshot as string,
@@ -83,6 +85,7 @@ export function buildPrintableChallan(challan: Challan): PrintableChallan {
       name: challan.companyNameSnapshot,
       businessDescription: challan.companyBusinessDescriptionSnapshot,
       mobile: challan.companyMobileSnapshot,
+      gstin: challan.companyGstinSnapshot,
       addressKind: "legacy",
       address: challan.companyAddressSnapshot,
     };

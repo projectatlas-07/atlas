@@ -275,7 +275,7 @@ export function CustomerPaymentsSection({
                 <Link href={`/office/payments/${payment.id}`} target="_blank" rel="noreferrer" className="text-sm font-semibold text-cyan-800 hover:underline">Open receipt</Link>
               </div>
               <ul className="mt-3 divide-y divide-slate-100 border-t border-slate-100 text-sm">
-                {payment.allocations.map((allocation) => <li key={allocation.id} className="flex justify-between gap-4 py-2"><span>{formatChallanLabel(allocation.challanNumber)}</span><span className="font-semibold tabular-nums">{formatSalesMoney(allocation.allocatedAmount)}</span></li>)}
+                {payment.allocations.map((allocation) => <li key={allocation.id} className="flex justify-between gap-4 py-2"><span>{formatChallanLabel(allocation.challanNumber)} · {formatChallanDate(allocation.challanDate)}</span><span className="font-semibold tabular-nums">{formatSalesMoney(allocation.allocatedAmount)}</span></li>)}
               </ul>
             </li>)}
           </ul>}
