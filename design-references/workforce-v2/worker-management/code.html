@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"outline-variant":"#c0c9c1","text-tertiary":"#989894","border-strong":"#D5D5D1","inverse-primary":"#96d4b2","on-secondary-fixed":"#151d1a","primary-fixed-dim":"#96d4b2","background":"#f9f9f7","surface-container-highest":"#e2e3e1","on-primary":"#ffffff","on-error-container":"#93000a","on-primary-fixed":"#002113","error":"#ba1a1a","surface-container":"#eeeeec","text-primary":"#1F1F1D","on-surface-variant":"#404943","secondary-fixed-dim":"#bfc9c4","surface-container-low":"#f4f4f2","surface-container-high":"#e8e8e6","error-container":"#ffdad6","surface":"#f9f9f7","on-secondary":"#ffffff","inverse-surface":"#2f3130","secondary-container":"#dce5e0","inverse-on-surface":"#f1f1ef","primary":"#125238","on-tertiary-fixed-variant":"#6f3538","sidebar-surface":"#F2F3F1","tertiary-fixed-dim":"#ffb3b4","on-surface":"#1a1c1b","on-tertiary-fixed":"#390b0f","surface-bright":"#f9f9f7","primary-fixed":"#b1f0cd","on-tertiary":"#ffffff","tertiary-fixed":"#ffdad9","on-tertiary-container":"#ffd1d1","on-secondary-container":"#5d6663","surface-dim":"#dadad8","on-error":"#ffffff","state-success":"#047857","text-secondary":"#686864","on-secondary-fixed-variant":"#404945","row-hover":"#F1F1EF","surface-container-lowest":"#ffffff","outline":"#707972","border-subtle":"#E5E5E2","tertiary-container":"#8e4e50","card-surface":"#FFFFFF","surface-variant":"#e2e3e1","on-primary-container":"#aae9c6","on-background":"#1a1c1b","surface-tint":"#2d694d","secondary":"#57605d","secondary-fixed":"#dce5e0","primary-container":"#2f6b4f","on-primary-fixed-variant":"#105137"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"space-xl":"2.5rem","gutter":"1.5rem","margin-desktop":"3rem","space-xs":"0.25rem","gutter-lg":"2rem","gutter-sm":"1rem","margin-mobile":"1rem","margin":"2rem","space-sm":"0.5rem","space-lg":"1.5rem","space-md":"0.875rem"},"fontFamily":{"headline-lg":["Plus Jakarta Sans"],"label-sm":["Plus Jakarta Sans"],"headline-xl":["Plus Jakarta Sans"],"body-lg":["Plus Jakarta Sans"],"headline-sm":["Plus Jakarta Sans"],"headline-xl-mobile":["Plus Jakarta Sans"],"label-md":["Plus Jakarta Sans"],"body-md":["Plus Jakarta Sans"],"caption":["Plus Jakarta Sans"],"headline-md":["Plus Jakarta Sans"],"body-sm":["Plus Jakarta Sans"]},"fontSize":{"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"label-sm":["12px",{"lineHeight":"16px","letterSpacing":"0.01em","fontWeight":"500"}],"headline-xl":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"600"}],"body-lg":["16px",{"lineHeight":"26px","fontWeight":"400"}],"headline-sm":["16px",{"lineHeight":"24px","letterSpacing":"-0.005em","fontWeight":"600"}],"headline-xl-mobile":["26px",{"lineHeight":"34px","letterSpacing":"-0.015em","fontWeight":"600"}],"label-md":["14px",{"lineHeight":"20px","fontWeight":"500"}],"body-md":["14px",{"lineHeight":"22px","fontWeight":"400"}],"caption":["11px",{"lineHeight":"14px","letterSpacing":"0.02em","fontWeight":"500"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"body-sm":["13px",{"lineHeight":"20px","fontWeight":"400"}]}}}}</script></head><body class="bg-surface font-body-md text-text-primary antialiased" data-copy="true"><aside class="fixed left-0 top-0 h-full w-64 bg-sidebar-surface z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col flex-1 min-h-0"><div class="h-16 px-space-lg flex items-center gap-space-sm"><div class="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center text-on-primary font-headline-sm text-headline-sm font-bold tracking-wider">A</div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm font-semibold tracking-tight text-text-primary leading-none">ATLAS</span><span class="font-caption text-caption uppercase text-text-secondary tracking-widest leading-none mt-1">OFFICE</span></div></div><div class="px-space-md py-space-sm"><div class="px-space-sm py-space-xs font-caption text-caption uppercase text-text-tertiary font-semibold tracking-wider">Navigation</div></div><nav class="flex-1 px-space-md space-y-1 overflow-y-auto" data-active-classes="bg-secondary-container text-primary-container font-semibold rounded-lg"><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container-high hover:text-text-primary transition-colors font-label-md text-label-md" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span><span class="">Dashboard</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container-high hover:text-text-primary transition-colors font-label-md text-label-md" data-path="production" href="#"><span class="material-symbols-outlined text-[20px]">precision_manufacturing</span><span class="">Production</span></a><a aria-current="page" class="flex items-center gap-space-md px-space-md py-space-sm transition-colors bg-secondary-container text-primary-container font-semibold rounded-lg" data-path="workforce" href="#"><span class="material-symbols-outlined text-[20px]">badge</span><span class="">Workforce</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container-high hover:text-text-primary transition-colors font-label-md text-label-md" data-path="sales" href="#"><span class="material-symbols-outlined text-[20px]">trending_up</span><span class="">Sales</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container-high hover:text-text-primary transition-colors font-label-md text-label-md" data-path="purchases-and-expenses" href="#"><span class="material-symbols-outlined text-[20px]">receipt_long</span><span class="">Purchases &amp; Expenses</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container-high hover:text-text-primary transition-colors font-label-md text-label-md" data-path="cash-book" href="#"><span class="material-symbols-outlined text-[20px]">account_balance_wallet</span><span class="">Cash Book</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container-high hover:text-text-primary transition-colors font-label-md text-label-md" data-path="reports" href="#"><span class="material-symbols-outlined text-[20px]">analytics</span><span class="">Reports</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container-high hover:text-text-primary transition-colors font-label-md text-label-md" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">tune</span><span class="">Settings</span></a></nav></div><div class="p-space-md flex flex-col gap-space-xs bg-sidebar-surface"><div class="flex items-center justify-between p-space-sm rounded-lg hover:bg-surface-container-high transition-colors"><div class="flex items-center gap-space-sm min-w-0"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="flex flex-col min-w-0"><span class="font-label-md text-label-md text-text-primary truncate">Atlas User</span><span class="font-caption text-caption text-text-tertiary truncate">Workspace Admin</span></div></div><a class="text-text-secondary hover:text-error transition-colors p-space-xs flex items-center justify-center" data-path="login" href="#" title="Logout"><span class="material-symbols-outlined text-[20px]">logout</span></a></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 z-40 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 w-full px-gutter-lg flex items-center justify-between"><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-surface-container text-text-secondary font-label-sm text-label-sm"><span class="w-2 h-2 rounded-full bg-state-success"></span><span class="">Atlas Industrial HQ</span></div><span class="text-border-strong font-body-sm text-body-sm">/</span><div class="flex items-center gap-space-xs font-label-md text-label-md text-text-tertiary"><span class="hover:text-text-primary transition-colors cursor-pointer">Operational Core</span><span class="material-symbols-outlined text-[16px]">chevron_right</span><span class="text-text-primary font-semibold">Operations</span></div></div><div class="flex items-center gap-space-md"><button class="flex items-center gap-space-xs px-space-md py-space-xs rounded-lg bg-surface-container text-text-secondary hover:text-text-primary hover:bg-surface-container-high transition-colors font-label-sm text-label-sm" type="button"><span class="material-symbols-outlined text-[16px]">search</span><span class="">Search directory (⌘K)</span></button><button class="relative p-space-xs text-text-secondary hover:text-text-primary transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary-container rounded-full"></span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full relative">
+<!-- Main Operational Canvas -->
+<div class="w-full pr-[460px] min-h-[calc(100vh-4rem)] flex flex-col transition-all duration-300">
+<!-- Top Action & Navigation Strip -->
+<div class="w-full px-gutter-lg py-space-lg flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-xs text-text-tertiary font-label-sm text-label-sm uppercase tracking-wider">
+<span class="">Workforce Management</span>
+<span class="">·</span>
+<span class="text-text-primary font-semibold">Active Roster</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-text-primary tracking-tight">Workforce · Production Workers</h1>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="flex items-center gap-space-xs px-space-md py-space-xs rounded-lg bg-surface-container-low text-text-secondary hover:text-text-primary hover:bg-surface-container transition-colors font-label-md text-label-md" type="button">
+<span class="material-symbols-outlined text-[18px]">file_download</span>
+<span class="">Export Roster</span>
+</button>
+<button class="flex items-center gap-space-xs px-space-md py-space-xs rounded-lg bg-primary-container text-on-primary hover:opacity-95 transition-all shadow-sm font-label-md text-label-md" type="button">
+<span class="material-symbols-outlined text-[18px]">add</span>
+<span class="">Add labourer</span>
+</button>
+</div>
+</div>
+<!-- Quick Metrics Ribbon -->
+<div class="grid grid-cols-4 gap-space-md">
+<div class="p-space-md rounded-xl bg-card-surface shadow-sm flex flex-col gap-space-xs">
+<span class="font-caption text-caption uppercase tracking-wider text-text-tertiary">Logged Today</span>
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-lg text-headline-lg text-text-primary">42,600</span>
+<span class="font-label-sm text-label-sm text-text-secondary">units</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1 mt-1 overflow-hidden">
+<div class="bg-primary-container h-full rounded-full" style="width: 76%"></div>
+</div>
+</div>
+<div class="p-space-md rounded-xl bg-card-surface shadow-sm flex flex-col gap-space-xs">
+<span class="font-caption text-caption uppercase tracking-wider text-text-tertiary">Active Workforce</span>
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-lg text-headline-lg text-text-primary">48</span>
+<span class="font-label-sm text-label-sm text-state-success flex items-center">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span>100% on shift
+            </span>
+</div>
+<span class="font-body-sm text-body-sm text-text-tertiary">Standard Kiln Group 1</span>
+</div>
+<div class="p-space-md rounded-xl bg-card-surface shadow-sm flex flex-col gap-space-xs">
+<span class="font-caption text-caption uppercase tracking-wider text-text-tertiary">Accrued Wage pool</span>
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-lg text-headline-lg text-text-primary">₹34,080</span>
+<span class="font-label-sm text-label-sm text-text-secondary">est.</span>
+</div>
+<span class="font-body-sm text-body-sm text-text-tertiary">Base rate ₹800 avg</span>
+</div>
+<div class="p-space-md rounded-xl bg-card-surface shadow-sm flex flex-col gap-space-xs">
+<span class="font-caption text-caption uppercase tracking-wider text-text-tertiary">Pending Disbursements</span>
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-lg text-headline-lg text-primary">₹12,400</span>
+<span class="font-label-sm text-label-sm text-text-tertiary">due in 2d</span>
+</div>
+<span class="font-body-sm text-body-sm text-text-tertiary">Weekly cycle cycle 18</span>
+</div>
+</div>
+<!-- Category Filter Pills & Search Bar -->
+<div class="flex items-center justify-between gap-space-md pt-space-xs">
+<div class="flex items-center gap-space-xs overflow-x-auto pb-1">
+<button class="px-space-md py-1.5 rounded-full bg-primary-container text-on-primary font-label-sm text-label-sm shadow-sm" type="button">
+            Production (48)
+          </button>
+<button class="px-space-md py-1.5 rounded-full bg-surface-container-high text-text-secondary hover:text-text-primary font-label-sm text-label-sm transition-colors" type="button">
+            Chamber Transport (16)
+          </button>
+<button class="px-space-md py-1.5 rounded-full bg-surface-container-high text-text-secondary hover:text-text-primary font-label-sm text-label-sm transition-colors" type="button">
+            Mud Group (12)
+          </button>
+<button class="px-space-md py-1.5 rounded-full bg-surface-container-high text-text-secondary hover:text-text-primary font-label-sm text-label-sm transition-colors" type="button">
+            Firing Operators (8)
+          </button>
+<button class="px-space-md py-1.5 rounded-full bg-surface-container-high text-text-secondary hover:text-text-primary font-label-sm text-label-sm transition-colors" type="button">
+            All (84)
+          </button>
+</div>
+<div class="relative w-72">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-text-tertiary text-[18px]">search</span>
+<input class="w-full pl-9 pr-space-md py-1.5 bg-card-surface rounded-lg font-body-sm text-body-sm text-text-primary placeholder:text-text-tertiary focus:outline-none shadow-sm" placeholder="Filter by labourer name, group..." type="text" value="Tongari"/>
+</div>
+</div>
+</div>
+<!-- Data Table Container -->
+<div class="px-gutter-lg pb-space-xl flex-1">
+<div class="w-full bg-card-surface rounded-xl shadow-sm overflow-hidden flex flex-col">
+<!-- Table Column Headers -->
+<div class="grid grid-cols-12 px-space-lg py-space-sm bg-surface-container-low text-text-tertiary font-label-sm text-label-sm uppercase tracking-wider items-center">
+<div class="col-span-3">Labourer / Identity</div>
+<div class="col-span-2">Assigned Group</div>
+<div class="col-span-2 text-right">Production Today</div>
+<div class="col-span-2 text-right">Rate &amp; Accrued</div>
+<div class="col-span-1 text-center">Last Paid</div>
+<div class="col-span-2 text-right">Actions</div>
+</div>
+<!-- Table Row: Tongari (Selected/Active Inspection State) -->
+<div class="grid grid-cols-12 px-space-lg py-space-md items-center bg-secondary-container/30 transition-colors relative">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary-container"></div>
+<div class="col-span-3 flex items-center gap-space-sm min-w-0">
+<div class="w-9 h-9 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-headline-sm text-headline-sm font-semibold shrink-0">
+              T
+            </div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-text-primary font-semibold truncate">Tongari</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-caption text-caption bg-secondary-container text-primary-container font-semibold">
+                  Active
+                </span>
+</div>
+<span class="font-caption text-caption text-text-secondary truncate">Raw Brick Production · Bengal group</span>
+</div>
+</div>
+<div class="col-span-2 flex flex-col">
+<span class="font-body-sm text-body-sm text-text-primary font-medium">Raw Brick Production</span>
+<span class="font-caption text-caption text-text-tertiary">Origin: Bengal</span>
+</div>
+<div class="col-span-2 text-right flex flex-col">
+<span class="font-headline-sm text-headline-sm text-text-primary font-semibold">0</span>
+<span class="font-caption text-caption text-text-tertiary">Pending morning tally</span>
+</div>
+<div class="col-span-2 text-right flex flex-col">
+<span class="font-body-sm text-body-sm text-text-primary font-medium">₹800 / 1,000</span>
+<span class="font-caption text-caption text-text-tertiary">Earned: ₹0.00 today</span>
+</div>
+<div class="col-span-1 text-center flex flex-col">
+<span class="font-body-sm text-body-sm text-text-primary">15/09/2026</span>
+<span class="font-caption text-caption text-state-success font-medium">Settled</span>
+</div>
+<div class="col-span-2 flex items-center justify-end gap-space-xs">
+<button class="px-space-sm py-1 rounded bg-card-surface text-text-secondary hover:text-text-primary font-label-sm text-label-sm transition-colors shadow-sm" type="button">
+              Account
+            </button>
+<button class="px-space-sm py-1 rounded bg-primary-container text-on-primary font-label-sm text-label-sm shadow-sm" type="button">
+              Manage
+            </button>
+</div>
+</div>
+<!-- Table Row: Ramesh K (Passive) -->
+<div class="grid grid-cols-12 px-space-lg py-space-md items-center hover:bg-surface-container-low transition-colors">
+<div class="col-span-3 flex items-center gap-space-sm min-w-0">
+<div class="w-9 h-9 rounded-full bg-surface-container-high text-text-secondary flex items-center justify-center font-headline-sm text-headline-sm font-semibold shrink-0">
+              R
+            </div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-text-primary font-semibold truncate">Ramesh Kumar</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-caption text-caption bg-secondary-container text-primary-container font-semibold">
+                  Active
+                </span>
+</div>
+<span class="font-caption text-caption text-text-secondary truncate">Raw Brick Production · Bihar</span>
+</div>
+</div>
+<div class="col-span-2 flex flex-col">
+<span class="font-body-sm text-body-sm text-text-primary font-medium">Raw Brick Production</span>
+<span class="font-caption text-caption text-text-tertiary">Origin: Bihar</span>
+</div>
+<div class="col-span-2 text-right flex flex-col">
+<span class="font-headline-sm text-headline-sm text-text-primary font-semibold">1,250</span>
+<span class="font-caption text-caption text-state-success font-medium">+12% vs avg</span>
+</div>
+<div class="col-span-2 text-right flex flex-col">
+<span class="font-body-sm text-body-sm text-text-primary font-medium">₹850 / 1,000</span>
+<span class="font-caption text-caption text-text-secondary">Earned: ₹1,062.50</span>
+</div>
+<div class="col-span-1 text-center flex flex-col">
+<span class="font-body-sm text-body-sm text-text-primary">15/09/2026</span>
+<span class="font-caption text-caption text-state-success font-medium">Settled</span>
+</div>
+<div class="col-span-2 flex items-center justify-end gap-space-xs">
+<button class="px-space-sm py-1 rounded bg-card-surface text-text-secondary hover:text-text-primary font-label-sm text-label-sm transition-colors shadow-sm" type="button">
+              Account
+            </button>
+<button class="px-space-sm py-1 rounded bg-surface-container-high text-text-primary hover:bg-surface-container font-label-sm text-label-sm transition-colors" type="button">
+              Manage
+            </button>
+</div>
+</div>
+<!-- Table Row: Mahinder Pal -->
+<div class="grid grid-cols-12 px-space-lg py-space-md items-center hover:bg-surface-container-low transition-colors">
+<div class="col-span-3 flex items-center gap-space-sm min-w-0">
+<div class="w-9 h-9 rounded-full bg-surface-container-high text-text-secondary flex items-center justify-center font-headline-sm text-headline-sm font-semibold shrink-0">
+              M
+            </div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-text-primary font-semibold truncate">Mahinder Pal</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-caption text-caption bg-secondary-container text-primary-container font-semibold">
+                  Active
+                </span>
+</div>
+<span class="font-caption text-caption text-text-secondary truncate">Raw Brick Production · Bengal group</span>
+</div>
+</div>
+<div class="col-span-2 flex flex-col">
+<span class="font-body-sm text-body-sm text-text-primary font-medium">Raw Brick Production</span>
+<span class="font-caption text-caption text-text-tertiary">Origin: Bengal</span>
+</div>
+<div class="col-span-2 text-right flex flex-col">
+<span class="font-headline-sm text-headline-sm text-text-primary font-semibold">1,100</span>
+<span class="font-caption text-caption text-text-tertiary">Verified</span>
+</div>
+<div class="col-span-2 text-right flex flex-col">
+<span class="font-body-sm text-body-sm text-text-primary font-medium">₹800 / 1,000</span>
+<span class="font-caption text-caption text-text-secondary">Earned: ₹880.00</span>
+</div>
+<div class="col-span-1 text-center flex flex-col">
+<span class="font-body-sm text-body-sm text-text-primary">15/09/2026</span>
+<span class="font-caption text-caption text-state-success font-medium">Settled</span>
+</div>
+<div class="col-span-2 flex items-center justify-end gap-space-xs">
+<button class="px-space-sm py-1 rounded bg-card-surface text-text-secondary hover:text-text-primary font-label-sm text-label-sm transition-colors shadow-sm" type="button">
+              Account
+            </button>
+<button class="px-space-sm py-1 rounded bg-surface-container-high text-text-primary hover:bg-surface-container font-label-sm text-label-sm transition-colors" type="button">
+              Manage
+            </button>
+</div>
+</div>
+<!-- Table Row: Sunil Soren -->
+<div class="grid grid-cols-12 px-space-lg py-space-md items-center hover:bg-surface-container-low transition-colors">
+<div class="col-span-3 flex items-center gap-space-sm min-w-0">
+<div class="w-9 h-9 rounded-full bg-surface-container-high text-text-secondary flex items-center justify-center font-headline-sm text-headline-sm font-semibold shrink-0">
+              S
+            </div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-text-primary font-semibold truncate">Sunil Soren</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-caption text-caption bg-secondary-container text-primary-container font-semibold">
+                  Active
+                </span>
+</div>
+<span class="font-caption text-caption text-text-secondary truncate">Raw Brick Production · Local</span>
+</div>
+</div>
+<div class="col-span-2 flex flex-col">
+<span class="font-body-sm text-body-sm text-text-primary font-medium">Raw Brick Production</span>
+<span class="font-caption text-caption text-text-tertiary">Origin: Local</span>
+</div>
+<div class="col-span-2 text-right flex flex-col">
+<span class="font-headline-sm text-headline-sm text-text-primary font-semibold">890</span>
+<span class="font-caption text-caption text-text-tertiary">Verified</span>
+</div>
+<div class="col-span-2 text-right flex flex-col">
+<span class="font-body-sm text-body-sm text-text-primary font-medium">₹920 / 1,000</span>
+<span class="font-caption text-caption text-text-secondary">Earned: ₹818.80</span>
+</div>
+<div class="col-span-1 text-center flex flex-col">
+<span class="font-body-sm text-body-sm text-text-primary">12/09/2026</span>
+<span class="font-caption text-caption text-tertiary font-medium">Overdue</span>
+</div>
+<div class="col-span-2 flex items-center justify-end gap-space-xs">
+<button class="px-space-sm py-1 rounded bg-card-surface text-text-secondary hover:text-text-primary font-label-sm text-label-sm transition-colors shadow-sm" type="button">
+              Account
+            </button>
+<button class="px-space-sm py-1 rounded bg-surface-container-high text-text-primary hover:bg-surface-container font-label-sm text-label-sm transition-colors" type="button">
+              Manage
+            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- FIXED RIGHT-SIDE INSPECTION DRAWER -->
+<aside class="fixed right-0 top-16 bottom-0 w-[460px] bg-card-surface z-50 flex flex-col shadow-[-4px_0_24px_rgba(0,0,0,0.06)]">
+<!-- Drawer Top Navigation Bar -->
+<div class="h-16 px-space-lg flex items-center justify-between bg-card-surface shrink-0">
+<div class="flex items-center gap-space-xs">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="font-caption text-caption uppercase tracking-wider font-semibold text-text-secondary">Worker Management</span>
+</div>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-text-secondary hover:bg-surface-container-high hover:text-text-primary transition-colors" title="Close Panel" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Drawer Scrollable Content Area -->
+<div class="flex-1 overflow-y-auto px-space-lg py-space-md flex flex-col gap-space-lg">
+<!-- Worker Identity Card -->
+<div class="flex items-start gap-space-md p-space-md rounded-xl bg-surface-container-low">
+<div class="w-14 h-14 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-headline-xl text-headline-xl font-bold shrink-0 shadow-sm">
+          T
+        </div>
+<div class="flex flex-col min-w-0 flex-1">
+<div class="flex items-center justify-between gap-space-xs">
+<h2 class="font-headline-md text-headline-md text-text-primary truncate">Tongari</h2>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-caption text-caption font-semibold bg-secondary-container text-primary-container">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+              Active
+            </span>
+</div>
+<span class="font-body-sm text-body-sm text-text-secondary mt-0.5">Production worker · Bengal</span>
+<div class="flex items-center gap-space-sm mt-space-sm font-caption text-caption text-text-tertiary">
+<span class="">ID: #WRK-0921</span>
+<span class="">·</span>
+<span class="">Enrolled Aug 2025</span>
+</div>
+</div>
+</div>
+<!-- Quick Operational Metrics for Inspector -->
+<!-- Section: Worker Details (Structured Settings Rows) -->
+<div class="flex flex-col">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-caption text-caption uppercase tracking-wider font-semibold text-text-tertiary">Worker details</span>
+<span class="font-caption text-caption text-text-secondary">Click row action to revise</span>
+</div>
+<div class="w-full bg-card-surface rounded-xl shadow-sm overflow-hidden flex flex-col">
+<!-- Row 1: Name -->
+<div class="flex items-center justify-between p-space-md hover:bg-surface-container-low/60 transition-colors">
+<div class="flex flex-col">
+<span class="font-caption text-caption text-text-secondary">Name</span>
+<span class="font-label-md text-label-md font-medium text-text-primary">Tongari</span>
+</div>
+<button class="font-label-sm text-label-sm font-semibold text-primary hover:underline px-space-xs py-1" type="button">
+              Edit
+            </button>
+</div>
+<div class="h-px bg-surface-container-high w-full"></div>
+<!-- Row 2: Brick Type -->
+<!-- Row 3: Origin / Group (IN ACTIVE INLINE EDIT STATE) -->
+<div class="flex flex-col p-space-md bg-secondary-container/20">
+<div class="flex items-center justify-between">
+<label class="font-caption text-caption font-semibold text-primary-container" for="group-input">Origin / group</label>
+<span class="font-caption text-caption text-primary font-medium">Editing state</span>
+</div>
+<div class="mt-space-xs flex flex-col gap-1">
+<div class="relative">
+<input class="w-full px-3 py-1.5 rounded-lg font-body-md text-body-md bg-card-surface text-text-primary shadow-sm focus:outline-none" id="group-input" type="text" value="Bengal"/>
+<span class="absolute right-3 top-2 text-text-tertiary material-symbols-outlined text-[16px]">edit</span>
+</div>
+<p class="font-caption text-caption text-text-secondary mt-0.5">
+                For identification and rate selection only.
+              </p>
+</div>
+<!-- Inline Edit Action Buttons -->
+<div class="flex items-center justify-end gap-space-sm mt-space-sm">
+<button class="px-3 py-1 rounded-md bg-surface-container-high hover:bg-surface-container text-text-secondary font-label-sm text-label-sm transition-colors" type="button">
+                Cancel
+              </button>
+<button class="px-3 py-1 rounded-md bg-primary-container hover:bg-primary text-on-primary font-label-sm text-label-sm transition-colors shadow-sm" type="button">
+                Save
+              </button>
+</div>
+</div>
+<div class="h-px bg-surface-container-high w-full"></div>
+<!-- Row 4: Current Rate -->
+<div class="flex items-center justify-between p-space-md hover:bg-surface-container-low/60 transition-colors">
+<div class="flex flex-col">
+<span class="font-caption text-caption text-text-secondary">Current rate</span>
+<span class="font-label-md text-label-md font-medium text-text-primary">₹800 / 1,000 bricks</span>
+</div>
+<button class="font-label-sm text-label-sm font-semibold text-primary hover:underline px-space-xs py-1 flex items-center gap-0.5" type="button">
+<span class="">Change rate</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</button>
+</div><div class="border-t border-border-subtle bg-secondary-container/20 p-space-md flex flex-col gap-space-sm"><div class="flex items-center justify-between"><div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-[18px] text-primary-container">payments</span><span class="font-label-md text-label-md font-semibold text-text-primary">Revise rate</span></div><span class="font-caption text-caption text-primary font-medium">Editing rate</span></div><div class="grid grid-cols-2 gap-space-sm pt-space-xs"><div class="flex flex-col gap-0.5"><label class="font-caption text-caption text-text-secondary">Current rate</label><div class="px-3 py-1.5 rounded-lg bg-surface-container-high text-text-secondary font-label-md text-label-md font-medium">₹800 / 1,000 units</div></div><div class="flex flex-col gap-0.5"><label class="font-caption text-caption font-semibold text-text-primary">New rate (₹ / 1,000)</label><div class="relative"><span class="absolute left-3 top-2 font-label-md text-text-tertiary">₹</span><input class="w-full pl-7 pr-3 py-1.5 rounded-lg font-body-md text-body-md bg-card-surface text-text-primary shadow-sm focus:outline-none" type="number" value="850"/></div></div></div><div class="flex flex-col gap-0.5"><label class="font-caption text-caption text-text-secondary">Effective from</label><div class="relative"><input class="w-full px-3 py-1.5 rounded-lg font-body-md text-body-md bg-card-surface text-text-primary shadow-sm focus:outline-none" type="text" value="24/09/2026"/><span class="material-symbols-outlined absolute right-3 top-2 text-text-tertiary text-[18px]">calendar_today</span></div></div><div class="flex flex-col gap-0.5"><label class="font-caption text-caption text-text-secondary">Reason / Note (optional)</label><input class="w-full px-3 py-1.5 rounded-lg font-body-md text-body-md bg-card-surface text-text-primary shadow-sm focus:outline-none" placeholder="e.g. Seasonal rate revision" type="text" value="Seasonal rate revision"/></div><div class="flex items-center justify-end gap-space-sm pt-space-xs"><button class="px-3 py-1.5 rounded-md bg-surface-container-high hover:bg-surface-container text-text-secondary font-label-sm text-label-sm transition-colors" type="button">Cancel</button><button class="px-3 py-1.5 rounded-md bg-primary-container hover:bg-primary text-on-primary font-label-sm text-label-sm transition-colors shadow-sm" type="button">Save rate</button></div></div>
+</div>
+</div>
+<!-- Section: Performance & Log Insight -->
+<!-- Section: Worker Status & Destructive Action -->
+<div class="flex flex-col pt-space-sm mt-auto">
+<span class="font-caption text-caption uppercase tracking-wider text-text-tertiary font-semibold mb-space-xs">Worker status</span>
+<div class="p-space-md rounded-xl bg-surface-container-low flex items-center justify-between gap-space-md">
+<p class="font-caption text-caption text-text-secondary leading-snug">
+            Deactivate this worker account. Deactivated workers cannot log production or participate in automated daily wage rollups.
+          </p>
+<button class="shrink-0 px-3 py-1.5 rounded-lg bg-card-surface text-error hover:bg-error-container hover:text-on-error-container font-label-sm text-label-sm font-semibold transition-colors shadow-sm" type="button">
+            Deactivate worker
+          </button>
+</div>
+</div>
+</div>
+<!-- Sticky Inspector Footer Actions -->
+<div class="p-space-md bg-surface-container-low shrink-0 flex items-center justify-between"><div class="flex items-center justify-end w-full"><button class="px-space-md py-space-xs rounded-lg bg-primary-container text-on-primary hover:bg-primary font-label-md text-label-md transition-colors shadow-sm" type="button">Done</button></div></div>
+</aside>
+</div></main></div>
+</body></html>

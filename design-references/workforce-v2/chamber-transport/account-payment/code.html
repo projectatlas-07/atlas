@@ -1,0 +1,565 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Atlas Industrial HQ - Chamber Transport Workforce</title>
+<!-- Google Fonts: Inter & Plus Jakarta Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS CDN with forms and container plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- BEGIN: Tailwind Configuration -->
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              primary: '#2F6B4F',
+              hover: '#285D45',
+              badgeBg: '#EAF3EE',
+              badgeText: '#2F6B4F'
+            },
+            app: {
+              bg: '#F7F7F5',
+              sidebar: '#F2F3F1',
+              card: '#FFFFFF',
+              muted: '#F6F6F4',
+              border: '#E5E5E2'
+            },
+            content: {
+              primary: '#1F1F1D',
+              secondary: '#686864',
+              subtle: '#989894'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'Plus Jakarta Sans', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+<!-- END: Tailwind Configuration -->
+<!-- BEGIN: Global Styles -->
+<style data-purpose="custom-typography">
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #F7F7F5;
+      color: #1F1F1D;
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-tabular {
+      font-feature-settings: "tnum" 1, "lnum" 1;
+    }
+    /* Subtle custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #F2F3F1;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #D5D5D0;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #B0B0A8;
+    }
+  </style>
+<!-- END: Global Styles -->
+</head>
+<body class="min-h-screen flex bg-app-bg text-content-primary antialiased selection:bg-brand-badgeBg selection:text-brand-primary">
+<!-- BEGIN: PersistentSidebar -->
+<aside class="w-64 flex-shrink-0 bg-app-sidebar border-r border-app-border min-h-screen flex flex-col justify-between select-none" data-purpose="sidebar-navigation">
+<div class="p-6">
+<!-- Workspace Brand Heading -->
+<div class="mb-8">
+<h1 class="text-lg font-bold text-content-primary tracking-tight leading-none">Atlas</h1>
+<span class="text-[11px] font-semibold text-content-subtle tracking-wider uppercase">OFFICE</span>
+</div>
+<!-- Navigation Links -->
+<nav aria-label="Main Navigation" class="space-y-1.5">
+<a class="flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium text-content-secondary hover:text-content-primary hover:bg-[#EAEBE8] transition-colors" href="#dashboard">
+          Dashboard
+        </a>
+<a class="flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium text-content-secondary hover:text-content-primary hover:bg-[#EAEBE8] transition-colors" href="#production">
+          Production
+        </a>
+<!-- Active Workforce item -->
+<a class="flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium bg-brand-badgeBg text-brand-primary border border-[#D5E6DC] shadow-sm transition-colors font-semibold" href="#workforce">
+          Workforce
+        </a>
+<a class="flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium text-content-secondary hover:text-content-primary hover:bg-[#EAEBE8] transition-colors" href="#sales">
+          Sales
+        </a>
+<a class="flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium text-content-secondary hover:text-content-primary hover:bg-[#EAEBE8] transition-colors" href="#purchases">
+          Purchases &amp; Expenses
+        </a>
+<a class="flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium text-content-secondary hover:text-content-primary hover:bg-[#EAEBE8] transition-colors" href="#cashbook">
+          Cash Book
+        </a>
+<a class="flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium text-content-secondary hover:text-content-primary hover:bg-[#EAEBE8] transition-colors" href="#reports">
+          Reports
+        </a>
+<a class="flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium text-content-secondary hover:text-content-primary hover:bg-[#EAEBE8] transition-colors" href="#settings">
+          Settings
+        </a>
+</nav>
+</div>
+<!-- Bottom User Section -->
+<div class="p-4 border-t border-app-border flex items-center justify-between">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 rounded-full bg-content-primary text-white flex items-center justify-center font-medium text-xs">
+          N
+        </div>
+<span class="text-xs font-medium text-content-secondary">Admin Operator</span>
+</div>
+<button class="text-xs font-medium text-content-secondary hover:text-content-primary bg-white border border-app-border px-2.5 py-1.5 rounded-md hover:bg-app-muted transition-colors shadow-2xs" type="button">
+        Log out
+      </button>
+</div>
+</aside>
+<!-- END: PersistentSidebar -->
+<!-- BEGIN: MainContentArea -->
+<main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+<!-- BEGIN: WorkspaceHeader -->
+<header class="pt-8 px-10 pb-6 border-b border-app-border bg-white" data-purpose="page-header">
+<!-- Breadcrumb note -->
+<div class="flex items-center space-x-2 text-xs font-semibold tracking-wider text-content-subtle uppercase mb-2">
+<span class="">Workforce</span>
+<span class="">/</span>
+<span class="text-brand-primary">Chamber Transport</span>
+</div>
+<!-- Title + Filter Pill + Action Row -->
+<div class="flex items-center justify-between flex-wrap gap-4">
+<div class="flex items-center space-x-4">
+<h2 class="text-2xl font-bold tracking-tight text-content-primary">Chamber Transport</h2>
+<!-- Period Selector Dropdown Pill -->
+<div class="relative inline-block text-left">
+<button class="inline-flex items-center gap-x-1.5 rounded-full bg-app-muted px-3.5 py-1.5 text-xs font-medium text-content-secondary hover:bg-[#ECECE8] border border-app-border focus:outline-none transition-colors" type="button">
+<span class="">Last Week</span>
+<svg class="-mr-0.5 h-3.5 w-3.5 text-content-subtle" fill="currentColor" viewBox="0 0 20 20">
+<path clip-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" fill-rule="evenodd"></path>
+</svg>
+</button>
+</div>
+</div>
+<!-- Quiet secondary setup action -->
+<button class="inline-flex items-center gap-x-2 rounded-lg border border-app-border bg-white px-3.5 py-2 text-xs font-medium text-content-secondary hover:text-content-primary hover:bg-app-muted shadow-xs transition-colors" type="button">
+<svg class="w-3.5 h-3.5 text-content-subtle" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+<path d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="">Manage setup</span>
+</button>
+</div>
+<!-- Description note -->
+<p class="text-xs text-content-secondary mt-1.5">
+        Manage transport identities, assignments, Transport Group wage rates, locked weekly earnings, and worker finances.
+      </p>
+<!-- Compact Summary Bar -->
+<div class="mt-6 pt-4 border-t border-app-border/80 flex items-center justify-between flex-wrap gap-4 text-xs" data-purpose="metrics-summary">
+<div class="flex items-center space-x-6">
+<div class="flex items-baseline space-x-2">
+<span class="text-content-subtle">Period Earnings:</span>
+<span class="font-semibold text-content-primary font-tabular text-sm">₹48,250</span>
+</div>
+<span class="text-app-border">|</span>
+<div class="flex items-baseline space-x-2">
+<span class="text-content-subtle">Active Workers:</span>
+<span class="font-semibold text-content-primary">14 transport workers</span>
+</div>
+<span class="text-app-border">|</span>
+<div class="flex items-baseline space-x-2">
+<span class="text-content-subtle">Total Available Balance:</span>
+<span class="font-bold text-brand-primary font-tabular text-sm">₹34,800</span>
+</div>
+</div>
+<div class="text-[11px] text-content-subtle italic">
+          Pools divided equally among present group workers per chamber run.
+        </div>
+</div>
+</header>
+<!-- END: WorkspaceHeader -->
+<!-- BEGIN: WorkspaceBodyContainer -->
+<div class="p-10 space-y-6">
+<!-- BEGIN: ToolbarSection -->
+<div class="flex items-center justify-between flex-wrap gap-4" data-purpose="table-filter-toolbar">
+<!-- Worker Segment Tabs -->
+<div class="flex items-center space-x-1.5 p-1 bg-app-muted rounded-lg border border-app-border/70">
+<button class="px-3.5 py-1.5 text-xs font-semibold rounded-md bg-white text-content-primary shadow-xs border border-app-border/60" type="button">
+            All 14
+          </button>
+<button class="px-3.5 py-1.5 text-xs font-medium rounded-md text-content-secondary hover:text-content-primary hover:bg-white/50 transition-colors" type="button">
+            Active 14
+          </button>
+<button class="px-3.5 py-1.5 text-xs font-medium rounded-md text-content-subtle cursor-default" type="button">
+            Archived 0
+          </button>
+</div>
+<!-- Search Input -->
+<div class="relative w-72">
+<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+<svg class="h-4 w-4 text-content-subtle" fill="currentColor" viewBox="0 0 20 20">
+<path clip-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" fill-rule="evenodd"></path>
+</svg>
+</div>
+<input class="block w-full rounded-lg border border-app-border bg-white pl-9 pr-3.5 py-1.5 text-xs text-content-primary placeholder:text-content-subtle focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary transition-all" placeholder="Search transport worker..." type="text">
+</div>
+</div>
+<!-- END: ToolbarSection -->
+<!-- BEGIN: WorkforceTableCard -->
+<section class="bg-white rounded-xl border border-app-border shadow-xs overflow-hidden" data-purpose="workforce-table-container">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse" id="transport-workforce-table">
+<thead>
+<tr class="border-b border-app-border bg-[#FAFAF8] text-[11px] font-semibold uppercase tracking-wider text-content-secondary">
+<th class="py-3.5 pl-6 pr-4" scope="col">Worker</th>
+<th class="py-3.5 px-4" scope="col">Transport Groups</th>
+<th class="py-3.5 px-4 text-right" scope="col">Earned (Last Week)</th>
+<th class="py-3.5 px-4 text-right" scope="col">Available (Authoritative)</th>
+<th class="py-3.5 px-4" scope="col">Last Paid</th>
+<th class="py-3.5 pl-4 pr-6 text-right" scope="col">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-app-border/70 text-xs">
+<!-- Row 1: Toto -->
+<tr class="hover:bg-[#F9FAF8] transition-colors bg-brand-badgeBg/40">
+<td class="py-4 pl-6 pr-4 whitespace-nowrap">
+<div class="font-semibold text-content-primary text-sm">Toto</div>
+<div class="text-[11px] text-content-subtle">Active transport worker</div>
+</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">Group A</span>
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">New Group 1</span>
+</div>
+</td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-medium text-content-secondary">
+                  ₹3,600
+                </td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-bold text-content-primary text-[13px]">
+                  ₹4,200
+                </td>
+<td class="py-4 px-4 whitespace-nowrap text-content-secondary text-[11px]">
+                  Last paid 3 days ago
+                </td>
+<td class="py-4 pl-4 pr-6 text-right whitespace-nowrap">
+<div class="inline-flex items-center space-x-2">
+<button class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium text-brand-primary bg-brand-badgeBg hover:bg-[#DEEDE3] border border-[#CFE4D7] transition-colors" type="button">
+                      Account &amp; payment
+                    </button>
+<button class="px-2 py-1.5 text-xs font-medium text-content-secondary hover:text-content-primary hover:underline transition-colors" type="button">
+                      Manage
+                    </button>
+</div>
+</td>
+</tr>
+<!-- Row 2: Ratan Das -->
+<tr class="hover:bg-[#F9FAF8] transition-colors">
+<td class="py-4 pl-6 pr-4 whitespace-nowrap">
+<div class="font-semibold text-content-primary text-sm">Ratan Das</div>
+<div class="text-[11px] text-content-subtle">Active transport worker</div>
+</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">Group A</span>
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">North Kiln Group</span>
+</div>
+</td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-medium text-content-secondary">
+                  ₹4,100
+                </td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-bold text-content-primary text-[13px]">
+                  ₹5,850
+                </td>
+<td class="py-4 px-4 whitespace-nowrap text-content-secondary text-[11px]">
+                  Last paid 5 days ago
+                </td>
+<td class="py-4 pl-4 pr-6 text-right whitespace-nowrap">
+<div class="inline-flex items-center space-x-2">
+<button class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium text-brand-primary bg-brand-badgeBg hover:bg-[#DEEDE3] border border-[#CFE4D7] transition-colors" type="button">
+                      Account &amp; payment
+                    </button>
+<button class="px-2 py-1.5 text-xs font-medium text-content-secondary hover:text-content-primary hover:underline transition-colors" type="button">
+                      Manage
+                    </button>
+</div>
+</td>
+</tr>
+<!-- Row 3: Manoj Soren -->
+<tr class="hover:bg-[#F9FAF8] transition-colors">
+<td class="py-4 pl-6 pr-4 whitespace-nowrap">
+<div class="font-semibold text-content-primary text-sm">Manoj Soren</div>
+<div class="text-[11px] text-content-subtle">Active transport worker</div>
+</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">Group A</span>
+</div>
+</td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-medium text-content-secondary">
+                  ₹3,200
+                </td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-bold text-content-primary text-[13px]">
+                  ₹1,400
+                </td>
+<td class="py-4 px-4 whitespace-nowrap text-content-secondary text-[11px]">
+                  Last paid yesterday
+                </td>
+<td class="py-4 pl-4 pr-6 text-right whitespace-nowrap">
+<div class="inline-flex items-center space-x-2">
+<button class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium text-brand-primary bg-brand-badgeBg hover:bg-[#DEEDE3] border border-[#CFE4D7] transition-colors" type="button">
+                      Account &amp; payment
+                    </button>
+<button class="px-2 py-1.5 text-xs font-medium text-content-secondary hover:text-content-primary hover:underline transition-colors" type="button">
+                      Manage
+                    </button>
+</div>
+</td>
+</tr>
+<!-- Row 4: Bikash Roy -->
+<tr class="hover:bg-[#F9FAF8] transition-colors">
+<td class="py-4 pl-6 pr-4 whitespace-nowrap">
+<div class="font-semibold text-content-primary text-sm">Bikash Roy</div>
+<div class="text-[11px] text-content-subtle">Active transport worker</div>
+</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">New Group 1</span>
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">South Chamber +1</span>
+</div>
+</td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-medium text-content-secondary">
+                  ₹3,950
+                </td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-bold text-content-primary text-[13px]">
+                  ₹6,100
+                </td>
+<td class="py-4 px-4 whitespace-nowrap text-content-secondary text-[11px]">
+                  Last paid 1 week ago
+                </td>
+<td class="py-4 pl-4 pr-6 text-right whitespace-nowrap">
+<div class="inline-flex items-center space-x-2">
+<button class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium text-brand-primary bg-brand-badgeBg hover:bg-[#DEEDE3] border border-[#CFE4D7] transition-colors" type="button">
+                      Account &amp; payment
+                    </button>
+<button class="px-2 py-1.5 text-xs font-medium text-content-secondary hover:text-content-primary hover:underline transition-colors" type="button">
+                      Manage
+                    </button>
+</div>
+</td>
+</tr>
+<!-- Row 5: Subal Mandi -->
+<tr class="hover:bg-[#F9FAF8] transition-colors">
+<td class="py-4 pl-6 pr-4 whitespace-nowrap">
+<div class="font-semibold text-content-primary text-sm">Subal Mandi</div>
+<div class="text-[11px] text-content-subtle">Active transport worker</div>
+</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">Group A</span>
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">Main Track</span>
+</div>
+</td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-medium text-content-secondary">
+                  ₹3,600
+                </td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-bold text-content-primary text-[13px]">
+                  ₹3,600
+                </td>
+<td class="py-4 px-4 whitespace-nowrap text-content-subtle text-[11px] italic">
+                  No payment yet
+                </td>
+<td class="py-4 pl-4 pr-6 text-right whitespace-nowrap">
+<div class="inline-flex items-center space-x-2">
+<button class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium text-brand-primary bg-brand-badgeBg hover:bg-[#DEEDE3] border border-[#CFE4D7] transition-colors" type="button">
+                      Account &amp; payment
+                    </button>
+<button class="px-2 py-1.5 text-xs font-medium text-content-secondary hover:text-content-primary hover:underline transition-colors" type="button">
+                      Manage
+                    </button>
+</div>
+</td>
+</tr>
+<!-- Row 6: Ashok Hembram -->
+<tr class="hover:bg-[#F9FAF8] transition-colors">
+<td class="py-4 pl-6 pr-4 whitespace-nowrap">
+<div class="font-semibold text-content-primary text-sm">Ashok Hembram</div>
+<div class="text-[11px] text-content-subtle">Active transport worker</div>
+</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">North Kiln Group</span>
+</div>
+</td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-medium text-content-secondary">
+                  ₹2,800
+                </td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-bold text-content-primary text-[13px]">
+                  ₹4,750
+                </td>
+<td class="py-4 px-4 whitespace-nowrap text-content-secondary text-[11px]">
+                  Last paid 2 weeks ago
+                </td>
+<td class="py-4 pl-4 pr-6 text-right whitespace-nowrap">
+<div class="inline-flex items-center space-x-2">
+<button class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium text-brand-primary bg-brand-badgeBg hover:bg-[#DEEDE3] border border-[#CFE4D7] transition-colors" type="button">
+                      Account &amp; payment
+                    </button>
+<button class="px-2 py-1.5 text-xs font-medium text-content-secondary hover:text-content-primary hover:underline transition-colors" type="button">
+                      Manage
+                    </button>
+</div>
+</td>
+</tr>
+<!-- Row 7: Nirmal Murmu -->
+<tr class="hover:bg-[#F9FAF8] transition-colors">
+<td class="py-4 pl-6 pr-4 whitespace-nowrap">
+<div class="font-semibold text-content-primary text-sm">Nirmal Murmu</div>
+<div class="text-[11px] text-content-subtle">Active transport worker</div>
+</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">Group A</span>
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">New Group 1</span>
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">Main Track</span>
+</div>
+</td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-medium text-content-secondary">
+                  ₹4,500
+                </td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-bold text-content-primary text-[13px]">
+                  ₹2,900
+                </td>
+<td class="py-4 px-4 whitespace-nowrap text-content-secondary text-[11px]">
+                  Last paid 4 days ago
+                </td>
+<td class="py-4 pl-4 pr-6 text-right whitespace-nowrap">
+<div class="inline-flex items-center space-x-2">
+<button class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium text-brand-primary bg-brand-badgeBg hover:bg-[#DEEDE3] border border-[#CFE4D7] transition-colors" type="button">
+                      Account &amp; payment
+                    </button>
+<button class="px-2 py-1.5 text-xs font-medium text-content-secondary hover:text-content-primary hover:underline transition-colors" type="button">
+                      Manage
+                    </button>
+</div>
+</td>
+</tr>
+<!-- Row 8: Chandan Soren -->
+<tr class="hover:bg-[#F9FAF8] transition-colors">
+<td class="py-4 pl-6 pr-4 whitespace-nowrap">
+<div class="font-semibold text-content-primary text-sm">Chandan Soren</div>
+<div class="text-[11px] text-content-subtle">Active transport worker</div>
+</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">New Group 1</span>
+</div>
+</td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-medium text-content-secondary">
+                  ₹3,100
+                </td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-bold text-content-primary text-[13px]">
+                  ₹850
+                </td>
+<td class="py-4 px-4 whitespace-nowrap text-content-secondary text-[11px]">
+                  Last paid 6 days ago
+                </td>
+<td class="py-4 pl-4 pr-6 text-right whitespace-nowrap">
+<div class="inline-flex items-center space-x-2">
+<button class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium text-brand-primary bg-brand-badgeBg hover:bg-[#DEEDE3] border border-[#CFE4D7] transition-colors" type="button">
+                      Account &amp; payment
+                    </button>
+<button class="px-2 py-1.5 text-xs font-medium text-content-secondary hover:text-content-primary hover:underline transition-colors" type="button">
+                      Manage
+                    </button>
+</div>
+</td>
+</tr>
+<!-- Row 9: Dilip Tudu -->
+<tr class="hover:bg-[#F9FAF8] transition-colors">
+<td class="py-4 pl-6 pr-4 whitespace-nowrap">
+<div class="font-semibold text-content-primary text-sm">Dilip Tudu</div>
+<div class="text-[11px] text-content-subtle">Active transport worker</div>
+</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">Group A</span>
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">South Chamber</span>
+</div>
+</td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-medium text-content-secondary">
+                  ₹3,750
+                </td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-bold text-content-primary text-[13px]">
+                  ₹5,200
+                </td>
+<td class="py-4 px-4 whitespace-nowrap text-content-secondary text-[11px]">
+                  Last paid 1 month ago
+                </td>
+<td class="py-4 pl-4 pr-6 text-right whitespace-nowrap">
+<div class="inline-flex items-center space-x-2">
+<button class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium text-brand-primary bg-brand-badgeBg hover:bg-[#DEEDE3] border border-[#CFE4D7] transition-colors" type="button">
+                      Account &amp; payment
+                    </button>
+<button class="px-2 py-1.5 text-xs font-medium text-content-secondary hover:text-content-primary hover:underline transition-colors" type="button">
+                      Manage
+                    </button>
+</div>
+</td>
+</tr>
+<!-- Row 10: Anil Hansda -->
+<tr class="hover:bg-[#F9FAF8] transition-colors">
+<td class="py-4 pl-6 pr-4 whitespace-nowrap">
+<div class="font-semibold text-content-primary text-sm">Anil Hansda</div>
+<div class="text-[11px] text-content-subtle">Active transport worker</div>
+</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">North Kiln Group</span>
+<span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-[11px] font-medium text-content-secondary border border-app-border">Main Track</span>
+</div>
+</td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-medium text-content-secondary">
+                  ₹3,450
+                </td>
+<td class="py-4 px-4 text-right whitespace-nowrap font-tabular font-bold text-content-primary text-[13px]">
+                  ₹3,450
+                </td>
+<td class="py-4 px-4 whitespace-nowrap text-content-secondary text-[11px]">
+                  Last paid 5 days ago
+                </td>
+<td class="py-4 pl-4 pr-6 text-right whitespace-nowrap">
+<div class="inline-flex items-center space-x-2">
+<button class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium text-brand-primary bg-brand-badgeBg hover:bg-[#DEEDE3] border border-[#CFE4D7] transition-colors" type="button">
+                      Account &amp; payment
+                    </button>
+<button class="px-2 py-1.5 text-xs font-medium text-content-secondary hover:text-content-primary hover:underline transition-colors" type="button">
+                      Manage
+                    </button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Footnote Status Strip -->
+<div class="py-3.5 px-6 border-t border-app-border bg-[#FAFAF8] flex items-center justify-between text-xs text-content-subtle">
+<div class="">
+            Showing <span class="font-medium text-content-secondary">10</span> of <span class="font-medium text-content-secondary">14</span> transport workers
+          </div>
+<div class="text-[11px]">
+            Transport earnings derived from group paya pools
+          </div>
+</div>
+</section>
+<!-- END: WorkforceTableCard -->
+</div>
+<!-- END: WorkspaceBodyContainer -->
+</main>
+<!-- END: MainContentArea -->
+<div class="fixed inset-0 z-50 flex justify-end" id="account-payment-drawer-container"><div class="fixed inset-0 bg-black/20 backdrop-blur-[1px] transition-opacity"></div><aside class="relative w-full max-w-[460px] h-full bg-white shadow-2xl flex flex-col justify-between z-10 border-l border-app-border overflow-hidden"><div class="flex flex-col min-h-0 flex-1 overflow-y-auto"><div class="p-6 border-b border-app-border bg-white flex flex-col gap-3"><div class="flex items-start justify-between gap-4"><div class="flex flex-col"><div class="flex items-center gap-2"><h2 class="text-xl font-bold tracking-tight text-content-primary">Toto</h2><span class="px-2 py-0.5 rounded text-[11px] font-medium bg-brand-badgeBg text-brand-primary border border-[#D5E6DC]">Active</span></div><span class="text-xs text-content-secondary mt-0.5">Chamber Transport worker</span></div><button class="p-1.5 rounded-lg text-content-secondary hover:text-content-primary hover:bg-app-muted transition-colors" onclick="document.getElementById('account-payment-drawer-container').remove()" type="button"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"></path></svg></button></div><div class="flex items-center gap-1.5 flex-wrap pt-1"><span class="text-[11px] font-medium text-content-subtle uppercase tracking-wider">Groups:</span><span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-xs font-medium text-content-secondary border border-app-border">Group A</span><span class="inline-flex items-center rounded-md bg-app-muted px-2 py-0.5 text-xs font-medium text-content-secondary border border-app-border">New Group 1</span></div></div><div class="p-6 flex flex-col space-y-6"><div class="bg-[#FAFAF8] rounded-xl border border-app-border p-4 flex flex-col gap-2 shadow-2xs"><div class="flex items-center justify-between"><span class="text-[11px] font-semibold text-content-secondary uppercase tracking-wider">Available to Pay</span><span class="text-[11px] text-content-subtle bg-white px-2 py-0.5 rounded border border-app-border">Authoritative</span></div><div class="flex items-baseline gap-2"><span class="text-2xl font-bold tracking-tight text-content-primary font-tabular">₹4,200</span></div><div class="text-[11px] text-content-subtle leading-relaxed">Authoritative current unpaid balance. Lifetime balance does not change with period filters.</div></div><div class="bg-white rounded-xl border border-app-border p-4 flex flex-col gap-3 shadow-2xs"><div class="flex items-center justify-between"><span class="text-xs font-semibold text-content-primary">Earnings View</span><div class="relative inline-block text-left"><button class="inline-flex items-center gap-x-1 rounded-md bg-app-muted px-2.5 py-1 text-xs font-medium text-content-secondary hover:bg-[#ECECE8] border border-app-border" type="button"><span class="">Last Week</span><svg class="h-3 w-3 text-content-subtle" fill="currentColor" viewBox="0 0 20 20"><path clip-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" fill-rule="evenodd"></path></svg></button></div></div><div class="flex items-center justify-between text-xs py-1 border-b border-app-border/60"><span class="text-content-secondary">Selected period range</span><span class="font-medium text-content-primary">15–21 Sep 2026</span></div><div class="flex items-center justify-between text-xs py-1 border-b border-app-border/60"><span class="text-content-secondary">Earnings in selected period</span><span class="font-semibold text-content-primary font-tabular text-[13px]">₹3,600</span></div><div class="flex items-center justify-between text-xs py-1 border-b border-app-border/60"><span class="text-content-secondary">Transport Groups in this period</span><span class="text-content-primary font-medium">Group A · New Group 1</span></div><p class="text-[11px] text-content-subtle italic leading-tight">Pool earnings divided equally among present group workers per chamber run.</p></div><div class="bg-white rounded-xl border border-app-border p-4 flex flex-col gap-3 shadow-2xs"><div class="flex items-center justify-between"><label class="text-xs font-semibold text-content-primary">Record Payment</label><button class="text-[11px] font-medium text-brand-primary hover:underline px-2 py-0.5 rounded bg-brand-badgeBg border border-[#CFE4D7]" type="button">Pay Full ₹4,200</button></div><div class="grid grid-cols-1 gap-3"><div class="flex flex-col gap-1"><span class="text-[11px] text-content-secondary">Amount to pay (₹)</span><div class="relative flex items-center"><span class="absolute left-3 text-content-subtle text-xs font-tabular">₹</span><input class="block w-full rounded-lg border border-app-border bg-white pl-7 pr-3 py-2 text-sm font-semibold text-content-primary font-tabular focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary" type="text" value="4,200"></div></div><div><span class="text-[11px] text-content-secondary mb-1 block">Payment date</span><input class="block w-full rounded-lg border border-app-border bg-white px-2.5 py-1.5 text-xs text-content-primary focus:border-brand-primary focus:outline-none" type="text" value="26/09/2026"></div><div class="flex items-center justify-between text-xs pt-1 border-t border-app-border/60"><span class="text-content-subtle text-[11px]">Remaining after payment:</span><span class="font-medium text-content-secondary font-tabular text-xs">₹0.00</span></div></div></div><div class="flex flex-col gap-2 pt-1"><div class="flex items-center justify-between"><span class="text-xs font-semibold text-content-primary">Recent Payments</span><a class="text-[11px] font-medium text-content-subtle hover:text-content-primary transition-colors hover:underline" href="#">View history</a></div><div class="border border-app-border rounded-lg divide-y divide-app-border bg-[#FAFAF8] text-xs"><div class="p-2.5 flex items-center justify-between"><span class="font-medium text-content-primary">23 Sep 2026</span><span class="font-semibold text-content-primary font-tabular text-[13px]">₹3,000</span></div><div class="p-2.5 flex items-center justify-between"><span class="font-medium text-content-primary">16 Sep 2026</span><span class="font-semibold text-content-primary font-tabular text-[13px]">₹3,500</span></div></div></div></div></div><div class="p-5 border-t border-app-border bg-white flex flex-col gap-2"><button class="w-full py-2.5 px-4 rounded-lg bg-brand-primary hover:bg-brand-hover text-white font-medium text-sm transition-colors shadow-xs" type="button">Pay ₹4,200</button><button class="w-full py-1.5 text-xs font-medium text-content-secondary hover:text-content-primary hover:bg-app-muted rounded-md transition-colors" onclick="document.getElementById('account-payment-drawer-container').remove()" type="button">Cancel</button></div></aside></div>
+
+</body></html>
