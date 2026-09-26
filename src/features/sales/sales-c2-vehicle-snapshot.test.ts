@@ -107,7 +107,7 @@ test("Trip Labour Wage remains completely outside customer total preview", () =>
 });
 
 test("Trip Labour Wage input cannot be decremented by page scrolling", () => {
-  const field = office.match(/<Field label="Trip Labour Wage">([\s\S]*?)<\/Field>/)?.[1];
+  const field = office.match(/<ChallanField v2 label="Trip Labour Wage">([\s\S]*?)<\/ChallanField>/)?.[1];
   assert.ok(field, "Trip Labour Wage field must exist.");
   assert.match(field, /type="text"/);
   assert.match(field, /inputMode="decimal"/);

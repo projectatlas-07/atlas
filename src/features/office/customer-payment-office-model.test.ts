@@ -8,6 +8,7 @@ import {
   emptyCustomerPaymentForm,
   getCustomerPaymentFormStatus,
   resolveCustomerDuesDateFilter,
+  setPaymentAllocation,
   sortCustomerOutstandingChallans,
   setPaymentAmount,
   togglePaymentAllocation,
@@ -47,14 +48,24 @@ test("payment amount never auto-allocates to the oldest Challan", () => {
   assert.equal(getCustomerPaymentFormStatus(changed, candidates).canSubmit, false);
 });
 
-test("explicit one or multiple Challan allocations must exactly equal payment", () => {
-  let form = { ...setPaymentAmount(emptyCustomerPaymentForm("2026-08-27"), "10000"), paymentMode: "cash" };
-  form = fillOutstandingAllocation(form, candidates[0]!);
-  assert.equal(getCustomerPaymentFormStatus(form, candidates).remainingAmount, 2_000);
-  assert.equal(getCustomerPaymentFormStatus(form, candidates).canSubmit, false);
+test("selecting a Challan fills its current outstanding into payment and allocation", () => {
+  const form = togglePaymentAllocation(
+    emptyCustomerPaymentForm("2026-08-27"),
+    candidates[0]!,
+    true,
+  );
+  assert.equal(form.amount, "8000");
+  assert.deepEqual(form.allocations, { "challan-1": "8000" });
+});
 
-  form = togglePaymentAllocation(form, "challan-2", true);
-  form = { ...form, allocations: { ...form.allocations, "challan-2": "2000" } };
+test("explicit one or multiple Challan allocations must exactly equal payment", () => {
+  let form = {
+    ...togglePaymentAllocation(emptyCustomerPaymentForm("2026-08-27"), candidates[0]!, true),
+    paymentMode: "cash",
+  };
+  form = togglePaymentAllocation(form, candidates[1]!, true);
+  assert.equal(form.amount, "13000");
+  form = setPaymentAllocation(form, "challan-2", "2000");
   const status = getCustomerPaymentFormStatus(form, candidates);
   assert.deepEqual(status, {
     paymentAmount: 10_000,
@@ -80,6 +91,32 @@ test("one Challan accepts either a partial payment or its full outstanding amoun
   }
 });
 
+test("editing the suggested payment amount keeps one selected allocation partial and valid", () => {
+  let form = {
+    ...togglePaymentAllocation(emptyCustomerPaymentForm("2026-08-27"), candidates[0]!, true),
+    paymentMode: "upi",
+  };
+  form = setPaymentAmount(form, "3000");
+  assert.equal(form.amount, "3000");
+  assert.deepEqual(form.allocations, { "challan-1": "3000" });
+  assert.equal(getCustomerPaymentFormStatus(form, candidates).canSubmit, true);
+});
+
+test("changing or clearing the selected Challan refreshes the suggested amount", () => {
+  let form = togglePaymentAllocation(
+    emptyCustomerPaymentForm("2026-08-27"),
+    candidates[0]!,
+    true,
+  );
+  form = togglePaymentAllocation(form, candidates[0]!, false);
+  assert.equal(form.amount, "");
+  assert.deepEqual(form.allocations, {});
+
+  form = togglePaymentAllocation(form, candidates[1]!, true);
+  assert.equal(form.amount, "5000");
+  assert.deepEqual(form.allocations, { "challan-2": "5000" });
+});
+
 test("zero, negative, invalid, and over-outstanding allocations cannot submit", () => {
   for (const amount of ["0", "-1", "8000.001", "8000.01"]) {
     const form = {
@@ -89,6 +126,13 @@ test("zero, negative, invalid, and over-outstanding allocations cannot submit", 
     };
     assert.equal(getCustomerPaymentFormStatus(form, candidates).canSubmit, false);
   }
+  let overpaid = {
+    ...togglePaymentAllocation(emptyCustomerPaymentForm("2026-08-27"), candidates[0]!, true),
+    paymentMode: "cash",
+  };
+  overpaid = setPaymentAmount(overpaid, "8000.01");
+  assert.equal(getCustomerPaymentFormStatus(overpaid, candidates).canSubmit, false);
+  assert.match(getCustomerPaymentFormStatus(overpaid, candidates).error, /exceeds its outstanding amount/);
 });
 
 test("new customer payments require a supported persisted payment mode", () => {
@@ -177,7 +221,7 @@ test("same-date dues use creation time then internal ID, never optional Challan 
 
 test("sorting cannot detach allocations or Use outstanding from Challan IDs", () => {
   const newest = sortCustomerOutstandingChallans(candidates, "newest");
-  let form = togglePaymentAllocation(emptyCustomerPaymentForm("2026-09-11"), "challan-1", true);
+  let form = togglePaymentAllocation(emptyCustomerPaymentForm("2026-09-11"), candidates[0]!, true);
   form = { ...form, allocations: { ...form.allocations, "challan-1": "3000" } };
   const oldest = sortCustomerOutstandingChallans(newest, "oldest");
   form = fillOutstandingAllocation(form, oldest.find((challan) => challan.challanId === "challan-2")!);
@@ -259,7 +303,7 @@ test("Newest and Oldest sorting stay chronological inside an inclusive filtered 
   );
 });
 
-test("filter changes clear only unsaved allocations before filtered sorting and Use outstanding", () => {
+test("filter changes clear the unsaved selection suggestion before sorting and Use outstanding", () => {
   const draft = {
     ...emptyCustomerPaymentForm("2026-09-10"),
     amount: "5000",
@@ -268,7 +312,7 @@ test("filter changes clear only unsaved allocations before filtered sorting and 
     allocations: { "challan-1": "3000" },
   };
   const cleared = clearCustomerPaymentAllocations(draft);
-  assert.deepEqual(cleared, { ...draft, allocations: {} });
+  assert.deepEqual(cleared, { ...draft, amount: "", allocations: {} });
 
   const visible = sortCustomerOutstandingChallans([candidates[1]!], "oldest");
   const filled = fillOutstandingAllocation(cleared, visible[0]!);

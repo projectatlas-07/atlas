@@ -390,6 +390,53 @@ test("total preview includes direct and quantity-rate charges exactly once while
   assert.equal(calculateChallanTotalPreview([], [note]), 0);
 });
 
+test("Direct Amount 2000 stays authoritative through edits, reordering, create, and correction", () => {
+  const direct = {
+    key: "direct", lineType: "EXTRA_CHARGE" as const, particulars: "Loading",
+    chargeMode: "DIRECT_AMOUNT" as const, amount: "2000", quantity: "", rate: "",
+  };
+  const note = { key: "note", lineType: "NOTE" as const, particulars: "Gate delivery" };
+  const afterUnrelatedEdit = { ...direct, particulars: "Loading at site" };
+  const reordered = moveChallanFlexibleLine([note, afterUnrelatedEdit], "direct", "up");
+
+  assert.equal(afterUnrelatedEdit.amount, "2000");
+  assert.equal(reordered[0]?.lineType === "EXTRA_CHARGE" ? reordered[0].amount : null, "2000");
+  assert.equal(calculateFlexibleLineAmountPreview(afterUnrelatedEdit), 2000);
+  assert.notEqual(calculateFlexibleLineAmountPreview(afterUnrelatedEdit), 1999.81);
+  assert.equal(calculateChallanTotalPreview([], reordered), 2000);
+
+  const createInput = buildCreateChallanInput("factory-a", {
+    challanDate: "2026-08-26",
+    customerId: "customer-a",
+    vehicleId: "",
+    selectedVehicleIsActive: true,
+    vehicleDeliveryWageTrackingEnabled: false,
+    tripLabourWage: "",
+    lines: [],
+    flexibleLines: reordered,
+  });
+  assert.equal(createInput?.flexibleLines?.[0]?.lineType === "EXTRA_CHARGE"
+    ? createInput.flexibleLines[0].amount
+    : null, 2000);
+
+  const correctionForm = challanFormFromSaved({
+    ...savedChallan,
+    challanTotal: 5000,
+    flexibleLines: [{
+      id: "direct", factoryId: "factory-a", challanId: "challan-a",
+      lineType: "EXTRA_CHARGE", lineCategory: "OTHER_REVENUE", orderIndex: 0,
+      particulars: "Loading", quantity: null, rate: null, amount: 2000,
+      createdAt: "2026-08-26T10:00:00Z",
+    }],
+  }, vehicles);
+  const correctedLine = correctionForm.flexibleLines[0];
+  assert.equal(correctedLine?.lineType === "EXTRA_CHARGE" ? correctedLine.amount : null, "2000");
+  const updateInput = buildUpdateChallanInput("factory-a", "challan-a", correctionForm);
+  assert.equal(updateInput?.flexibleLines?.[0]?.lineType === "EXTRA_CHARGE"
+    ? updateInput.flexibleLines[0].amount
+    : null, 2000);
+});
+
 test("manual and mixed Challans submit complete deterministic flexible collections", () => {
   const noteOnly = buildCreateChallanInput("factory-a", {
     challanDate: "2026-08-26",

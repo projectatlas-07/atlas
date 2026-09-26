@@ -227,11 +227,10 @@ type TransportWorkerRow = {
   updated_at: string;
 };
 
-type TransportCrewRow = {
+type TransportGroupRow = {
   id: string;
   factory_id: string;
   name: string;
-  work_direction: "FIELD_TO_KILN" | "KILN_TO_FIELD";
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -1110,12 +1109,11 @@ export type Database = {
         ];
       };
       labourers: {
-        Row: { id: string; factory_id: string; name: string; assigned_brick_type_id: string; production_origin_label: string | null; is_active: boolean; created_at: string; updated_at: string };
-        Insert: { id?: string; factory_id: string; name: string; assigned_brick_type_id: string; production_origin_label?: string | null; is_active?: boolean; created_at?: string; updated_at?: string };
-        Update: { id?: string; factory_id?: string; name?: string; assigned_brick_type_id?: string; production_origin_label?: string | null; is_active?: boolean; created_at?: string; updated_at?: string };
+        Row: { id: string; factory_id: string; name: string; production_origin_label: string | null; is_active: boolean; created_at: string; updated_at: string };
+        Insert: { id?: string; factory_id: string; name: string; production_origin_label?: string | null; is_active?: boolean; created_at?: string; updated_at?: string };
+        Update: { id?: string; factory_id?: string; name?: string; production_origin_label?: string | null; is_active?: boolean; created_at?: string; updated_at?: string };
         Relationships: [
-          { foreignKeyName: "labourers_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
-          { foreignKeyName: "labourers_assigned_brick_type_factory_fkey"; columns: ["assigned_brick_type_id", "factory_id"]; isOneToOne: false; referencedRelation: "brick_types"; referencedColumns: ["id", "factory_id"] }
+          { foreignKeyName: "labourers_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] }
         ];
       };
       production_crews: {
@@ -1141,9 +1139,9 @@ export type Database = {
         Relationships: [{ foreignKeyName: "transport_workers_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] }];
       };
       transport_crews: {
-        Row: TransportCrewRow;
-        Insert: { id?: string; factory_id: string; name: string; work_direction: "FIELD_TO_KILN" | "KILN_TO_FIELD"; is_active?: boolean; created_at?: string; updated_at?: string };
-        Update: { id?: string; factory_id?: string; name?: string; work_direction?: "FIELD_TO_KILN" | "KILN_TO_FIELD"; is_active?: boolean; created_at?: string; updated_at?: string };
+        Row: TransportGroupRow;
+        Insert: { id?: string; factory_id: string; name: string; is_active?: boolean; created_at?: string; updated_at?: string };
+        Update: { id?: string; factory_id?: string; name?: string; is_active?: boolean; created_at?: string; updated_at?: string };
         Relationships: [{ foreignKeyName: "transport_crews_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] }];
       };
       transport_crew_memberships: {
@@ -1351,13 +1349,12 @@ export type Database = {
         ];
       };
       production_entries: {
-        Row: { id: string; factory_id: string; labourer_id: string; brick_type_id: string; production_date: string; quantity: number; created_at: string; updated_at: string };
-        Insert: { id: string; factory_id: string; labourer_id: string; brick_type_id: string; production_date: string; quantity: number; created_at?: string; updated_at?: string };
-        Update: { id?: string; factory_id?: string; labourer_id?: string; brick_type_id?: string; production_date?: string; quantity?: number; created_at?: string; updated_at?: string };
+        Row: { id: string; factory_id: string; labourer_id: string; production_date: string; quantity: number; created_at: string; updated_at: string };
+        Insert: { id: string; factory_id: string; labourer_id: string; production_date: string; quantity: number; created_at?: string; updated_at?: string };
+        Update: { id?: string; factory_id?: string; labourer_id?: string; production_date?: string; quantity?: number; created_at?: string; updated_at?: string };
         Relationships: [
           { foreignKeyName: "production_entries_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
-          { foreignKeyName: "production_entries_labourer_factory_fkey"; columns: ["labourer_id", "factory_id"]; isOneToOne: false; referencedRelation: "labourers"; referencedColumns: ["id", "factory_id"] },
-          { foreignKeyName: "production_entries_brick_type_factory_fkey"; columns: ["brick_type_id", "factory_id"]; isOneToOne: false; referencedRelation: "brick_types"; referencedColumns: ["id", "factory_id"] }
+          { foreignKeyName: "production_entries_labourer_factory_fkey"; columns: ["labourer_id", "factory_id"]; isOneToOne: false; referencedRelation: "labourers"; referencedColumns: ["id", "factory_id"] }
         ];
       };
       production_earning_settlements: {
@@ -1559,6 +1556,22 @@ export type Database = {
       };
       create_challan: {
         Args: { p_factory_id: string; p_challan_number: string | null; p_challan_date: string; p_customer_id: string; p_vehicle_id: string | null; p_trip_labour_wage: number | null; p_items: Json; p_flexible_lines?: Json | null };
+        Returns: ChallanRow;
+      };
+      create_challan_with_received_payment: {
+        Args: {
+          p_factory_id: string;
+          p_challan_number: string | null;
+          p_challan_date: string;
+          p_customer_id: string;
+          p_vehicle_id: string | null;
+          p_trip_labour_wage: number | null;
+          p_items: Json;
+          p_flexible_lines: Json;
+          p_payment_date: string;
+          p_payment_amount: number;
+          p_payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other";
+        };
         Returns: ChallanRow;
       };
       update_challan: {
@@ -2201,7 +2214,6 @@ export type Database = {
           p_factory_id: string;
           p_entry_id: string;
           p_labourer_id: string;
-          p_brick_type_id: string;
           p_production_date: string;
           p_quantity: number;
         };

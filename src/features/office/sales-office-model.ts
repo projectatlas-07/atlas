@@ -7,10 +7,12 @@ import type {
   ChallanItemInput,
   CreateChallanInput,
   Customer,
+  CustomerPayment,
   FactoryPrintableProfile,
   UpdateChallanInput,
   Vehicle,
 } from "@/features/sales/types";
+import { isNewCustomerPaymentMode } from "../sales/types.ts";
 
 export const SALES_SECTION_HEADING = "Sales / Challan";
 
@@ -65,6 +67,15 @@ export type SavedChallanVehicleDetails = {
   tripLabourWage: number | null;
 };
 
+export type SavedChallanPaymentHistoryEntry = {
+  key: string;
+  paymentId: string;
+  paymentDate: string;
+  paymentMode: CustomerPayment["paymentMode"];
+  note: string | null;
+  allocatedAmount: number;
+};
+
 export type ChallanFormState = {
   challanNumber?: string;
   challanDate: string;
@@ -76,6 +87,52 @@ export type ChallanFormState = {
   lines: ChallanLineForm[];
   flexibleLines: ChallanFlexibleLineForm[];
 };
+
+export type ChallanReceivedPaymentForm = {
+  choice: "pay_later" | "received_now";
+  paymentDate: string;
+  amount: string;
+  paymentMode: string;
+};
+
+export function emptyChallanReceivedPaymentForm(
+  paymentDate: string,
+): ChallanReceivedPaymentForm {
+  return { choice: "pay_later", paymentDate, amount: "", paymentMode: "" };
+}
+
+export function getChallanReceivedPaymentError(
+  form: Readonly<ChallanReceivedPaymentForm>,
+  totalPreview: number,
+): string | null {
+  if (form.choice === "pay_later") return null;
+  if (!isCanonicalDate(form.paymentDate)) return "Choose a valid payment date.";
+  const amountPaise = parseMoneyToPaise(form.amount, false);
+  if (amountPaise === null) return "Enter a positive amount received.";
+  const totalPaise = Math.round(totalPreview * 100);
+  if (amountPaise > totalPaise) {
+    return "Amount received cannot exceed the Challan total.";
+  }
+  if (!isNewCustomerPaymentMode(form.paymentMode)) return "Choose a payment mode.";
+  return null;
+}
+
+export function buildChallanReceivedPayment(
+  form: Readonly<ChallanReceivedPaymentForm>,
+  totalPreview: number,
+): {
+  paymentDate: string;
+  amount: number;
+  paymentMode: "cash" | "upi" | "bank_transfer" | "cheque" | "other";
+} | null {
+  if (form.choice === "pay_later"
+    || getChallanReceivedPaymentError(form, totalPreview)) return null;
+  return {
+    paymentDate: form.paymentDate,
+    amount: parseMoneyToPaise(form.amount, false)! / 100,
+    paymentMode: form.paymentMode as "cash" | "upi" | "bank_transfer" | "cheque" | "other",
+  };
+}
 
 export type QuickCustomerForm = {
   name: string;
@@ -254,6 +311,23 @@ export function getSavedChallanFlexibleLineViews(
         rate: line.rate,
         amount: line.amount,
       });
+}
+
+export function getSavedChallanPaymentHistoryEntries(
+  payments: readonly CustomerPayment[],
+  challanId: string,
+): SavedChallanPaymentHistoryEntry[] {
+  if (!challanId) return [];
+  return payments.flatMap((payment) => payment.allocations
+    .filter((allocation) => allocation.challanId === challanId)
+    .map((allocation) => ({
+      key: allocation.id,
+      paymentId: payment.id,
+      paymentDate: payment.paymentDate,
+      paymentMode: payment.paymentMode,
+      note: payment.note,
+      allocatedAmount: allocation.allocatedAmount,
+    })));
 }
 
 export function buildQuickCustomerInput(

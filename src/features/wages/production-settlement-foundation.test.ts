@@ -10,6 +10,10 @@ const dashboard = readFileSync(
   new URL("../office/components/office-dashboard.tsx", import.meta.url),
   "utf8",
 );
+const accountDrawer = readFileSync(
+  new URL("../office/components/production-worker-account-drawer.tsx", import.meta.url),
+  "utf8",
+);
 const balanceService = readFileSync(
   new URL("./services/labourer-available-balance-service.ts", import.meta.url),
   "utf8",
@@ -77,10 +81,10 @@ test("UI makes withdrawal date and settlement cutoff separate with a previous-da
   assert.match(withdrawalService, /getDefaultSettlementCutoff/);
   assert.match(withdrawalService, /shiftLocalDate\(withdrawalDate, -1\)/);
   assert.match(withdrawalService, /p_settlement_cutoff: settlementCutoff/);
-  assert.match(dashboard, /Settlement cutoff/);
-  assert.match(dashboard, /min=\{latestSettlementCutoff \?\? undefined\}/);
-  assert.match(dashboard, /max=\{withdrawalDate \|\| undefined\}/);
-  assert.match(dashboard, /This withdrawal will settle Production through/);
+  assert.match(accountDrawer, /Settle Production through/);
+  assert.match(accountDrawer, /min=\{latestSettlementCutoff \?\? undefined\}/);
+  assert.match(accountDrawer, /max=\{withdrawalDate \|\| undefined\}/);
+  assert.match(accountDrawer, /existing settlement authority and locks Production earnings through the selected cutoff/);
 });
 
 test("the completed Production cutover hides Calculate Wages while preserving every non-Production wage boundary", () => {

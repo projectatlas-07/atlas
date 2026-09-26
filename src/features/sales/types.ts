@@ -193,6 +193,14 @@ export type CreateChallanInput = {
   flexibleLines?: ChallanFlexibleLineInput[];
 };
 
+export type CreateChallanWithReceivedPaymentInput = CreateChallanInput & {
+  receivedPayment: {
+    paymentDate: string;
+    amount: number;
+    paymentMode: NewCustomerPaymentMode;
+  };
+};
+
 export type UpdateChallanInput = CreateChallanInput & {
   challanId: string;
   /** Omitted on update preserves the existing flexible-line collection; [] clears it. */

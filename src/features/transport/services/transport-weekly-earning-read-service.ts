@@ -7,7 +7,6 @@ import {
 import type {
   TransportLockedWeeklyEarning,
   TransportWeeklyEarningDetail,
-  TransportWorkDirection,
 } from "../types.ts";
 
 type TransportWeeklyEarningRow = {
@@ -44,7 +43,6 @@ type TransportWeeklyEarningDetailRow = {
     transport_crew: {
       id: string;
       name: string;
-      work_direction: TransportWorkDirection;
     };
   };
 };
@@ -138,8 +136,7 @@ export async function listTransportWeeklyEarningDetails({
       daily_entry:transport_daily_entries!transport_weekly_earning_details_daily_entry_fkey(
         transport_crew:transport_crews!transport_daily_entries_crew_factory_fkey(
           id,
-          name,
-          work_direction
+          name
         )
       )
     `)
@@ -191,8 +188,7 @@ export async function listTransportWorkerEarningDetails({
       daily_entry:transport_daily_entries!transport_weekly_earning_details_daily_entry_fkey(
         transport_crew:transport_crews!transport_daily_entries_crew_factory_fkey(
           id,
-          name,
-          work_direction
+          name
         )
       )
     `)
@@ -200,6 +196,58 @@ export async function listTransportWorkerEarningDetails({
     .eq("transport_worker_id", transportWorkerId)
     .gte("work_date", range.fromDate)
     .lte("work_date", range.toDate)
+    .order("work_date", { ascending: false })
+    .order("transport_crew_id", { ascending: true })
+    .order("transport_daily_entry_id", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (error) throw new TransportWeeklyEarningReadError(error);
+
+  return ((data ?? []) as unknown as TransportWeeklyEarningDetailRow[])
+    .map(mapTransportWeeklyEarningDetail);
+}
+
+export async function listTransportRangeEarningDetails({
+  factoryId,
+  range,
+}: Readonly<{
+  factoryId: string;
+  range: WageEarningsDateRange;
+}>): Promise<TransportWeeklyEarningDetail[]> {
+  if (!factoryId.trim()) throw new Error("factoryId is required.");
+  if (!isWageEarningsDateRange(range)) {
+    throw new Error("Transport wage dates must be a valid inclusive range.");
+  }
+
+  const { data, error } = await supabase
+    .from("transport_weekly_earning_details")
+    .select(`
+      id,
+      factory_id,
+      transport_weekly_earning_id,
+      transport_worker_id,
+      week_start,
+      work_date,
+      transport_crew_id,
+      transport_daily_entry_id,
+      transport_crew_wage_rate_id,
+      rate_per_paya_snapshot,
+      paya_quantity_snapshot,
+      attendance_count_snapshot,
+      daily_crew_pool_snapshot,
+      worker_daily_share_snapshot,
+      created_at,
+      daily_entry:transport_daily_entries!transport_weekly_earning_details_daily_entry_fkey(
+        transport_crew:transport_crews!transport_daily_entries_crew_factory_fkey(
+          id,
+          name
+        )
+      )
+    `)
+    .eq("factory_id", factoryId)
+    .gte("work_date", range.fromDate)
+    .lte("work_date", range.toDate)
+    .order("transport_worker_id", { ascending: true })
     .order("work_date", { ascending: false })
     .order("transport_crew_id", { ascending: true })
     .order("transport_daily_entry_id", { ascending: true })
@@ -221,15 +269,14 @@ function mapTransportWeeklyEarningDetail(
     transportWorkerId: row.transport_worker_id,
     weekStart: row.week_start,
     workDate: row.work_date,
-    transportCrewId: row.transport_crew_id,
-    transportCrewName: row.daily_entry.transport_crew.name,
-    transportCrewWorkDirection: row.daily_entry.transport_crew.work_direction,
+    transportGroupId: row.transport_crew_id,
+    transportGroupName: row.daily_entry.transport_crew.name,
     transportDailyEntryId: row.transport_daily_entry_id,
-    transportCrewWageRateId: row.transport_crew_wage_rate_id,
+    transportGroupWageRateId: row.transport_crew_wage_rate_id,
     ratePerPayaSnapshot: Number(row.rate_per_paya_snapshot),
     payaQuantitySnapshot: Number(row.paya_quantity_snapshot),
     attendanceCountSnapshot: row.attendance_count_snapshot,
-    dailyCrewPoolSnapshot: Number(row.daily_crew_pool_snapshot),
+    dailyGroupPoolSnapshot: Number(row.daily_crew_pool_snapshot),
     workerDailyShareSnapshot: Number(row.worker_daily_share_snapshot),
     createdAt: row.created_at,
   };

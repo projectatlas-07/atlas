@@ -24,3 +24,13 @@ export interface DashboardSnapshot {
   flows: DashboardFlowMetrics;
   stocks: DashboardStockMetrics;
 }
+
+/** Read-only owner summary composed from the existing Dashboard snapshot and Sales service. */
+export interface OwnerDashboardSnapshot {
+  today: DashboardSnapshot;
+  thisWeekSales: {
+    dateFrom: string;
+    dateTo: string;
+    amount: number;
+  };
+}

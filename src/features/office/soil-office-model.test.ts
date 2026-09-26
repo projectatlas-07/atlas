@@ -17,8 +17,6 @@ import {
   buildSoilRateChangeInput,
   buildSoilWorkerCreateInput,
   canOfferUnusedSoilWorkerDelete,
-  formatSoilDate,
-  formatSoilMoney,
   insertSoilAdjustmentNewestFirst,
   insertSoilPaymentNewestFirst,
   insertSoilRateNewestFirst,
@@ -31,6 +29,10 @@ import {
 
 const sectionSource = readFileSync(
   new URL("./components/soil-office-section.tsx", import.meta.url),
+  "utf8",
+);
+const modelSource = readFileSync(
+  new URL("./soil-office-model.ts", import.meta.url),
   "utf8",
 );
 const dashboardSource = readFileSync(
@@ -118,9 +120,61 @@ test("rate history remains deterministic and read-only", () => {
 test("financial summary displays all five authoritative T5 fields", () => {
   assert.match(sectionSource, /getSoilFinancialSummary/);
   for (const label of [
-    "Total Earned", "Total Additions", "Total Deductions", "Total Paid", "Available Balance",
-  ]) assert.match(sectionSource, new RegExp(`label="${label}"`));
+    "Cumulative earned", "Total Additions", "Total Deductions", "Cumulative paid", "Available Balance",
+  ]) assert.match(sectionSource, new RegExp(label));
   assert.doesNotMatch(sectionSource, /totalEarned\s*\+\s*.*totalAdditions/);
+});
+
+test("Soil worker account uses the V2 hierarchy and shared presentation contracts", () => {
+  const detailSource = sectionSource.slice(
+    sectionSource.indexOf("function SoilWorkerDetail"),
+    sectionSource.indexOf("function LegacyField"),
+  );
+  const renderedDetail = detailSource.slice(detailSource.indexOf("return ("));
+
+  for (const sharedContract of [
+    "Button", "Card", "Input", "Select", "FormField", "StatusPill", "Feedback",
+    "EmptyState", "TableContainer", "formatIndianCurrency", "formatDateOnly",
+    "SOIL_WORKER_LIFECYCLE_STATUS", "ATLAS_UI_STRINGS",
+  ]) assert.match(sectionSource, new RegExp(sharedContract));
+
+  assert.ok(
+    renderedDetail.indexOf("soil-worker-detail-heading")
+      < renderedDetail.indexOf("Current financial picture"),
+  );
+  assert.ok(
+    renderedDetail.indexOf("Current financial picture")
+      < renderedDetail.indexOf("Record payment"),
+  );
+  assert.ok(
+    renderedDetail.indexOf("Record payment")
+      < renderedDetail.indexOf("Read-only histories"),
+  );
+  assert.match(renderedDetail, /<StatusPill label=\{lifecycleStatus\.label\}/);
+  assert.match(renderedDetail, /variant=\{earningsPreset === option\.value \? "primary" : "secondary"\}/);
+  assert.match(sectionSource, /<TableContainer>/);
+  assert.match(sectionSource, /<EmptyState title=\{emptyTitle\}/);
+  assert.match(renderedDetail, /<FormField label=/);
+  assert.doesNotMatch(renderedDetail, /<(?:button|input|select|table|thead|tbody|tr|th|td)\b/);
+  assert.doesNotMatch(
+    renderedDetail,
+    /(?:bg|text|border)-(?:slate|stone|red|amber|emerald|blue|cyan|indigo)-/,
+  );
+});
+
+test("Soil account has intentional mobile histories and truthful archived actions", () => {
+  assert.match(sectionSource, /className="hidden md:block"/);
+  assert.match(sectionSource, /className="divide-y divide-atlas-border md:hidden"/);
+  assert.match(sectionSource, /This worker is archived[\s\S]*new payments,[\s\S]*require restoring/);
+  assert.match(sectionSource, /Record payment is unavailable while this worker is archived/);
+  assert.match(sectionSource, /Rate changes are unavailable while this worker is archived/);
+  assert.match(sectionSource, /loading=\{earningsQuery\.isLoading\}[\s\S]*error=\{earningsQuery\.error\}[\s\S]*empty=/);
+});
+
+test("migrated Soil account formatting comes only from the canonical formatter", () => {
+  assert.match(modelSource, /from "\.\.\/\.\.\/lib\/formatting\.ts"/);
+  assert.doesNotMatch(modelSource, /Intl\.|\.toLocale(?:String|DateString|TimeString)\(/);
+  assert.doesNotMatch(modelSource, /formatSoilMoney|formatSoilDate|formatSoilQuantity/);
 });
 
 test("successful payment input and cache update preserve the authoritative summary", () => {
@@ -227,13 +281,13 @@ test("earnings, payment, and adjustment histories are read-only and corrections 
   };
   assert.deepEqual(buildSoilEarningHistoryItem(correction), {
     id: "earning-correction",
-    date: "25 Aug 2026",
-    description: "Correction → 4 trolleys × ₹200.00",
-    amount: "−₹400.00",
+    date: "25/08/2026",
+    description: "Correction → 4 trolleys × ₹200",
+    amount: "−₹400",
     isCorrection: true,
   });
-  assert.equal(formatSoilDate("2026-08-25"), "25 Aug 2026");
-  assert.equal(formatSoilMoney(1000), "₹1,000.00");
+  assert.match(sectionSource, /formatDateOnly/);
+  assert.match(sectionSource, /formatIndianCurrency/);
   assert.match(sectionSource, /Work and earnings/);
   assert.match(sectionSource, /Adjustments/);
   assert.match(sectionSource, /Payments/);

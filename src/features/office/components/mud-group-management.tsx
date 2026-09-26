@@ -2,20 +2,30 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { assertCompletedWageWeek } from "@/features/wages/services/completed-wage-week-validation";
-import { getLabourGroupAvailableBalance } from "@/features/wages/services/labour-group-available-balance-service";
-import { CreateLabourGroupWithdrawalError, createLabourGroupWithdrawal } from "@/features/wages/services/labour-group-withdrawal-create-service";
-import { getLabourGroupWithdrawalHistory } from "@/features/wages/services/labour-group-withdrawal-history-service";
-import { getLabourGroups, type LabourGroup } from "@/features/wages/services/labour-group-read-service";
+import { Button } from "@/components/ui/button";
+import { EmptyState, Feedback } from "@/components/ui/feedback";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/form-controls";
 import {
-  createMudGroup,
-  editMudGroupMembers,
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableContainer,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/ui/table";
+import { MudGroupAccountDrawer } from "@/features/office/components/mud-group-account-drawer";
+import { MudGroupManagementDrawer } from "@/features/office/components/mud-group-management-drawer";
+import { formatMudGroupLastPaid } from "@/features/office/mud-group-overview-model";
+import { getLabourGroupAvailableBalance } from "@/features/wages/services/labour-group-available-balance-service";
+import { getLabourGroupWithdrawalHistory } from "@/features/wages/services/labour-group-withdrawal-history-service";
+import { getLabourGroups } from "@/features/wages/services/labour-group-read-service";
+import {
   getMudAccountingMode,
   listMudGroupConfigurations,
   MudGroupConfigurationError,
-  restartMudGroupEarning,
-  setMudGroupRate,
-  stopMudGroupEarning,
   type MudGroupConfiguration,
 } from "@/features/wages/services/mud-group-configuration-service";
 import { getMudGroupRangeAllocation } from "@/features/wages/services/mud-multi-group-allocation-service";
@@ -27,23 +37,20 @@ import {
   getMudSettlementAccount,
   MudSettlementAccountError,
 } from "@/features/wages/services/mud-settlement-account-service";
-import { calculateInformationalPerMemberShare } from "@/features/wages/services/mud-supply-wage-calculation";
-import { CalculateMudSupplyWagesError, calculateMudSupplyWages } from "@/features/wages/services/mud-supply-wage-calculation-service";
-import { SetMudSupplyRateError, setMudSupplyRate } from "@/features/wages/services/mud-supply-rate-service";
-import { getMudSupplyWeeklyEarning, type MudSupplyWeeklyEarning } from "@/features/wages/services/mud-supply-weekly-earning-read-service";
 import { getWageRatesForFactory } from "@/features/wages/services/wage-rate-read-service";
-import type { WageRateHistory } from "@/features/wages/services/wage-rate-service";
 import {
   DEFAULT_WAGE_EARNINGS_DATE_PRESET,
   resolveWageEarningsDateRange,
   type WageEarningsDatePreset,
 } from "@/features/wages/wage-earnings-date-range";
+import { formatIndianCurrency, formatIndianNumber } from "@/lib/formatting";
 import { getLocalDate } from "@/lib/local-date";
+import { ATLAS_UI_STRINGS } from "@/lib/strings";
 
 const rangePresets: Array<{ value: WageEarningsDatePreset; label: string }> = [
-  { value: "this_week", label: "This Week" },
-  { value: "last_week", label: "Last Week" },
-  { value: "this_month", label: "This Month" },
+  { value: "this_week", label: "This week" },
+  { value: "last_week", label: "Last week" },
+  { value: "this_month", label: "This month" },
   { value: "custom", label: "Custom" },
 ];
 
@@ -81,6 +88,10 @@ export function MudGroupManagement({ factoryId }: Readonly<{ factoryId: string }
   const [rangePreset, setRangePreset] = useState<WageEarningsDatePreset>(DEFAULT_WAGE_EARNINGS_DATE_PRESET);
   const [customFrom, setCustomFrom] = useState(today);
   const [customTo, setCustomTo] = useState(today);
+  const [groupSearch, setGroupSearch] = useState("");
+  const [groupFilter, setGroupFilter] = useState<"all" | "earning" | "stopped">("all");
+  const [showAdministration, setShowAdministration] = useState(false);
+  const [showLegacyAccount, setShowLegacyAccount] = useState(false);
   const range = resolveWageEarningsDateRange(rangePreset, today, customFrom, customTo);
   const rangeQuery = useQuery({
     queryKey: ["mud-group-range-allocation", factoryId, range?.fromDate, range?.toDate],
@@ -113,78 +124,201 @@ export function MudGroupManagement({ factoryId }: Readonly<{ factoryId: string }
 
   const configurations = configurationsQuery.data ?? [];
   const mode = modeQuery.data ?? configurations[0]?.accountingMode;
+  const activeLegacyGroup = (legacyGroupsQuery.data ?? []).find((group) => group.isActive) ?? null;
+  const legacyAuthorityEnabled = mode === "LEGACY_WEEKLY" || mode === "SHADOW";
+  const legacyBalanceQuery = useQuery({
+    queryKey: ["labour-group-available-balance", factoryId, activeLegacyGroup?.groupId, today],
+    queryFn: () => getLabourGroupAvailableBalance({
+      factoryId,
+      labourGroupId: activeLegacyGroup!.groupId,
+      asOfDate: today,
+    }),
+    enabled: legacyAuthorityEnabled && activeLegacyGroup !== null,
+  });
+  const legacyHistoryQuery = useQuery({
+    queryKey: ["labour-group-withdrawal-history", factoryId, activeLegacyGroup?.groupId],
+    queryFn: () => getLabourGroupWithdrawalHistory(factoryId, activeLegacyGroup!.groupId),
+    enabled: legacyAuthorityEnabled && activeLegacyGroup !== null,
+  });
+  const normalizedSearch = groupSearch.trim().toLocaleLowerCase("en-IN");
+  const visibleConfigurations = configurations.filter((group) => {
+    if (groupFilter === "earning" && !group.isEarning) return false;
+    if (groupFilter === "stopped" && group.isEarning) return false;
+    return !normalizedSearch || group.name.toLocaleLowerCase("en-IN").includes(normalizedSearch);
+  });
+  const earningCount = configurations.filter((group) => group.isEarning).length;
+  const latestLegacyPayment = legacyHistoryQuery.data?.[0] ?? null;
+
+  function operationalAllocation(groupId: string) {
+    return rangeQuery.data?.groups.find((row) => row.labourGroupId === groupId) ?? null;
+  }
+
+  function isAuthoritativeLegacyGroup(groupId: string) {
+    return legacyAuthorityEnabled && activeLegacyGroup?.groupId === groupId;
+  }
+
+  function legacyBalanceLabel(groupId: string) {
+    if (!isAuthoritativeLegacyGroup(groupId)) return "Not in weekly account";
+    if (legacyBalanceQuery.isLoading) return ATLAS_UI_STRINGS.feedback.loading;
+    if (legacyBalanceQuery.error || !legacyBalanceQuery.data) return ATLAS_UI_STRINGS.feedback.unavailable;
+    return formatIndianCurrency(legacyBalanceQuery.data.availableBalance, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  function lastPaidLabel(groupId: string) {
+    if (!isAuthoritativeLegacyGroup(groupId)) return "No legacy account";
+    if (legacyHistoryQuery.isLoading) return ATLAS_UI_STRINGS.feedback.loading;
+    if (legacyHistoryQuery.error) return ATLAS_UI_STRINGS.feedback.unavailable;
+    return formatMudGroupLastPaid(latestLegacyPayment?.withdrawalDate ?? null, today);
+  }
 
   return (
-    <section className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+    <section aria-labelledby="mud-supply-heading">
+      <header className="flex flex-col gap-atlas-3 border-b border-atlas-border pb-atlas-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-bold">Mud Supply Groups</h2>
-          <p className="mt-1 text-sm text-slate-600">Configure each earning group independently. Live figures below are operational only.</p>
+          <p className="text-atlas-xs font-atlas-semibold uppercase tracking-atlas-wide text-atlas-text-muted">
+            Group workforce · {formatDate(today)}
+          </p>
+          <h3 id="mud-supply-heading" className="mt-atlas-1 text-atlas-2xl font-atlas-semibold text-atlas-text">Mud Supply</h3>
+          <p className="mt-atlas-1 text-atlas-sm text-atlas-text-muted">
+            {formatIndianNumber(earningCount)} earning · {formatIndianNumber(configurations.length - earningCount)} stopped
+          </p>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-          <span className="text-slate-500">Financial accounting: </span>
-          <span className="font-bold text-slate-900">{mode === "LEGACY_WEEKLY" ? "Legacy Weekly" : mode === "SETTLEMENT" ? "Continuous Settlement" : mode ?? "Loading..."}</span>
+        <div className="flex max-w-xl flex-col items-start gap-atlas-3 sm:items-end">
+          <p className="text-atlas-sm text-atlas-text-muted sm:text-right">
+            Mud is managed and paid as a group. Production below is operational context, not payable earnings.
+          </p>
+          <Button variant="secondary" aria-expanded={showAdministration} onClick={() => setShowAdministration((current) => !current)}>
+            Group setup
+          </Button>
         </div>
+      </header>
+
+      <div className="mt-atlas-4 space-y-atlas-3">
+        {modeQuery.error && <Feedback role="alert" tone="danger">Could not load Mud accounting mode.</Feedback>}
+        {legacyGroupsQuery.error && <Feedback role="alert" tone="danger">Could not load the authoritative weekly Mud group account.</Feedback>}
+        {mode === "SHADOW" && <Feedback role="status" tone="info">Legacy weekly accounting remains the authoritative source for Mud payable balances while shadow validation runs.</Feedback>}
+        {legacyBalanceQuery.error && <Feedback role="alert" tone="danger">Could not load the authoritative legacy Mud balance.</Feedback>}
+        {legacyHistoryQuery.error && <Feedback role="alert" tone="danger">Could not load real Mud payment history.</Feedback>}
       </div>
 
-      {modeQuery.error && <p role="alert" className="mt-3 text-sm font-medium text-red-700">Could not load Mud accounting mode.</p>}
-      {mode === "SHADOW" && <MudShadowCertificationMessage
-        loading={certificationQuery.isLoading}
-        error={certificationQuery.error}
-        certification={certificationQuery.data ?? null}
-      />}
-      {mode === "SHADOW" && <MudCutoverReadinessMessage
-        factoryId={factoryId}
-        loading={cutoverReadinessQuery.isLoading}
-        error={cutoverReadinessQuery.error}
-        readiness={cutoverReadinessQuery.data ?? null}
-        onCutover={refreshAfterCutover}
-      />}
-      <AddMudGroupForm factoryId={factoryId} onChanged={refreshConfiguration} />
-
-      <section aria-label="Live multi-group Mud range" className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <section aria-label="Mud operational period" className="mt-atlas-4 border-y border-atlas-border py-atlas-4">
+        <div className="flex flex-col gap-atlas-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-medium text-amber-900">Live operational period</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {rangePresets.map((option) => <button key={option.value} type="button" aria-pressed={rangePreset === option.value} onClick={() => setRangePreset(option.value)} className={`h-9 rounded-lg border px-3 text-sm font-semibold ${rangePreset === option.value ? "border-amber-700 bg-amber-700 text-white" : "border-amber-300 bg-white text-slate-700"}`}>{option.label}</button>)}
+            <p className="text-atlas-xs font-atlas-semibold uppercase tracking-atlas-wide text-atlas-text-muted">Operational production period</p>
+            <div className="mt-atlas-2 flex gap-atlas-2 overflow-x-auto pb-atlas-1">
+              {rangePresets.map((option) => <Button key={option.value} variant={rangePreset === option.value ? "primary" : "ghost"} aria-pressed={rangePreset === option.value} onClick={() => setRangePreset(option.value)}>{option.label}</Button>)}
             </div>
           </div>
-          {range && <p className="text-xs text-amber-900">{formatDate(range.fromDate)} → {formatDate(range.toDate)}, inclusive</p>}
+          <div className="text-atlas-sm text-atlas-text-muted lg:text-right">
+            {range && <p>{formatDate(range.fromDate)} → {formatDate(range.toDate)}</p>}
+            {rangeQuery.data && <p className="mt-atlas-1 font-atlas-medium tabular-nums text-atlas-text">{formatIndianNumber(rangeQuery.data.rangeProduction)} eligible bricks</p>}
+          </div>
         </div>
-        {rangePreset === "custom" && <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
-          <label className="text-xs font-medium text-amber-900">From<input type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm text-slate-950" /></label>
-          <label className="text-xs font-medium text-amber-900">To<input type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm text-slate-950" /></label>
+        {rangePreset === "custom" && <div className="mt-atlas-4 grid max-w-xl gap-atlas-3 sm:grid-cols-2">
+          <FormField label="From"><Input type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} /></FormField>
+          <FormField label="To"><Input type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} /></FormField>
         </div>}
-        {rangePreset === "custom" && !range && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">Choose a valid inclusive date range.</p>}
-        {rangeQuery.isLoading && <p className="mt-3 text-sm text-slate-600">Calculating live Mud allocation...</p>}
-        {rangeQuery.error && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{errorMessage(rangeQuery.error, "Could not calculate live Mud allocation.")}</p>}
-        {rangeQuery.data && <div className="mt-4 rounded-lg bg-white p-4"><p className="text-sm text-slate-600">Total eligible Production</p><p className="mt-1 text-xl font-bold tabular-nums">{formatNumber(rangeQuery.data.rangeProduction)}</p></div>}
-        <p className="mt-3 text-xs text-amber-900">Operational calculation only. It does not create weekly earnings, withdrawals, balances, or settlements.</p>
+        {rangePreset === "custom" && !range && <div className="mt-atlas-3"><Feedback role="alert" tone="danger">Choose a valid inclusive date range.</Feedback></div>}
+        {rangeQuery.isLoading && <p className="mt-atlas-3 text-atlas-sm text-atlas-text-muted">Loading operational allocation...</p>}
+        {rangeQuery.error && <div className="mt-atlas-3"><Feedback role="alert" tone="danger">{errorMessage(rangeQuery.error, "Could not calculate operational Mud allocation.")}</Feedback></div>}
       </section>
 
-      {configurationsQuery.isLoading && <p className="mt-5 text-sm text-slate-500">Loading Mud groups...</p>}
-      {configurationsQuery.error && <p role="alert" className="mt-5 text-sm font-medium text-red-700">{errorMessage(configurationsQuery.error, "Could not load Mud groups.")}</p>}
-      {!configurationsQuery.isLoading && !configurationsQuery.error && configurations.length === 0 && <p className="mt-5 text-sm text-slate-500">No Mud groups configured.</p>}
-      <div className="mt-5 space-y-4">
-        {configurations.map((group) => <MudGroupCard
-          key={group.groupId}
-          factoryId={factoryId}
-          group={group}
-          rangeAllocation={rangeQuery.data?.groups.find((row) => row.labourGroupId === group.groupId) ?? null}
-          onChanged={refreshConfiguration}
-        />)}
+      <div className="mt-atlas-4 flex flex-col gap-atlas-3 lg:flex-row lg:items-end lg:justify-between">
+        <div aria-label="Filter Mud groups" className="flex gap-atlas-2 overflow-x-auto pb-atlas-1">
+          {([
+            ["all", `All ${formatIndianNumber(configurations.length)}`],
+            ["earning", `Earning ${formatIndianNumber(earningCount)}`],
+            ["stopped", `Stopped ${formatIndianNumber(configurations.length - earningCount)}`],
+          ] as const).map(([value, label]) => <Button key={value} variant={groupFilter === value ? "primary" : "ghost"} aria-pressed={groupFilter === value} onClick={() => setGroupFilter(value)}>{label}</Button>)}
+        </div>
+        <div className="w-full lg:max-w-sm">
+          <FormField label="Search Mud groups"><Input type="search" value={groupSearch} onChange={(event) => setGroupSearch(event.target.value)} placeholder="Search group" autoComplete="off" /></FormField>
+        </div>
       </div>
 
-      {mode === "SETTLEMENT" && <SettlementMudAccounting factoryId={factoryId} groups={configurations} />}
-      {(mode === "LEGACY_WEEKLY" || mode === "SHADOW") && <LegacyMudAccounting
+      {configurationsQuery.isLoading ? (
+        <div className="mt-atlas-4"><Feedback role="status" tone="neutral">Loading Mud groups...</Feedback></div>
+      ) : configurationsQuery.error ? (
+        <div className="mt-atlas-4"><Feedback role="alert" tone="danger">{errorMessage(configurationsQuery.error, "Could not load Mud groups.")}</Feedback></div>
+      ) : visibleConfigurations.length === 0 ? (
+        <EmptyState title={configurations.length === 0 ? "No Mud groups yet" : "No groups match these filters"} description={configurations.length === 0 ? "Use Group setup to create the first Mud group." : "Clear the search or choose another earning filter."} />
+      ) : <>
+        <div className="mt-atlas-4 hidden md:block">
+          <TableContainer>
+            <Table wide>
+              <TableCaption visuallyHidden>Mud Supply group overview for {formatDate(today)}</TableCaption>
+              <TableHeader><TableRow>
+                <TableHeaderCell>Mud group</TableHeaderCell>
+                <TableHeaderCell numeric>Members</TableHeaderCell>
+                <TableHeaderCell numeric>Operational rate</TableHeaderCell>
+                <TableHeaderCell numeric>Production</TableHeaderCell>
+                <TableHeaderCell numeric>Weekly balance</TableHeaderCell>
+                <TableHeaderCell>Last paid</TableHeaderCell>
+                <TableHeaderCell>Action</TableHeaderCell>
+              </TableRow></TableHeader>
+              <TableBody>{visibleConfigurations.map((group) => {
+                const allocation = operationalAllocation(group.groupId);
+                const isLegacyAccount = isAuthoritativeLegacyGroup(group.groupId);
+                return <TableRow key={group.groupId} hoverable>
+                  <TableCell><p className="font-atlas-semibold text-atlas-text">{group.name}</p><p className="mt-atlas-1 text-atlas-xs text-atlas-text-subtle">Operational allocation {group.isEarning ? "active" : "stopped"}</p></TableCell>
+                  <TableCell numeric>{group.currentMemberCount === null ? "Not set" : formatIndianNumber(group.currentMemberCount)}</TableCell>
+                  <TableCell numeric>{group.currentRatePer1000Bricks === null ? "Not set" : `${formatIndianCurrency(group.currentRatePer1000Bricks)} / 1,000`}</TableCell>
+                  <TableCell numeric><p className="font-atlas-medium text-atlas-text">{rangeQuery.isLoading ? ATLAS_UI_STRINGS.feedback.loading : rangeQuery.error ? ATLAS_UI_STRINGS.feedback.unavailable : allocation ? `${formatIndianNumber(allocation.allocatedProduction)} bricks` : "—"}</p><p className="mt-atlas-1 text-atlas-xs text-atlas-text-subtle">Selected period</p></TableCell>
+                  <TableCell numeric><p className={isLegacyAccount ? "font-atlas-semibold text-atlas-text" : "text-atlas-xs text-atlas-text-subtle"}>{legacyBalanceLabel(group.groupId)}</p>{isLegacyAccount && <p className="mt-atlas-1 text-atlas-xs text-atlas-text-subtle">Authoritative legacy weekly</p>}</TableCell>
+                  <TableCell><p className="text-atlas-sm font-atlas-medium text-atlas-text-muted">{lastPaidLabel(group.groupId)}</p></TableCell>
+                  <TableCell>{isLegacyAccount ? <Button aria-expanded={showLegacyAccount} onClick={() => setShowLegacyAccount(true)}>Account &amp; payment</Button> : <span className="text-atlas-xs text-atlas-text-subtle">Managed in Group setup</span>}</TableCell>
+                </TableRow>;
+              })}</TableBody>
+            </Table>
+          </TableContainer>
+        </div>
+
+        <div className="mt-atlas-4 divide-y divide-atlas-border border-y border-atlas-border md:hidden">
+          {visibleConfigurations.map((group) => {
+            const allocation = operationalAllocation(group.groupId);
+            const isLegacyAccount = isAuthoritativeLegacyGroup(group.groupId);
+            return <article key={group.groupId} className="py-atlas-4">
+              <div className="flex items-start justify-between gap-atlas-3"><div><h4 className="text-atlas-base font-atlas-semibold text-atlas-text">{group.name}</h4><p className="mt-atlas-1 text-atlas-xs text-atlas-text-subtle">Operational allocation {group.isEarning ? "active" : "stopped"}</p></div><p className="text-atlas-sm tabular-nums text-atlas-text-muted">{group.currentMemberCount === null ? "Members not set" : `${formatIndianNumber(group.currentMemberCount)} members`}</p></div>
+              <dl className="mt-atlas-3 grid grid-cols-2 gap-atlas-3 text-atlas-sm">
+                <div><dt className="text-atlas-xs text-atlas-text-subtle">Operational rate</dt><dd className="mt-atlas-1 tabular-nums text-atlas-text-muted">{group.currentRatePer1000Bricks === null ? "Not set" : `${formatIndianCurrency(group.currentRatePer1000Bricks)} / 1,000`}</dd></div>
+                <div><dt className="text-right text-atlas-xs text-atlas-text-subtle">Selected-period production</dt><dd className="mt-atlas-1 text-right font-atlas-medium tabular-nums text-atlas-text">{rangeQuery.isLoading ? ATLAS_UI_STRINGS.feedback.loading : rangeQuery.error ? ATLAS_UI_STRINGS.feedback.unavailable : allocation ? `${formatIndianNumber(allocation.allocatedProduction)} bricks` : "—"}</dd></div>
+                <div><dt className="text-atlas-xs text-atlas-text-subtle">Legacy weekly balance</dt><dd className="mt-atlas-1 font-atlas-semibold tabular-nums text-atlas-text">{legacyBalanceLabel(group.groupId)}</dd></div>
+                <div><dt className="text-right text-atlas-xs text-atlas-text-subtle">{ATLAS_UI_STRINGS.payment.history}</dt><dd className="mt-atlas-1 text-right text-atlas-text-muted">{lastPaidLabel(group.groupId)}</dd></div>
+              </dl>
+              {isLegacyAccount && <div className="mt-atlas-3"><Button aria-expanded={showLegacyAccount} onClick={() => setShowLegacyAccount(true)}>Account &amp; payment</Button></div>}
+            </article>;
+          })}
+        </div>
+      </>}
+
+      {showAdministration && <MudGroupManagementDrawer
         factoryId={factoryId}
-        groups={legacyGroupsQuery.data ?? []}
-        groupsLoading={legacyGroupsQuery.isLoading}
-        groupsError={Boolean(legacyGroupsQuery.error)}
+        groups={configurations}
+        groupsLoading={configurationsQuery.isLoading}
+        groupsError={Boolean(configurationsQuery.error)}
+        mode={mode}
+        rangeAllocations={rangeQuery.data?.groups}
+        rangeLoading={rangeQuery.isLoading}
+        rangeError={Boolean(rangeQuery.error)}
+        accountingDiagnostics={mode === "SHADOW" ? <>
+          <MudShadowCertificationMessage loading={certificationQuery.isLoading} error={certificationQuery.error} certification={certificationQuery.data ?? null} />
+          <MudCutoverReadinessMessage factoryId={factoryId} loading={cutoverReadinessQuery.isLoading} error={cutoverReadinessQuery.error} readiness={cutoverReadinessQuery.data ?? null} onCutover={refreshAfterCutover} />
+        </> : undefined}
+        onChanged={refreshConfiguration}
+        onClose={() => setShowAdministration(false)}
+      />}
+
+      {mode === "SETTLEMENT" && <SettlementMudAccounting factoryId={factoryId} groups={configurations} />}
+      {(mode === "LEGACY_WEEKLY" || mode === "SHADOW") && showLegacyAccount && activeLegacyGroup && <MudGroupAccountDrawer
+        factoryId={factoryId}
+        group={activeLegacyGroup}
         wageRates={legacyRatesQuery.data ?? []}
         ratesLoading={legacyRatesQuery.isLoading}
         ratesError={Boolean(legacyRatesQuery.error)}
+        onClose={() => setShowLegacyAccount(false)}
       />}
     </section>
   );
@@ -282,119 +416,6 @@ function MudShadowCertificationMessage({ loading, error, certification }: Readon
   </div>;
 }
 
-function AddMudGroupForm({ factoryId, onChanged }: Readonly<{ factoryId: string; onChanged: () => Promise<void> }>) {
-  const today = getLocalDate();
-  const [name, setName] = useState("");
-  const [memberCount, setMemberCount] = useState("");
-  const [startDate, setStartDate] = useState(today);
-  const [rate, setRate] = useState("");
-  const [rateDate, setRateDate] = useState(today);
-  const [feedback, setFeedback] = useState("");
-  const [saved, setSaved] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (submitting) return;
-    setSubmitting(true); setFeedback(""); setSaved(false);
-    try {
-      await createMudGroup({ factoryId, name, memberCount: Number(memberCount), earningStartDate: startDate, initialRate: Number(rate), rateEffectiveDate: rateDate });
-      setName(""); setMemberCount(""); setRate(""); setStartDate(today); setRateDate(today); setSaved(true);
-      await onChanged();
-    } catch (error) { setFeedback(errorMessage(error, "Could not add Mud group.")); }
-    finally { setSubmitting(false); }
-  }
-
-  return <details className="mt-5 rounded-lg border border-slate-200 p-4">
-    <summary className="cursor-pointer font-semibold">Add Mud Group</summary>
-    <form className="mt-4 grid gap-4 md:grid-cols-5 md:items-end" onSubmit={(event) => void submit(event)}>
-      <Field label="Group name"><input value={name} onChange={(event) => setName(event.target.value)} required disabled={submitting} className={inputClass} /></Field>
-      <Field label="Members"><input type="number" min="1" step="1" value={memberCount} onChange={(event) => setMemberCount(event.target.value)} required disabled={submitting} className={inputClass} /></Field>
-      <Field label="Earning starts"><input type="date" value={startDate} onChange={(event) => { const previous = startDate; setStartDate(event.target.value); if (rateDate === previous) setRateDate(event.target.value); }} required disabled={submitting} className={inputClass} /></Field>
-      <Field label="Initial rate / 1,000"><input type="number" min="0" step="any" value={rate} onChange={(event) => setRate(event.target.value)} required disabled={submitting} className={inputClass} /></Field>
-      <Field label="Rate effective"><input type="date" value={rateDate} onChange={(event) => setRateDate(event.target.value)} required disabled={submitting} className={inputClass} /></Field>
-      <button type="submit" disabled={submitting} className="h-11 rounded-lg bg-slate-950 px-5 font-semibold text-white disabled:opacity-60 md:col-span-5">{submitting ? "Adding..." : "Add Mud Group"}</button>
-      {feedback && <p role="alert" className="text-sm font-medium text-red-700 md:col-span-5">{feedback}</p>}
-      {saved && <p role="status" className="text-sm font-medium text-emerald-700 md:col-span-5">Mud group added.</p>}
-    </form>
-  </details>;
-}
-
-function MudGroupCard({ factoryId, group, rangeAllocation, onChanged }: Readonly<{
-  factoryId: string;
-  group: MudGroupConfiguration;
-  rangeAllocation: { allocatedProduction: number; earnedAmount: number; informationalPerMemberEarned: number } | null;
-  onChanged: () => Promise<void>;
-}>) {
-  const today = getLocalDate();
-  const [members, setMembers] = useState(String(group.currentMemberCount ?? ""));
-  const [memberDate, setMemberDate] = useState(today);
-  const [rate, setRate] = useState(String(group.currentRatePer1000Bricks ?? ""));
-  const [rateDate, setRateDate] = useState(today);
-  const [statusDate, setStatusDate] = useState(today);
-  const [restartMembers, setRestartMembers] = useState(String(group.currentMemberCount ?? ""));
-  const [feedback, setFeedback] = useState("");
-  const [working, setWorking] = useState(false);
-
-  async function mutate(action: () => Promise<unknown>, success: string) {
-    if (working) return;
-    setWorking(true); setFeedback("");
-    try { await action(); setFeedback(success); await onChanged(); }
-    catch (error) { setFeedback(errorMessage(error, "Could not update Mud group.")); }
-    finally { setWorking(false); }
-  }
-
-  return <article className="rounded-lg border border-slate-200 p-4">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <div>
-        <h3 className="font-bold">{group.name}</h3>
-        <p className={`mt-1 text-sm font-semibold ${group.isEarning ? "text-emerald-700" : "text-slate-500"}`}>{group.isEarning ? "Earning" : "Stopped"}</p>
-      </div>
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:text-right">
-        <div><dt className="text-slate-500">Current members</dt><dd className="font-semibold tabular-nums">{group.currentMemberCount ?? "Missing"}</dd></div>
-        <div><dt className="text-slate-500">Current rate / 1,000</dt><dd className="font-semibold tabular-nums">{group.currentRatePer1000Bricks === null ? "Missing" : formatCurrency(group.currentRatePer1000Bricks)}</dd></div>
-      </dl>
-    </div>
-    <div className="mt-4 grid gap-3 sm:grid-cols-3">
-      <Metric label="Allocated Production" value={rangeAllocation ? formatNumber(rangeAllocation.allocatedProduction) : "—"} />
-      <Metric label="Live Mud earning" value={rangeAllocation ? formatCurrency(rangeAllocation.earnedAmount) : "—"} />
-      <Metric label="Per-member share (informational)" value={rangeAllocation ? formatCurrency(rangeAllocation.informationalPerMemberEarned) : "—"} />
-    </div>
-    <div className="mt-4 grid gap-3 lg:grid-cols-3">
-      <details className="rounded-lg border border-slate-200 p-3">
-        <summary className={`cursor-pointer font-semibold ${!group.isEarning ? "text-slate-400" : ""}`}>Edit Members</summary>
-        {group.isEarning ? <form className="mt-3 space-y-3" onSubmit={(event) => { event.preventDefault(); void mutate(() => editMudGroupMembers({ factoryId, groupId: group.groupId, memberCount: Number(members), effectiveFrom: memberDate }), "Member count saved."); }}>
-          <Field label="Members"><input type="number" min="1" step="1" value={members} onChange={(event) => setMembers(event.target.value)} required disabled={working} className={inputClass} /></Field>
-          <Field label="Effective from"><input type="date" value={memberDate} onChange={(event) => setMemberDate(event.target.value)} required disabled={working} className={inputClass} /></Field>
-          <button disabled={working} className={smallButton}>Save Members</button>
-        </form> : <p className="mt-2 text-sm text-slate-500">Restart the group with its new member count.</p>}
-      </details>
-      <details className="rounded-lg border border-slate-200 p-3">
-        <summary className="cursor-pointer font-semibold">Set Rate</summary>
-        <form className="mt-3 space-y-3" onSubmit={(event) => { event.preventDefault(); void mutate(() => setMudGroupRate({ factoryId, groupId: group.groupId, ratePer1000Bricks: Number(rate), effectiveFrom: rateDate }), "Group rate saved."); }}>
-          <Field label="Rate / 1,000"><input type="number" min="0" step="any" value={rate} onChange={(event) => setRate(event.target.value)} required disabled={working} className={inputClass} /></Field>
-          <Field label="Effective from"><input type="date" value={rateDate} onChange={(event) => setRateDate(event.target.value)} required disabled={working} className={inputClass} /></Field>
-          <button disabled={working} className={smallButton}>Save Rate</button>
-        </form>
-      </details>
-      <details className="rounded-lg border border-slate-200 p-3">
-        <summary className="cursor-pointer font-semibold">{group.isEarning ? "Stop Earning" : "Restart Earning"}</summary>
-        <form className="mt-3 space-y-3" onSubmit={(event) => { event.preventDefault(); void mutate(
-          () => group.isEarning
-            ? stopMudGroupEarning({ factoryId, groupId: group.groupId, stopDate: statusDate })
-            : restartMudGroupEarning({ factoryId, groupId: group.groupId, memberCount: Number(restartMembers), restartDate: statusDate }),
-          group.isEarning ? "Group earning stopped." : "Group earning restarted.",
-        ); }}>
-          {!group.isEarning && <Field label="Members"><input type="number" min="1" step="1" value={restartMembers} onChange={(event) => setRestartMembers(event.target.value)} required disabled={working} className={inputClass} /></Field>}
-          <Field label={group.isEarning ? "First non-earning date" : "Restart date"}><input type="date" value={statusDate} onChange={(event) => setStatusDate(event.target.value)} required disabled={working} className={inputClass} /></Field>
-          <button disabled={working} className={smallButton}>{group.isEarning ? "Stop Earning" : "Restart Earning"}</button>
-        </form>
-      </details>
-    </div>
-    {feedback && <p role="status" className={`mt-3 text-sm font-medium ${feedback.toLowerCase().includes("could not") || feedback.toLowerCase().includes("must") || feedback.toLowerCase().includes("cannot") || feedback.toLowerCase().includes("already") ? "text-red-700" : "text-emerald-700"}`}>{feedback}</p>}
-  </article>;
-}
-
 function SettlementMudAccounting({ factoryId, groups }: Readonly<{
   factoryId: string;
   groups: readonly MudGroupConfiguration[];
@@ -482,127 +503,9 @@ function SettlementMudGroupAccount({ factoryId, group }: Readonly<{
   </article>;
 }
 
-function LegacyMudAccounting({ factoryId, groups, groupsLoading, groupsError, wageRates, ratesLoading, ratesError }: Readonly<{
-  factoryId: string; groups: readonly LabourGroup[]; groupsLoading: boolean; groupsError: boolean;
-  wageRates: readonly WageRateHistory[]; ratesLoading: boolean; ratesError: boolean;
-}>) {
-  const queryClient = useQueryClient();
-  const activeGroup = groups.find((group) => group.isActive) ?? null;
-  const [weekStart, setWeekStart] = useState("");
-  const [feedback, setFeedback] = useState("");
-  const [earning, setEarning] = useState<MudSupplyWeeklyEarning | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (submitting || !activeGroup) return;
-    try { assertCompletedWageWeek(weekStart, getLocalDate()); }
-    catch (error) { setFeedback(errorMessage(error, "Choose a completed Monday–Sunday week.")); return; }
-    setSubmitting(true); setFeedback(""); setEarning(null);
-    try {
-      const result = await calculateMudSupplyWages({ factoryId, labourGroupId: activeGroup.groupId, weekStart });
-      setEarning(await getMudSupplyWeeklyEarning({ factoryId, weeklyEarningId: result.weeklyEarningId, weekStart }));
-      setFeedback(result.groupsCalculated === 1 ? "Legacy weekly Mud earning calculated and locked." : "Legacy weekly Mud earning was already locked.");
-      await queryClient.invalidateQueries({ queryKey: ["mud-shadow-certification", factoryId] });
-      await queryClient.invalidateQueries({ queryKey: ["mud-cutover-readiness", factoryId] });
-    } catch (error) { setFeedback(errorMessage(error, "Could not calculate legacy weekly Mud wage.")); }
-    finally { setSubmitting(false); }
-  }
-
-  const earningGroup = earning ? groups.find((group) => group.groupId === earning.labourGroupId) : undefined;
-  const perMember = earning && earningGroup?.memberCount ? calculateInformationalPerMemberShare(earning.amount, earningGroup.memberCount) : null;
-
-  return <section aria-label="Legacy weekly Mud financial accounting" className="mt-8 border-t-2 border-slate-300 pt-6">
-    <h3 className="text-lg font-bold">Legacy Weekly Financial Accounting</h3>
-    <p className="mt-1 text-sm text-slate-600">This remains the only financial authority. New live group figures above do not affect it.</p>
-    <LegacyMudRateControl factoryId={factoryId} wageRates={wageRates} loading={ratesLoading} failed={ratesError} />
-    <h4 className="mt-6 font-semibold">Calculate Mud-Supply Wage</h4>
-    {groupsLoading && <p className="mt-2 text-sm text-slate-500">Loading legacy weekly group...</p>}
-    {groupsError && <p className="mt-2 text-sm text-red-700">Legacy weekly group could not be loaded.</p>}
-    {!groupsLoading && !groupsError && !activeGroup && <p className="mt-2 text-sm text-slate-500">No legacy weekly group is active.</p>}
-    {activeGroup && <p className="mt-2 text-sm text-slate-600">Legacy weekly group: <span className="font-semibold text-slate-900">{activeGroup.name}</span></p>}
-    <form className="mt-4 flex max-w-xl flex-col gap-4 sm:flex-row sm:items-end" onSubmit={(event) => void submit(event)}>
-      <Field label="Week start"><input type="date" value={weekStart} onChange={(event) => { setWeekStart(event.target.value); setFeedback(""); setEarning(null); }} required disabled={submitting} className={inputClass} /></Field>
-      <button type="submit" disabled={submitting || groupsLoading || groupsError || !activeGroup} className="h-11 rounded-lg bg-slate-950 px-5 font-semibold text-white disabled:opacity-60">{submitting ? "Calculating..." : "Calculate Mud Wage"}</button>
-    </form>
-    {feedback && <p role="status" className="mt-3 text-sm font-medium text-slate-700">{feedback}</p>}
-    {earning && <dl className="mt-4 grid gap-3 rounded-lg border border-slate-200 p-4 text-sm sm:grid-cols-3">
-      <div><dt className="text-slate-500">Locked quantity</dt><dd className="font-semibold">{formatNumber(earning.quantityUsed)}</dd></div>
-      <div><dt className="text-slate-500">Locked earning</dt><dd className="font-semibold">{formatCurrency(earning.amount)}</dd></div>
-      <div><dt className="text-slate-500">Legacy per-member share</dt><dd className="font-semibold">{perMember === null ? "Unavailable" : formatCurrency(perMember)}</dd></div>
-    </dl>}
-    {activeGroup && <LegacyGroupWithdrawalPanel factoryId={factoryId} labourGroup={activeGroup} />}
-  </section>;
-}
-
-function LegacyMudRateControl({ factoryId, wageRates, loading, failed }: Readonly<{ factoryId: string; wageRates: readonly WageRateHistory[]; loading: boolean; failed: boolean }>) {
-  const queryClient = useQueryClient();
-  const [rate, setRate] = useState("");
-  const [effectiveFrom, setEffectiveFrom] = useState(getLocalDate());
-  const [feedback, setFeedback] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const mudRates = wageRates.filter((item) => item.applies_to === "mud_supply");
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setSubmitting(true); setFeedback("");
-    try { await setMudSupplyRate({ factoryId, ratePer1000Bricks: Number(rate), effectiveFrom }); setRate(""); setFeedback("Legacy financial Mud rate saved."); await queryClient.invalidateQueries({ queryKey: ["office-wage-rates", factoryId] }); }
-    catch (error) { setFeedback(errorMessage(error, "Could not set the legacy Mud rate.")); }
-    finally { setSubmitting(false); }
-  }
-  return <details className="mt-4 rounded-lg border border-slate-200 p-4">
-    <summary className="cursor-pointer font-semibold">Legacy Financial Rate</summary>
-    <form className="mt-4 grid gap-4 sm:grid-cols-3 sm:items-end" onSubmit={(event) => void submit(event)}>
-      <Field label="Rate / 1,000"><input type="number" min="0" step="any" value={rate} onChange={(event) => setRate(event.target.value)} required disabled={submitting} className={inputClass} /></Field>
-      <Field label="Effective from"><input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} required disabled={submitting} className={inputClass} /></Field>
-      <button disabled={submitting} className="h-11 rounded-lg border border-slate-300 px-4 font-semibold disabled:opacity-60">Save Legacy Rate</button>
-    </form>
-    {feedback && <p className="mt-3 text-sm font-medium text-slate-700">{feedback}</p>}
-    {loading && <p className="mt-3 text-sm text-slate-500">Loading legacy rates...</p>}
-    {failed && <p className="mt-3 text-sm text-red-700">Legacy rates unavailable.</p>}
-    {!loading && !failed && <p className="mt-3 text-sm text-slate-600">{mudRates.length} legacy rate period{mudRates.length === 1 ? "" : "s"} recorded.</p>}
-  </details>;
-}
-
-function LegacyGroupWithdrawalPanel({ factoryId, labourGroup }: Readonly<{ factoryId: string; labourGroup: LabourGroup }>) {
-  const queryClient = useQueryClient();
-  const asOfDate = getLocalDate();
-  const balanceQuery = useQuery({ queryKey: ["labour-group-available-balance", factoryId, labourGroup.groupId, asOfDate], queryFn: () => getLabourGroupAvailableBalance({ factoryId, labourGroupId: labourGroup.groupId, asOfDate }) });
-  const historyQuery = useQuery({ queryKey: ["labour-group-withdrawal-history", factoryId, labourGroup.groupId], queryFn: () => getLabourGroupWithdrawalHistory(factoryId, labourGroup.groupId) });
-  const [date, setDate] = useState(asOfDate);
-  const [amount, setAmount] = useState("");
-  const [feedback, setFeedback] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setSubmitting(true); setFeedback("");
-    try {
-      await createLabourGroupWithdrawal({ factoryId, labourGroupId: labourGroup.groupId, withdrawalDate: date, amount: Number(amount) });
-      setAmount(""); setFeedback("Legacy group withdrawal recorded.");
-      await Promise.all([queryClient.invalidateQueries({ queryKey: ["labour-group-available-balance", factoryId, labourGroup.groupId] }), queryClient.invalidateQueries({ queryKey: ["labour-group-withdrawal-history", factoryId, labourGroup.groupId] })]);
-    } catch (error) { setFeedback(errorMessage(error, "Could not record legacy group withdrawal.")); }
-    finally { setSubmitting(false); }
-  }
-  return <section className="mt-6 border-t border-slate-200 pt-5">
-    <h4 className="font-semibold">Legacy Group Balance &amp; Withdrawals</h4>
-    {balanceQuery.data && <div className="mt-3 grid gap-3 sm:grid-cols-3"><Metric label="Available Balance" value={formatCurrency(balanceQuery.data.availableBalance)} /><Metric label="Total Earned" value={formatCurrency(balanceQuery.data.totalEarned)} /><Metric label="Total Withdrawn" value={formatCurrency(balanceQuery.data.totalWithdrawn)} /></div>}
-    {balanceQuery.error && <p className="mt-3 text-sm text-red-700">{errorMessage(balanceQuery.error, "Could not load legacy balance.")}</p>}
-    <form className="mt-4 grid gap-4 sm:grid-cols-3 sm:items-end" onSubmit={(event) => void submit(event)}>
-      <Field label="Withdrawal date"><input type="date" value={date} onChange={(event) => setDate(event.target.value)} required disabled={submitting} className={inputClass} /></Field>
-      <Field label="Amount"><input type="number" min="0" step="any" value={amount} onChange={(event) => setAmount(event.target.value)} required disabled={submitting} className={inputClass} /></Field>
-      <button disabled={submitting} className="h-11 rounded-lg bg-slate-950 px-4 font-semibold text-white disabled:opacity-60">Record Group Withdrawal</button>
-    </form>
-    {feedback && <p className="mt-3 text-sm font-medium text-slate-700">{feedback}</p>}
-    <h5 className="mt-5 font-semibold">Withdrawal History</h5>
-    {historyQuery.isLoading && <p className="mt-2 text-sm text-slate-500">Loading withdrawals...</p>}
-    {historyQuery.error && <p className="mt-2 text-sm text-red-700">{errorMessage(historyQuery.error, "Could not load withdrawal history.")}</p>}
-    {historyQuery.data?.length === 0 && <p className="mt-2 text-sm text-slate-500">No withdrawals recorded.</p>}
-    {historyQuery.data && historyQuery.data.length > 0 && <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200">{historyQuery.data.map((withdrawal) => <li key={withdrawal.withdrawalId} className="flex justify-between px-4 py-3 text-sm"><span>{formatDate(withdrawal.withdrawalDate)}</span><span className="font-semibold">{formatCurrency(withdrawal.amount)}</span></li>)}</ul>}
-  </section>;
-}
-
 function Field({ label, children }: Readonly<{ label: string; children: React.ReactNode }>) { return <label className="block flex-1 text-sm font-medium text-slate-700">{label}{children}</label>; }
 function Metric({ label, value }: Readonly<{ label: string; value: string }>) { return <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 font-bold tabular-nums">{value}</p></div>; }
-function errorMessage(error: unknown, fallback: string) { return error instanceof MudGroupConfigurationError || error instanceof MudSettlementAccountError || error instanceof CalculateMudSupplyWagesError || error instanceof SetMudSupplyRateError || error instanceof CreateLabourGroupWithdrawalError || error instanceof Error ? error.message : fallback; }
+function errorMessage(error: unknown, fallback: string) { return error instanceof MudGroupConfigurationError || error instanceof MudSettlementAccountError || error instanceof Error ? error.message : fallback; }
 function formatDate(date: string) { return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${date}T00:00:00`)); }
-function formatNumber(value: number) { return value.toLocaleString("en-IN", { maximumFractionDigits: 20 }); }
 function formatCurrency(value: number) { return `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
 const inputClass = "mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950 disabled:bg-slate-100";
-const smallButton = "h-10 w-full rounded-lg border border-slate-300 px-3 font-semibold disabled:opacity-60";

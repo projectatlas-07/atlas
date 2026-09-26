@@ -8,6 +8,11 @@ import type {
   SoilWorker,
   SoilWorkerTrolleyRate,
 } from "@/features/soil/types";
+import {
+  formatDateOnly,
+  formatIndianCurrency,
+  formatIndianNumber,
+} from "../../lib/formatting.ts";
 import { sumFiniteNumbers } from "../../lib/numeric-total.ts";
 
 export const SOIL_SECTION_HEADING = "Soil Supply";
@@ -129,26 +134,6 @@ export function buildSoilAdjustmentInput(input: Readonly<{
   };
 }
 
-export function formatSoilMoney(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 20,
-  })}`;
-}
-
-export function formatSoilDate(value: string): string {
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${value}T00:00:00Z`));
-}
-
-export function formatSoilQuantity(quantity: number): string {
-  return quantity.toLocaleString("en-IN", { maximumFractionDigits: 3 });
-}
-
 export function buildSoilEarningHistoryItem(earning: SoilEarning): {
   id: string;
   date: string;
@@ -156,14 +141,14 @@ export function buildSoilEarningHistoryItem(earning: SoilEarning): {
   amount: string;
   isCorrection: boolean;
 } {
-  const quantityAndRate = `${formatSoilQuantity(earning.trolleyQuantitySnapshot)} trolleys × ${formatSoilMoney(earning.ratePerTrolleySnapshot)}`;
+  const quantityAndRate = `${formatIndianNumber(earning.trolleyQuantitySnapshot)} trolleys × ${formatIndianCurrency(earning.ratePerTrolleySnapshot)}`;
   return {
     id: earning.id,
-    date: formatSoilDate(earning.workDate),
+    date: formatDateOnly(earning.workDate),
     description: earning.eventType === "BASE"
       ? quantityAndRate
       : `Correction → ${quantityAndRate}`,
-    amount: `${earning.amount >= 0 ? "+" : "−"}${formatSoilMoney(Math.abs(earning.amount))}`,
+    amount: `${earning.amount >= 0 ? "+" : "−"}${formatIndianCurrency(Math.abs(earning.amount))}`,
     isCorrection: earning.eventType === "CORRECTION",
   };
 }

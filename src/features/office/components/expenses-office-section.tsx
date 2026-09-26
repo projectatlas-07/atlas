@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState, Feedback } from "@/components/ui/feedback";
+import { Input } from "@/components/ui/form-controls";
+import { FormField } from "@/components/ui/form-field";
+import type { OfficeAreaId } from "@/features/office/office-navigation";
 import {
   applyExpensePaymentStates,
   buildExpensePaymentInput,
@@ -75,7 +81,10 @@ const kindFilters: Array<{ value: ExpenseKindFilter; label: string }> = [
   { value: "expense", label: "Expenses" },
 ];
 
-export function ExpensesOfficeSection({ factoryId }: Readonly<{ factoryId: string }>) {
+export function ExpensesOfficeSection({
+  activeArea,
+  factoryId,
+}: Readonly<{ activeArea: OfficeAreaId; factoryId: string }>) {
   const queryClient = useQueryClient();
   const [localToday] = useState(() => getLocalDate());
   const [recordForm, setRecordForm] = useState<ExpenseRecordForm>(() => emptyExpenseRecordForm(localToday));
@@ -83,6 +92,7 @@ export function ExpensesOfficeSection({ factoryId }: Readonly<{ factoryId: strin
   const [showRecordForm, setShowRecordForm] = useState(false);
   const [supplierForm, setSupplierForm] = useState<SupplierForm>(emptySupplierForm);
   const [supplierEditor, setSupplierEditor] = useState<"create" | "edit" | null>(null);
+  const [editingSupplierId, setEditingSupplierId] = useState("");
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentForm, setPaymentForm] = useState<ExpensePaymentForm>(() => emptyExpensePaymentForm(localToday));
   const [selectedRecordId, setSelectedRecordId] = useState("");
@@ -118,6 +128,7 @@ export function ExpensesOfficeSection({ factoryId }: Readonly<{ factoryId: strin
   const candidates = getExpensePaymentCandidates(records);
   const selectedRecord = records.find((record) => record.id === selectedRecordId) ?? null;
   const selectedSupplier = suppliers.find((supplier) => supplier.id === recordForm.supplierId) ?? null;
+  const editingSupplier = suppliers.find((supplier) => supplier.id === editingSupplierId) ?? null;
   const range = resolveExpenseDateRange(preset, localToday, customFrom, customTo);
   const filteredRecords = filterExpenseRecords(records, range, kindFilter);
   const summary = summarizeExpenseRecords(filteredRecords);
@@ -179,12 +190,14 @@ export function ExpensesOfficeSection({ factoryId }: Readonly<{ factoryId: strin
   function openSupplierCreate() {
     setSupplierForm(emptySupplierForm());
     setSupplierEditor("create");
+    setEditingSupplierId("");
     setSupplierError("");
   }
 
   function openSupplierEdit(supplier: Supplier) {
     setSupplierForm({ name: supplier.name, address: supplier.address ?? "", mobile: supplier.mobile ?? "" });
     setSupplierEditor("edit");
+    setEditingSupplierId(supplier.id);
     setSupplierError("");
   }
 
@@ -196,11 +209,15 @@ export function ExpensesOfficeSection({ factoryId }: Readonly<{ factoryId: strin
       setSupplierError("Supplier name is required. Check the optional address and mobile.");
       return;
     }
+    if (supplierEditor === "edit" && !editingSupplier) {
+      setSupplierError("Choose an existing supplier before saving changes.");
+      return;
+    }
     setIsSavingSupplier(true);
     setSupplierError("");
     try {
-      const saved = supplierEditor === "edit" && selectedSupplier
-        ? await updateSupplier({ ...input, supplierId: selectedSupplier.id })
+      const saved = supplierEditor === "edit"
+        ? await updateSupplier({ ...input, supplierId: editingSupplier!.id })
         : await createSupplier(input);
       queryClient.setQueryData<Supplier[]>(expenseSuppliersKey(factoryId), (current = []) => {
         const next = current.some((supplier) => supplier.id === saved.id)
@@ -208,8 +225,8 @@ export function ExpensesOfficeSection({ factoryId }: Readonly<{ factoryId: strin
           : [...current, saved];
         return next.sort((left, right) => left.name.localeCompare(right.name, "en-IN"));
       });
-      setRecordForm((current) => ({ ...current, supplierId: saved.id, counterpartyName: "" }));
       setSupplierEditor(null);
+      setEditingSupplierId("");
       setSupplierForm(emptySupplierForm());
       await queryClient.invalidateQueries({ queryKey: expenseSuppliersKey(factoryId) });
     } catch (error) {
@@ -275,7 +292,8 @@ export function ExpensesOfficeSection({ factoryId }: Readonly<{ factoryId: strin
   }
 
   return (
-    <section aria-labelledby="expenses-office-heading" className="mt-10 border-t-4 border-amber-300 pt-8">
+    <>
+    <section aria-labelledby="expenses-office-heading" hidden={activeArea !== "purchases-expenses"} className="border-t-4 border-amber-300 pt-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wider text-amber-800">Expenses & Purchases</p>
@@ -300,17 +318,8 @@ export function ExpensesOfficeSection({ factoryId }: Readonly<{ factoryId: strin
         editing={Boolean(editingRecordId)}
         isSaving={isSavingRecord}
         error={recordError}
-        supplierEditor={supplierEditor}
-        supplierForm={supplierForm}
-        setSupplierForm={setSupplierForm}
-        isSavingSupplier={isSavingSupplier}
-        supplierError={supplierError}
-        onOpenSupplierCreate={openSupplierCreate}
-        onOpenSupplierEdit={openSupplierEdit}
-        onCancelSupplier={() => { setSupplierEditor(null); setSupplierError(""); }}
-        onSaveSupplier={saveSupplier}
         onSave={saveRecord}
-        onCancel={() => { setShowRecordForm(false); setEditingRecordId(""); setSupplierEditor(null); setRecordError(""); }}
+        onCancel={() => { setShowRecordForm(false); setEditingRecordId(""); setRecordError(""); }}
       />}
 
       {showPaymentForm && <ExpensePaymentEditor
@@ -357,12 +366,76 @@ export function ExpensesOfficeSection({ factoryId }: Readonly<{ factoryId: strin
 
       <ExpensePaymentHistory payments={payments} isLoading={paymentsQuery.isLoading} />
     </section>
+    <SupplierManagementSection
+      hidden={activeArea !== "settings"}
+      suppliers={suppliers}
+      isLoading={suppliersQuery.isLoading}
+      error={suppliersQuery.error}
+      editor={supplierEditor}
+      form={supplierForm}
+      setForm={setSupplierForm}
+      isSaving={isSavingSupplier}
+      formError={supplierError}
+      onCreate={openSupplierCreate}
+      onEdit={openSupplierEdit}
+      onCancel={() => { setSupplierEditor(null); setEditingSupplierId(""); setSupplierError(""); }}
+      onSave={saveSupplier}
+    />
+    </>
   );
 }
 
+function SupplierManagementSection({
+  hidden,
+  suppliers,
+  isLoading,
+  error,
+  editor,
+  form,
+  setForm,
+  isSaving,
+  formError,
+  onCreate,
+  onEdit,
+  onCancel,
+  onSave,
+}: Readonly<{
+  hidden: boolean;
+  suppliers: readonly Supplier[];
+  isLoading: boolean;
+  error: Error | null;
+  editor: "create" | "edit" | null;
+  form: SupplierForm;
+  setForm: React.Dispatch<React.SetStateAction<SupplierForm>>;
+  isSaving: boolean;
+  formError: string;
+  onCreate: () => void;
+  onEdit: (supplier: Supplier) => void;
+  onCancel: () => void;
+  onSave: (event: React.FormEvent<HTMLFormElement>) => void;
+}>) {
+  return <div hidden={hidden} className="mt-atlas-8">
+    <Card as="section" aria-labelledby="supplier-management-heading">
+      <div className="flex flex-wrap items-start justify-between gap-atlas-4">
+        <div><h2 id="supplier-management-heading" className="text-atlas-xl font-atlas-semibold text-atlas-text">Suppliers</h2><p className="mt-atlas-1 text-atlas-sm text-atlas-text-muted">Manage saved suppliers used by Purchases & Expenses.</p></div>
+        <Button type="button" onClick={onCreate}>Add supplier</Button>
+      </div>
+      {isLoading && <div className="mt-atlas-4"><Feedback role="status" tone="neutral">Loading suppliers...</Feedback></div>}
+      {error && <div className="mt-atlas-4"><Feedback role="alert" tone="danger">{expenseOfficeErrorMessage(error, "Could not load suppliers.")}</Feedback></div>}
+      {!isLoading && !error && suppliers.length === 0 && <EmptyState title="No saved suppliers" />}
+      {suppliers.length > 0 && <ul className="mt-atlas-4 divide-y divide-atlas-border border-y border-atlas-border">{suppliers.map((supplier) => <li key={supplier.id} className="flex flex-col gap-atlas-3 py-atlas-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-atlas-semibold text-atlas-text">{supplier.name}</p><p className="mt-atlas-1 text-atlas-xs text-atlas-text-muted">{[supplier.address, supplier.mobile].filter(Boolean).join(" · ") || "No address or mobile saved"}</p></div><Button type="button" variant="secondary" onClick={() => onEdit(supplier)}>Edit supplier</Button></li>)}</ul>}
+      {editor && <div className="mt-atlas-4"><Card surface="muted"><form onSubmit={onSave}>
+        <div className="flex items-center justify-between gap-atlas-4"><h3 className="font-atlas-semibold text-atlas-text">{editor === "create" ? "Add supplier" : "Edit supplier"}</h3><Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button></div>
+        <div className="mt-atlas-3 grid gap-atlas-3 sm:grid-cols-3"><FormField label="Name"><Input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} maxLength={200} /></FormField><FormField label="Address (optional)"><Input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} maxLength={500} /></FormField><FormField label="Mobile (optional)"><Input inputMode="tel" value={form.mobile} onChange={(event) => setForm({ ...form, mobile: event.target.value })} maxLength={50} /></FormField></div>
+        <div className="mt-atlas-3"><Button type="submit" loading={isSaving} loadingLabel="Saving supplier...">Save supplier</Button></div>
+        {formError && <div className="mt-atlas-2"><Feedback role="alert" tone="danger">{formError}</Feedback></div>}
+      </form></Card></div>}
+    </Card>
+  </div>;
+}
+
 function ExpenseRecordEditor({ form, setForm, suppliers, selectedSupplier, editing, isSaving, error,
-  supplierEditor, supplierForm, setSupplierForm, isSavingSupplier, supplierError,
-  onOpenSupplierCreate, onOpenSupplierEdit, onCancelSupplier, onSaveSupplier, onSave, onCancel,
+  onSave, onCancel,
 }: Readonly<{
   form: ExpenseRecordForm;
   setForm: React.Dispatch<React.SetStateAction<ExpenseRecordForm>>;
@@ -371,15 +444,6 @@ function ExpenseRecordEditor({ form, setForm, suppliers, selectedSupplier, editi
   editing: boolean;
   isSaving: boolean;
   error: string;
-  supplierEditor: "create" | "edit" | null;
-  supplierForm: SupplierForm;
-  setSupplierForm: React.Dispatch<React.SetStateAction<SupplierForm>>;
-  isSavingSupplier: boolean;
-  supplierError: string;
-  onOpenSupplierCreate: () => void;
-  onOpenSupplierEdit: (supplier: Supplier) => void;
-  onCancelSupplier: () => void;
-  onSaveSupplier: (event: React.FormEvent<HTMLFormElement>) => void;
   onSave: (event: React.FormEvent<HTMLFormElement>) => void;
   onCancel: () => void;
 }>) {
@@ -389,11 +453,10 @@ function ExpenseRecordEditor({ form, setForm, suppliers, selectedSupplier, editi
       <button type="button" onClick={onCancel} className="text-sm font-semibold text-slate-600 hover:underline">Close</button>
     </div>
     <form onSubmit={onSave} className="mt-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <label className="text-xs font-medium text-slate-600">Type<select value={form.kind} onChange={(event) => setForm({ ...form, kind: event.target.value as ExpenseRecordKind })} className={inputClass}><option value="purchase">Purchase</option><option value="expense">Expense</option></select></label>
         <label className="text-xs font-medium text-slate-600">Business date<input type="date" required value={form.businessDate} onChange={(event) => setForm({ ...form, businessDate: event.target.value })} className={inputClass} /></label>
         <label className="text-xs font-medium text-slate-600">Supplier (optional)<select value={form.supplierId} onChange={(event) => setForm({ ...form, supplierId: event.target.value, counterpartyName: event.target.value ? "" : form.counterpartyName })} className={inputClass}><option value="">No saved supplier</option>{suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}</select></label>
-        <div className="flex items-end gap-2"><button type="button" onClick={onOpenSupplierCreate} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold">Quick-create supplier</button>{selectedSupplier && <button type="button" onClick={() => onOpenSupplierEdit(selectedSupplier)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold">Edit supplier</button>}</div>
       </div>
       {selectedSupplier && <div className="mt-3 rounded-lg bg-slate-50 px-4 py-3 text-xs text-slate-600"><span className="font-bold text-slate-900">{selectedSupplier.name}</span>{selectedSupplier.address ? ` · ${selectedSupplier.address}` : ""}{selectedSupplier.mobile ? ` · ${selectedSupplier.mobile}` : ""}</div>}
       {!form.supplierId && <label className="mt-3 block max-w-xl text-xs font-medium text-slate-600">Counterparty / payee<input required value={form.counterpartyName} onChange={(event) => setForm({ ...form, counterpartyName: event.target.value })} maxLength={200} placeholder="Supplier, garage, mechanic..." className={inputClass} /></label>}
@@ -405,12 +468,6 @@ function ExpenseRecordEditor({ form, setForm, suppliers, selectedSupplier, editi
       <div className="mt-4 flex flex-wrap items-center gap-3"><button type="submit" disabled={isSaving} className="h-10 rounded-lg bg-amber-700 px-5 text-sm font-bold text-white disabled:opacity-50">{isSaving ? "Saving..." : editing ? "Save correction" : `Save ${expenseKindLabel(form.kind)}`}</button><span className="text-xs text-slate-500">Saving a cost does not create Cash Book Money Out.</span></div>
       {error && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{error}</p>}
     </form>
-    {supplierEditor && <form onSubmit={onSaveSupplier} className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-      <div className="flex items-center justify-between gap-4"><h4 className="font-bold">{supplierEditor === "create" ? "Quick-create supplier" : "Edit selected supplier"}</h4><button type="button" onClick={onCancelSupplier} className="text-xs font-semibold text-slate-600">Cancel</button></div>
-      <div className="mt-3 grid gap-3 sm:grid-cols-3"><label className="text-xs font-medium text-slate-600">Name<input required value={supplierForm.name} onChange={(event) => setSupplierForm({ ...supplierForm, name: event.target.value })} maxLength={200} className={inputClass} /></label><label className="text-xs font-medium text-slate-600">Address (optional)<input value={supplierForm.address} onChange={(event) => setSupplierForm({ ...supplierForm, address: event.target.value })} maxLength={500} className={inputClass} /></label><label className="text-xs font-medium text-slate-600">Mobile (optional)<input value={supplierForm.mobile} onChange={(event) => setSupplierForm({ ...supplierForm, mobile: event.target.value })} maxLength={50} className={inputClass} /></label></div>
-      <button type="submit" disabled={isSavingSupplier} className="mt-3 h-9 rounded-lg bg-slate-950 px-4 text-xs font-bold text-white disabled:opacity-50">{isSavingSupplier ? "Saving supplier..." : "Save supplier"}</button>
-      {supplierError && <p role="alert" className="mt-2 text-sm font-semibold text-red-700">{supplierError}</p>}
-    </form>}
   </section>;
 }
 

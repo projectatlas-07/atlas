@@ -1,10 +1,9 @@
-import type { AssignTransportWorkerToCrewInput } from "@/features/transport/services/transport-crew-assignment-service";
-import type { CreateTransportCrewWageRateInput } from "@/features/transport/services/transport-crew-wage-rate-service";
+import type { AssignTransportWorkerToGroupInput } from "@/features/transport/services/transport-crew-assignment-service";
+import type { CreateTransportGroupWageRateInput } from "@/features/transport/services/transport-crew-wage-rate-service";
 import type {
-  TransportCrew,
-  TransportCrewAssignment,
-  TransportCrewWageRate,
-  TransportWorkDirection,
+  TransportGroup,
+  TransportGroupAssignment,
+  TransportGroupWageRate,
 } from "@/features/transport/types";
 
 export function buildTransportWorkerCreateInput(
@@ -15,42 +14,39 @@ export function buildTransportWorkerCreateInput(
   return factoryId && trimmedName ? { factoryId, name: trimmedName } : null;
 }
 
-export function buildTransportCrewCreateInput({
+export function buildTransportGroupCreateInput({
   factoryId,
   name,
-  workDirection,
 }: Readonly<{
   factoryId: string;
   name: string;
-  workDirection: string;
 }>): {
   factoryId: string;
   name: string;
-  workDirection: TransportWorkDirection;
 } | null {
   const trimmedName = name.trim();
-  if (!factoryId || !trimmedName || !isTransportWorkDirection(workDirection)) {
+  if (!factoryId || !trimmedName) {
     return null;
   }
-  return { factoryId, name: trimmedName, workDirection };
+  return { factoryId, name: trimmedName };
 }
 
 export function buildTransportAssignmentInput({
   factoryId,
   transportWorkerId,
-  transportCrewId,
+  transportGroupId,
 }: Readonly<{
   factoryId: string;
   transportWorkerId: string;
-  transportCrewId: string;
-}>): AssignTransportWorkerToCrewInput | null {
-  if (!factoryId || !transportWorkerId || !transportCrewId) {
+  transportGroupId: string;
+}>): AssignTransportWorkerToGroupInput | null {
+  if (!factoryId || !transportWorkerId || !transportGroupId) {
     return null;
   }
   return {
     factoryId,
     transportWorkerId,
-    transportCrewId,
+    transportGroupId,
   };
 }
 
@@ -58,35 +54,33 @@ export type TransportAssignmentListItem = {
   assignmentId: string;
   workerName: string;
   workerStatus: "Active" | "Inactive";
-  crewName: string;
-  crewDirection: string;
-  crewStatus: "Active" | "Inactive";
+  groupName: string;
+  groupStatus: "Active" | "Inactive";
 };
 
 export function buildTransportAssignmentListItem(
-  assignment: TransportCrewAssignment,
+  assignment: TransportGroupAssignment,
 ): TransportAssignmentListItem {
   return {
     assignmentId: assignment.id,
     workerName: assignment.transportWorkerName,
     workerStatus: assignment.transportWorkerIsActive ? "Active" : "Inactive",
-    crewName: assignment.transportCrewName,
-    crewDirection: formatTransportDirection(assignment.transportCrewWorkDirection),
-    crewStatus: assignment.transportCrewIsActive ? "Active" : "Inactive",
+    groupName: assignment.transportGroupName,
+    groupStatus: assignment.transportGroupIsActive ? "Active" : "Inactive",
   };
 }
 
 export type TransportRateFormState = {
-  selectedCrewId: string;
+  selectedGroupId: string;
   effectiveFrom: string;
   rateInput: string;
 };
 
-export function selectTransportRateCrew(
+export function selectTransportRateGroup(
   state: TransportRateFormState,
-  selectedCrewId: string,
+  selectedGroupId: string,
 ): TransportRateFormState {
-  return { ...state, selectedCrewId };
+  return { ...state, selectedGroupId };
 }
 
 export function transportRateFormAfterSuccess(
@@ -97,25 +91,25 @@ export function transportRateFormAfterSuccess(
 
 export function getTransportRateRefreshQueryKeys(
   factoryId: string,
-  transportCrewId: string,
+  transportGroupId: string,
   workDate: string,
 ): readonly [readonly string[], readonly string[]] {
   return [
-    ["office-transport-crew-wage-rates", factoryId, transportCrewId],
-    ["office-transport-current-crew-wage-rate", factoryId, transportCrewId, workDate],
+    ["office-transport-group-wage-rates", factoryId, transportGroupId],
+    ["office-transport-current-group-wage-rate", factoryId, transportGroupId, workDate],
   ];
 }
 
-export function buildTransportCrewWageRateInput({
+export function buildTransportGroupWageRateInput({
   factoryId,
-  selectedCrewId,
+  selectedGroupId,
   effectiveFrom,
   rateInput,
-}: Readonly<TransportRateFormState & { factoryId: string }>): CreateTransportCrewWageRateInput | null {
+}: Readonly<TransportRateFormState & { factoryId: string }>): CreateTransportGroupWageRateInput | null {
   const ratePerPaya = Number(rateInput);
   if (
     !factoryId
-    || !selectedCrewId
+    || !selectedGroupId
     || !isCanonicalDate(effectiveFrom)
     || !rateInput.trim()
     || !Number.isFinite(ratePerPaya)
@@ -126,7 +120,7 @@ export function buildTransportCrewWageRateInput({
 
   return {
     factoryId,
-    transportCrewId: selectedCrewId,
+    transportGroupId: selectedGroupId,
     effectiveFrom,
     ratePerPaya,
   };
@@ -136,7 +130,7 @@ export function formatTransportRatePerPaya(rate: number): string {
   return `₹${rate.toLocaleString("en-IN", { maximumFractionDigits: 20 })} / paya`;
 }
 
-export function buildTransportRateHistoryItem(rate: TransportCrewWageRate): {
+export function buildTransportRateHistoryItem(rate: TransportGroupWageRate): {
   id: string;
   formattedRate: string;
   effectiveFrom: string;
@@ -150,13 +144,13 @@ export function buildTransportRateHistoryItem(rate: TransportCrewWageRate): {
   };
 }
 
-export function buildTransportRateCrewOption(crew: TransportCrew): {
+export function buildTransportRateGroupOption(group: TransportGroup): {
   id: string;
   label: string;
 } {
   return {
-    id: crew.id,
-    label: `${crew.name}${crew.isActive ? "" : " (Inactive)"}`,
+    id: group.id,
+    label: `${group.name}${group.isActive ? "" : " (Inactive)"}`,
   };
 }
 
@@ -173,7 +167,7 @@ export function transportRateOfficeErrorMessage(
     return "Rate must be positive and the effective date must be valid.";
   }
   if (code === "23P01" || /overlap|ambiguous|multiple.*rate/i.test(message)) {
-    return "Transport crew wage-rate history is overlapping or ambiguous.";
+    return "Transport Group wage-rate history is overlapping or ambiguous.";
   }
   if (/already starts|duplicate.*effective/i.test(message)) {
     return "A rate already starts on this effective date.";
@@ -182,7 +176,7 @@ export function transportRateOfficeErrorMessage(
     return "Backdated rates are not allowed; choose a date after the latest rate start.";
   }
   if (/does not belong to this factory/i.test(message)) {
-    return "The selected transport crew does not belong to this factory.";
+    return "The selected Transport Group does not belong to this factory.";
   }
   if (code === "42501" || code === "401") {
     return "You do not have access to manage transport rates for this factory.";
@@ -191,12 +185,6 @@ export function transportRateOfficeErrorMessage(
     return "Network problem. Check your connection and try again.";
   }
   return message || fallback;
-}
-
-export function formatTransportDirection(
-  direction: TransportWorkDirection,
-): string {
-  return direction === "FIELD_TO_KILN" ? "Field → Kiln" : "Kiln → Field";
 }
 
 export function formatTransportActiveStatus(
@@ -216,13 +204,13 @@ export function transportOfficeErrorMessage(
   const details = typeof failure.details === "string" ? failure.details : "";
 
   if (code === "23503") {
-    return "The worker, crew, and assignment must belong to the same factory.";
+    return "The worker, Transport Group, and assignment must belong to the same factory.";
   }
   if (code === "23505") {
     if (/already assigned|transport_crew_assignments/i.test(`${message} ${details}`)) {
-      return "This worker is already assigned to this crew.";
+      return "This worker is already assigned to this Transport Group.";
     }
-    return "A transport crew with this name already exists.";
+    return "A Transport Group with this name already exists.";
   }
   if (code === "42501" || code === "401") {
     return "You do not have access to manage chamber transport for this factory.";
@@ -231,12 +219,6 @@ export function transportOfficeErrorMessage(
     return "Network problem. Check your connection and try again.";
   }
   return message || fallback;
-}
-
-function isTransportWorkDirection(
-  value: string,
-): value is TransportWorkDirection {
-  return value === "FIELD_TO_KILN" || value === "KILN_TO_FIELD";
 }
 
 function isCanonicalDate(value: string): boolean {

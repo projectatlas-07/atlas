@@ -5,6 +5,7 @@ import type {
   TransportWorkerAvailableBalance,
   TransportWorkerWithdrawal,
 } from "../transport/types.ts";
+import { formatIndianCurrency } from "../../lib/formatting.ts";
 
 export function sumTransportPeriodEarned(
   details: readonly TransportWeeklyEarningDetail[],
@@ -86,10 +87,10 @@ export function getTransportFinanceRefreshQueryKeys({
 }
 
 export function formatTransportFinanceCurrency(value: number): string {
-  return `₹${value.toLocaleString("en-IN", {
+  return formatIndianCurrency(value, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 20,
-  })}`;
+  });
 }
 
 export function buildTransportBalanceDisplay(balance: TransportWorkerAvailableBalance): {

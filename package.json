@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "check:ui-drift": "node scripts/check-ui-drift.mjs",
     "typecheck": "tsc --noEmit",
     "verify:sales-concurrency": "node --env-file-if-exists=.env.local scripts/verify-sales-s1-concurrency.mjs",
     "verify:sales-payment-concurrency": "node --env-file-if-exists=.env.local scripts/verify-sales-s5a-concurrency.mjs",

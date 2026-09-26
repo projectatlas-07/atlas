@@ -2,109 +2,127 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { buildDashboardPresentation } from "./dashboard-view-model.ts";
-import type { DashboardSnapshot } from "./types.ts";
+import type { OwnerDashboardSnapshot } from "./types.ts";
 
 const componentSource = readFileSync(
   new URL("./components/dashboard-view.tsx", import.meta.url),
   "utf8",
 );
+const viewModelSource = readFileSync(
+  new URL("./dashboard-view-model.ts", import.meta.url),
+  "utf8",
+);
 
-const snapshot: DashboardSnapshot = {
-  dateFrom: "2026-08-01",
-  dateTo: "2026-08-31",
-  flows: {
-    sales: 125000,
-    paymentsReceived: 250001,
-    expenses: 350002,
-    cashIn: 450003,
-    cashOut: 550004,
-    productionQuantity: 12345,
-    productionLabourPaid: 750006,
-    mudSupplyPaid: 850007,
-    chamberTransportPaid: 950008,
-    soilTrolleyPaid: 1050009,
-    staffPaid: 1150010,
-    vehicleDeliveryWagePaid: 1250011,
-  },
-  stocks: {
-    cashBalance: 1350012,
-    currentCustomerOutstanding: 1450013,
-  },
-};
+function ownerSnapshot(overrides: Partial<OwnerDashboardSnapshot["today"]["flows"]> = {}): OwnerDashboardSnapshot {
+  return {
+    today: {
+      dateFrom: "2026-09-23",
+      dateTo: "2026-09-23",
+      flows: {
+        sales: 125000,
+        paymentsReceived: 25001,
+        expenses: 35002,
+        cashIn: 45003,
+        cashOut: 55004,
+        productionQuantity: 12345,
+        productionLabourPaid: 75006,
+        mudSupplyPaid: 85007,
+        chamberTransportPaid: 95008,
+        soilTrolleyPaid: 105009,
+        staffPaid: 115010,
+        vehicleDeliveryWagePaid: 125011,
+        ...overrides,
+      },
+      stocks: {
+        cashBalance: 135012,
+        currentCustomerOutstanding: 145013,
+      },
+    },
+    thisWeekSales: {
+      dateFrom: "2026-09-21",
+      dateTo: "2026-09-23",
+      amount: 250000,
+    },
+  };
+}
 
-const expectedLabels = [
-  "Sales",
-  "Payments Received",
-  "Expenses",
-  "Cash In",
-  "Cash Out",
-  "Production Quantity",
-  "Production Labour Paid",
-  "Mud Supply Paid",
-  "Chamber Transport Paid",
-  "Soil/Trolley Paid",
-  "Staff Paid",
-  "Vehicle Delivery Wage Paid",
-  "Cash Balance",
-  "Customer Outstanding — Current",
-];
+test("builds the owner hierarchy from authoritative values with central Indian formatting", () => {
+  const presentation = buildDashboardPresentation(ownerSnapshot());
 
-test("renders all 14 approved labels and maps every supplied value to its own card", () => {
-  const presentation = buildDashboardPresentation(snapshot);
-  const cards = [...presentation.businessActivity, ...presentation.currentPosition];
-  const valuesByLabel = Object.fromEntries(cards.map((card) => [card.label, card.value]));
-
-  assert.deepEqual(cards.map((card) => card.label), expectedLabels);
-  assert.deepEqual(valuesByLabel, {
-    Sales: "₹1,25,000.00",
-    "Payments Received": "₹2,50,001.00",
-    Expenses: "₹3,50,002.00",
-    "Cash In": "₹4,50,003.00",
-    "Cash Out": "₹5,50,004.00",
-    "Production Quantity": "12,345",
-    "Production Labour Paid": "₹7,50,006.00",
-    "Mud Supply Paid": "₹8,50,007.00",
-    "Chamber Transport Paid": "₹9,50,008.00",
-    "Soil/Trolley Paid": "₹10,50,009.00",
-    "Staff Paid": "₹11,50,010.00",
-    "Vehicle Delivery Wage Paid": "₹12,50,011.00",
-    "Cash Balance": "₹13,50,012.00",
-    "Customer Outstanding — Current": "₹14,50,013.00",
+  assert.equal(presentation.todayDateLabel, "23/09/2026");
+  assert.equal(presentation.todaySales.value, "₹1,25,000.00");
+  assert.deepEqual(presentation.todayProduction, {
+    recorded: true,
+    value: "12,345",
+    description: "Quantity from today’s production entries.",
+    href: "#production",
   });
-  assert.equal(valuesByLabel["Production Quantity"].includes("₹"), false);
-});
-
-test("keeps period activity separate from current position and displays the supplied dates", () => {
-  const presentation = buildDashboardPresentation(snapshot);
-
-  assert.equal(presentation.businessActivity.length, 12);
-  assert.deepEqual(presentation.currentPosition.map((card) => card.label), [
-    "Cash Balance",
-    "Customer Outstanding — Current",
+  assert.equal(presentation.thisWeekSales.value, "₹2,50,000.00");
+  assert.equal(presentation.thisWeekSales.description, "21/09/2026 to 23/09/2026");
+  assert.deepEqual(presentation.currentPosition.map(({ label, value, href }) => ({ label, value, href })), [
+    { label: "Cash balance", value: "₹1,35,012.00", href: "#cash-book" },
+    { label: "Customer outstanding", value: "₹1,45,013.00", href: "#sales" },
   ]);
-  assert.equal(presentation.periodLabel, "Selected period: 2026-08-01 to 2026-08-31");
+  assert.equal(presentation.hasRecordedActivity, true);
 });
 
-test("helper copy distinguishes the approved business meanings", () => {
-  const presentation = buildDashboardPresentation(snapshot);
-  const cards = [...presentation.businessActivity, ...presentation.currentPosition];
-  const helperByLabel = Object.fromEntries(cards.map((card) => [card.label, card.helperText ?? ""]));
+test("zero production is one consistent not-recorded state and never a competing value", () => {
+  const presentation = buildDashboardPresentation(ownerSnapshot({ productionQuantity: 0 }));
 
-  assert.match(helperByLabel.Sales, /unlocked Challan.*change past Sales/i);
-  assert.match(helperByLabel["Payments Received"], /Cash In.*all Cash Book Money In/i);
-  assert.match(helperByLabel.Expenses, /Cash Out.*actual Cash Book Money Out/i);
-  assert.match(helperByLabel["Customer Outstanding — Current"], /Current unpaid.*not a historical balance/i);
+  assert.deepEqual(presentation.todayProduction, {
+    recorded: false,
+    value: "Not recorded yet",
+    description: "Record production in the existing daily workflow.",
+    href: "#production",
+  });
+  assert.equal(presentation.attention[0]?.title, "Today’s production is not recorded");
+  assert.equal(presentation.attention[0]?.value, undefined);
 });
 
-test("component is prop-only and renders the two responsive card groups", () => {
-  assert.match(componentSource, /export interface DashboardViewProps/);
-  assert.match(componentSource, /snapshot: DashboardSnapshot/);
-  assert.match(componentSource, /buildDashboardPresentation\(snapshot\)/);
-  assert.match(componentSource, /heading="Business Activity"/);
-  assert.match(componentSource, /heading="Current Position"/);
-  assert.match(componentSource, /cards\.map\(\(card\)/);
-  assert.doesNotMatch(
-    componentSource,
-    /getDashboardSnapshot|supabase|\/services\/|compensation-provider|compensation\/providers|fetch\(/i,
-  );
+test("attention uses only absent production and current outstanding without inventing urgency", () => {
+  const open = buildDashboardPresentation(ownerSnapshot({ productionQuantity: 0 }));
+  assert.deepEqual(open.attention.map((item) => item.title), [
+    "Today’s production is not recorded",
+    "Customer balance remains open",
+  ]);
+  assert.match(open.attention[1]?.description ?? "", /not an overdue calculation/i);
+
+  const clearSnapshot = ownerSnapshot();
+  clearSnapshot.today.stocks.currentCustomerOutstanding = 0;
+  assert.deepEqual(buildDashboardPresentation(clearSnapshot).attention, []);
+});
+
+test("zero activity gets an explicit empty state while zero Sales remains a truthful value", () => {
+  const presentation = buildDashboardPresentation(ownerSnapshot({
+    sales: 0,
+    paymentsReceived: 0,
+    expenses: 0,
+    cashIn: 0,
+    cashOut: 0,
+  }));
+
+  assert.equal(presentation.todaySales.value, "₹0.00");
+  assert.match(presentation.todaySales.description, /No active Challan value/i);
+  assert.equal(presentation.hasRecordedActivity, false);
+  assert.match(componentSource, /No money activity recorded today/);
+});
+
+test("view is presentational, token-based, responsive, and links only to existing areas", () => {
+  assert.match(componentSource, /snapshot: OwnerDashboardSnapshot/);
+  assert.match(componentSource, /title="Today"/);
+  assert.match(componentSource, /title="Needs attention"/);
+  assert.match(componentSource, /title="Overview"/);
+  assert.match(componentSource, /sm:grid-cols-2/);
+  assert.match(componentSource, /lg:grid-cols-2/);
+  assert.match(componentSource, /min-h-atlas-12/);
+  assert.match(componentSource, /tabular-nums/);
+  assert.match(componentSource, /<Card/);
+  assert.match(componentSource, /<EmptyState/);
+  assert.doesNotMatch(componentSource, /(?:bg|text|border)-(?:slate|stone|red|amber|emerald|blue|cyan|indigo)-|#[0-9a-f]{3,8}/i);
+  assert.doesNotMatch(componentSource, /getDashboardSnapshot|supabase|\/services\/|compensation-provider|compensation\/providers|fetch\(/i);
+});
+
+test("Dashboard does not surface ambiguous payables or Production-versus-Sales reconciliation", () => {
+  assert.doesNotMatch(`${componentSource}\n${viewModelSource}`, /payable|parity|certification|settlement preview|production.{0,20}(?:vs|versus).{0,20}sales/i);
+  assert.doesNotMatch(viewModelSource, /productionLabourPaid|mudSupplyPaid|chamberTransportPaid|soilTrolleyPaid|staffPaid|vehicleDeliveryWagePaid/);
 });

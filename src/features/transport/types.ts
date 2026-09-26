@@ -1,5 +1,3 @@
-export type TransportWorkDirection = "FIELD_TO_KILN" | "KILN_TO_FIELD";
-
 export type TransportWorker = {
   id: string;
   factoryId: string;
@@ -9,26 +7,24 @@ export type TransportWorker = {
   updatedAt: string;
 };
 
-export type TransportCrew = {
+export type TransportGroup = {
   id: string;
   factoryId: string;
   name: string;
-  workDirection: TransportWorkDirection;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 };
 
-export type TransportCrewAssignment = {
+export type TransportGroupAssignment = {
   id: string;
   factoryId: string;
   transportWorkerId: string;
   transportWorkerName: string;
   transportWorkerIsActive: boolean;
-  transportCrewId: string;
-  transportCrewName: string;
-  transportCrewWorkDirection: TransportWorkDirection;
-  transportCrewIsActive: boolean;
+  transportGroupId: string;
+  transportGroupName: string;
+  transportGroupIsActive: boolean;
   createdAt: string;
 };
 
@@ -47,7 +43,7 @@ export type TransportDailyEntryWorkerChoice = TransportAssignedWorker & {
 export type TransportDailyEntry = {
   dailyEntryId: string;
   factoryId: string;
-  transportCrewId: string;
+  transportGroupId: string;
   workDate: string;
   payaQuantity: number;
 };
@@ -58,15 +54,14 @@ export type TransportDailyEntryWithAttendance = TransportDailyEntry & {
 };
 
 export type TransportDailyOperationsEntry = TransportDailyEntry & {
-  transportCrewName: string;
-  transportCrewWorkDirection: TransportWorkDirection;
+  transportGroupName: string;
   attendanceCount: number;
   attendanceWorkers: TransportDailyAttendanceWorker[];
 };
 
 export type SaveTransportDailyEntryInput = {
   factoryId: string;
-  transportCrewId: string;
+  transportGroupId: string;
   workDate: string;
   payaQuantity: number;
   transportWorkerIds: string[];
@@ -78,10 +73,10 @@ export type SaveTransportDailyEntryResult = {
   savedPayaQuantity: number;
 };
 
-export type TransportCrewWageRate = {
+export type TransportGroupWageRate = {
   id: string;
   factoryId: string;
-  transportCrewId: string;
+  transportGroupId: string;
   ratePerPaya: number;
   effectiveFrom: string;
   effectiveTo: string | null;
@@ -106,15 +101,14 @@ export type TransportWeeklyEarningDetail = {
   transportWorkerId: string;
   weekStart: string;
   workDate: string;
-  transportCrewId: string;
-  transportCrewName: string;
-  transportCrewWorkDirection: TransportWorkDirection;
+  transportGroupId: string;
+  transportGroupName: string;
   transportDailyEntryId: string;
-  transportCrewWageRateId: string;
+  transportGroupWageRateId: string;
   ratePerPayaSnapshot: number;
   payaQuantitySnapshot: number;
   attendanceCountSnapshot: number;
-  dailyCrewPoolSnapshot: number;
+  dailyGroupPoolSnapshot: number;
   workerDailyShareSnapshot: number;
   createdAt: string;
 };

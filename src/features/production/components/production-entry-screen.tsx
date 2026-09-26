@@ -164,33 +164,27 @@ export function ProductionEntryScreen() {
     if (factoryAccess.status !== "ready") return;
     const factoryId = factoryAccess.factoryId;
 
-    void Promise.all([
-      supabase
-        .from("labourers")
-        .select("id, factory_id, name, assigned_brick_type_id")
-        .eq("factory_id", factoryId)
-        .eq("is_active", true)
-        .order("name"),
-      supabase
-        .from("brick_types")
-        .select("id, name")
-        .eq("factory_id", factoryId),
-    ]).then(async ([{ data: labourerRows, error: labourerError }, { data: brickTypeRows, error: brickTypeError }]) => {
-      const masterDataError = labourerError ?? brickTypeError;
-      if (masterDataError) {
+    void supabase
+      .from("labourers")
+      .select("id, factory_id, name")
+      .eq("factory_id", factoryId)
+      .eq("is_active", true)
+      .order("name")
+      .then(async ({ data: labourerRows, error: labourerError }) => {
+      if (labourerError) {
         console.error({
           context: "Failed to load production labourers",
-          message: masterDataError.message,
-          code: masterDataError.code,
-          details: masterDataError.details,
-          hint: masterDataError.hint,
+          message: labourerError.message,
+          code: labourerError.code,
+          details: labourerError.details,
+          hint: labourerError.hint,
         });
         return;
       }
 
       const { data: productionEntries, error } = await supabase
         .from("production_entries")
-        .select("id, labourer_id, brick_type_id, quantity")
+        .select("id, labourer_id, quantity")
         .eq("factory_id", factoryId)
         .eq("production_date", today);
 
@@ -207,7 +201,6 @@ export function ProductionEntryScreen() {
 
       const preparedState = prepareProductionEntryState({
         labourerRows: labourerRows ?? [],
-        brickTypeRows: brickTypeRows ?? [],
         productionRows: productionEntries,
       });
       setLabourers(preparedState.labourers);
@@ -243,14 +236,13 @@ export function ProductionEntryScreen() {
       p_factory_id: payload.factoryId,
       p_entry_id: payload.savedEntryId ?? payload.newEntryId!,
       p_labourer_id: payload.labourerId,
-      p_brick_type_id: payload.brickTypeId,
       p_production_date: payload.productionDate,
       p_quantity: payload.quantity,
     });
     if (error) throw error;
     const savedEntry = data?.[0];
     if (!savedEntry) throw new Error("Production save returned no entry.");
-    return { id: savedEntry.id, brick_type_id: savedEntry.brick_type_id };
+    return { id: savedEntry.id };
   }
 
   async function persistProductionSaveWithSessionRefresh(payload: ProductionSavePayload) {
@@ -279,11 +271,10 @@ export function ProductionEntryScreen() {
     return { status: "saved" as const, insertedEntry: await persistProductionSave(payload) };
   }
 
-  function completeSave(payload: ProductionSavePayload, insertedEntry?: { id: string; brick_type_id: string }) {
+  function completeSave(payload: ProductionSavePayload, insertedEntry?: { id: string }) {
     if (insertedEntry) {
       setSavedEntriesByLabourer((previous) => new Map(previous).set(payload.labourerId, {
         id: insertedEntry.id,
-        brickTypeId: insertedEntry.brick_type_id,
       }));
     }
     setSavedLabourers((previous) => new Set(previous).add(payload.labourerId));
@@ -376,7 +367,6 @@ export function ProductionEntryScreen() {
       productionDate: today,
       labourId: labourer.id,
       labourName: labourer.name,
-      brickType: labourer.brickTypeName,
       quantity: Number(rawQuantity),
     });
     if (!parsed.success) return;
@@ -450,7 +440,6 @@ export function ProductionEntryScreen() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">{labourer.name}</h2>
-                  <p className="mt-0.5 text-sm text-slate-600">{labourer.brickTypeName}</p>
                 </div>
                 {isSaved && <span className="flex h-8 min-w-8 items-center justify-center rounded-full bg-emerald-100 px-2 text-lg font-bold text-emerald-700" aria-label={`${labourer.name} saved`}>✓</span>}
               </div>

@@ -71,7 +71,7 @@ await mock.module("../../compensation/providers.ts", {
   },
 });
 
-const { getDashboardSnapshot } = await import("./dashboard-service.ts");
+const { getDashboardSnapshot, getOwnerDashboardSnapshot } = await import("./dashboard-service.ts");
 
 const factoryId = "factory-a";
 const dateFrom = "2026-08-01";
@@ -154,6 +154,56 @@ test("preserves zero values", async () => {
   const snapshot = await getDashboardSnapshot(factoryId, dateFrom, dateTo);
   assert.deepEqual(Object.values(snapshot.flows), Array(12).fill(0));
   assert.deepEqual(Object.values(snapshot.stocks), [0, 0]);
+});
+
+test("owner snapshot reuses the six-provider Today snapshot and adds only week-to-date Sales", async () => {
+  reset();
+  Object.assign(values, {
+    sales: 200,
+    productionQuantity: 30,
+    mudSupplyPaid: 40,
+  });
+
+  const snapshot = await getOwnerDashboardSnapshot(
+    factoryId,
+    "2026-09-23",
+    "2026-09-21",
+  );
+
+  assert.equal(snapshot.today.dateFrom, "2026-09-23");
+  assert.equal(snapshot.today.dateTo, "2026-09-23");
+  assert.equal(snapshot.today.flows.productionQuantity, 30);
+  assert.equal(snapshot.today.flows.mudSupplyPaid, 40);
+  assert.deepEqual(snapshot.thisWeekSales, {
+    dateFrom: "2026-09-21",
+    dateTo: "2026-09-23",
+    amount: 200,
+  });
+  assert.deepEqual(calls.filter(([metric]) => metric === "sales"), [
+    ["sales", factoryId, "2026-09-23", "2026-09-23"],
+    ["sales", factoryId, "2026-09-21", "2026-09-23"],
+  ]);
+  for (const providerMetric of [
+    "productionLabourPaid",
+    "mudSupplyPaid",
+    "chamberTransportPaid",
+    "soilTrolleyPaid",
+    "staffPaid",
+    "vehicleDeliveryWagePaid",
+  ]) {
+    assert.deepEqual(calls.filter(([metric]) => metric === providerMetric), [
+      [providerMetric, factoryId, "2026-09-23", "2026-09-23"],
+    ]);
+  }
+});
+
+test("owner snapshot rejects a reversed week before calling module services", async () => {
+  reset();
+  await assert.rejects(
+    getOwnerDashboardSnapshot(factoryId, "2026-09-21", "2026-09-22"),
+    /dateFrom must not be after dateTo/,
+  );
+  assert.deepEqual(calls, []);
 });
 
 test("propagates a module contract error", async () => {

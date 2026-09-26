@@ -1,0 +1,3390 @@
+{
+  "version": 1,
+  "note": "Existing violations only. Do not hand-edit counts to approve new UI drift.",
+  "violations": [
+    {
+      "rule": "raw-color",
+      "file": "src/app/globals.css",
+      "fingerprint": "rgb(31 31 29 / 0.12)",
+      "count": 1
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/app/globals.css",
+      "fingerprint": "rgb(31 31 29 / 0.16)",
+      "count": 1
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/app/globals.css",
+      "fingerprint": "rgb(var(--atlas-color-focus) / 0.24)",
+      "count": 1
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/app/layout.tsx",
+      "fingerprint": "#ffffff",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/app/login/page.tsx",
+      "fingerprint": "button|bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60 font-semibold h-12 px-5 rounded-xl text-base text-white w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/app/login/page.tsx",
+      "fingerprint": "section|bg-white border border-stone-200 max-w-md p-6 rounded-2xl shadow-sm sm:p-8 w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/app/login/page.tsx",
+      "fingerprint": "p|bg-red-50 font-medium px-4 py-3 rounded-xl text-red-700 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/app/login/page.tsx",
+      "fingerprint": "input|bg-white border border-stone-300 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 h-12 mt-1 outline-none px-4 rounded-xl text-base text-slate-950 w-full",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/auth/components/logout-button.tsx",
+      "fingerprint": "button|bg-white border border-stone-300 disabled:cursor-not-allowed disabled:opacity-60 font-semibold h-10 px-4 rounded-lg text-slate-700 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/dashboard/components/dashboard-container.tsx",
+      "fingerprint": "section|bg-red-50 border border-red-200 px-5 py-8 rounded-xl text-center",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/dashboard/components/dashboard-container.tsx",
+      "fingerprint": "section|bg-white border border-slate-200 px-5 py-10 rounded-xl shadow-sm text-center",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/dashboard/components/dashboard-date-controls.tsx",
+      "fingerprint": "button|\"border-cyan-700 \"border-slate-300 ${mode : === ? bg-cyan-700 bg-white border font-semibold h-9 option.value px-3 rounded-lg text-slate-700\"} text-sm text-white\"",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/dashboard/components/dashboard-date-controls.tsx",
+      "fingerprint": "input|dynamic:{inputClass} />",
+      "count": 3
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/dashboard/components/dashboard-date-controls.tsx",
+      "fingerprint": "Date",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/dashboard/components/dashboard-view.tsx",
+      "fingerprint": "article|\"border-cyan-200\" \"border-slate-200\"} ${current : ? bg-white border p-5 rounded-xl shadow-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/manager/components/manager-entry-screen.tsx",
+      "fingerprint": "button|\"bg-white \"text-slate-600 ${isSelected : ? active:bg-stone-100\"} font-semibold min-h-11 px-3 py-2 rounded-lg shadow-sm\" text-slate-950 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "button|bg-emerald-700 font-semibold h-9 px-4 rounded-lg text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "button|bg-red-700 disabled:opacity-50 font-bold h-8 px-3 rounded text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "button|bg-red-700 font-semibold h-9 px-4 rounded-lg text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "button|bg-slate-950 disabled:opacity-50 font-semibold h-10 mt-5 px-5 rounded-lg text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "button|bg-slate-950 disabled:opacity-50 font-semibold h-9 px-4 rounded-lg text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "button|bg-white border border-slate-300 disabled:opacity-50 font-bold h-8 px-3 rounded text-slate-700",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "button|disabled:opacity-50 font-semibold hover:underline text-red-700 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "button|dynamic:{secondaryButton}>",
+      "count": 6
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "div|bg-red-50 border border-red-200 flex flex-wrap gap-2 items-center px-3 py-2 rounded-lg text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "div|bg-red-50 border border-red-200 p-5 rounded-xl",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-empty-state-style",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "div|bg-white border border-slate-200 px-5 py-10 rounded-xl shadow-sm text-center text-slate-500 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "input|bg-white border border-slate-300 h-9 px-3 rounded-lg text-slate-950 text-sm",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "input|dynamic:{inputClass} />",
+      "count": 6
+    },
+    {
+      "rule": "duplicate-select-style",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "select|dynamic:{inputClass}>",
+      "count": 1
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "formatChallanDate(",
+      "count": 2
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "formatSalesMoney(",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "Amount",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "Cancel",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "Date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "Note (optional)",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "Payment mode",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "Saving...",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/cash-book-office-section.tsx",
+      "fingerprint": "Select mode",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "button|${primaryButton} mt-3",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "button|${primaryButton} mt-5",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "button|bg-red-700 font-bold h-9 px-3 rounded text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "button|bg-white border border-slate-300 disabled:opacity-50 font-semibold h-9 px-2 rounded-lg text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "button|dynamic:{primaryButton}>",
+      "count": 4
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "button|dynamic:{secondaryButton}>",
+      "count": 9
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "button|font-semibold text-slate-600 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "button|font-semibold text-sm",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "section|bg-white border border-stone-300 mt-6 p-5 rounded-xl shadow-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "p|bg-emerald-50 font-semibold mt-4 px-4 py-3 rounded-lg text-emerald-800 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "p|bg-red-50 font-semibold mt-4 px-4 py-3 rounded-lg text-red-700 text-sm",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "input|dynamic:{inputClass} />",
+      "count": 17
+    },
+    {
+      "rule": "duplicate-select-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "select|dynamic:{inputClass}>",
+      "count": 4
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "table|min-w-[90rem] text-left text-sm w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "tbody|divide-slate-100 divide-y",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "td|font-bold px-3 py-3 text-right",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "td|font-semibold px-3 py-3",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "td|px-3 py-3",
+      "count": 6
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "td|px-3 py-3 text-right",
+      "count": 6
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "th|px-3 py-3",
+      "count": 7
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "th|px-3 py-3 text-right",
+      "count": 7
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "thead|bg-white border-slate-200 border-y text-slate-500 text-xs uppercase",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "tr|cursor-pointer hover:bg-stone-50",
+      "count": 1
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": ".toLocaleString(",
+      "count": 1
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "formatChallanDate(",
+      "count": 5
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "formatSalesMoney(",
+      "count": 16
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "Cancel",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "Close",
+      "count": 3
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "Date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "Due",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "Name",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "Outstanding",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "Payment date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "Payment mode",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "Save",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "Saving...",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "Select mode",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "Status",
+      "count": 1
+    },
+    {
+      "rule": "status-presentation-bypass",
+      "file": "src/features/office/components/coal-purchase-office-section.tsx",
+      "fingerprint": "inline-status-label",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": "button|\"border-cyan-700 \"border-slate-300 ${duesDatePreset : === ? bg-cyan-700 bg-white border font-semibold h-8 option.value px-3 rounded-lg text-slate-700\"} text-white\" text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": "button|bg-slate-950 disabled:cursor-not-allowed disabled:opacity-50 font-semibold h-10 px-5 rounded-lg text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": "button|bg-white border border-slate-300 font-semibold h-9 px-2 rounded-lg text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": "input|dynamic:{inputClass} />",
+      "count": 6
+    },
+    {
+      "rule": "duplicate-select-style",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": "select|bg-white border border-slate-300 h-9 ml-2 px-3 rounded-lg text-slate-950 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-select-style",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": "select|dynamic:{inputClass}>",
+      "count": 2
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": ".toLocaleString(",
+      "count": 1
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": "formatChallanDate(",
+      "count": 5
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": "formatSalesMoney(",
+      "count": 8
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": "Date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": "Loading payment history...",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": "Note (optional)",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": "Outstanding",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": "Payment amount",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": "Payment date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": "Payment history",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": "Payment mode",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/customer-payments-section.tsx",
+      "fingerprint": "Select mode",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|\"bg-slate-100 \"bg-slate-950 ${kindFilter : === ? font-bold h-8 option.value px-3 rounded-full text-slate-700\"} text-white\" text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|\"border-amber-700 \"border-slate-300 ${preset : === ? bg-amber-700 bg-white border font-semibold h-9 option.value px-3 rounded-lg text-slate-700\"} text-sm text-white\"",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|bg-amber-700 disabled:opacity-50 font-bold h-10 px-5 rounded-lg text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|bg-amber-700 font-bold h-10 px-4 rounded-lg text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|bg-red-700 disabled:opacity-50 font-bold h-8 px-3 rounded text-white text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|bg-slate-950 disabled:cursor-not-allowed disabled:opacity-50 font-bold h-10 px-5 rounded-lg text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|bg-slate-950 disabled:opacity-50 font-bold h-9 mt-3 px-4 rounded-lg text-white text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|bg-slate-950 font-bold h-10 px-4 rounded-lg text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|bg-slate-950 font-bold h-9 px-4 rounded-lg text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|bg-white border border-amber-700 font-bold h-10 px-4 rounded-lg text-amber-900 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|bg-white border border-red-300 font-bold h-9 px-4 rounded-lg text-red-700 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|bg-white border border-slate-300 disabled:opacity-40 font-semibold h-9 px-2 rounded-lg text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|bg-white border border-slate-300 font-bold h-10 px-3 rounded-lg text-xs",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|bg-white border border-slate-300 font-bold h-8 px-3 rounded text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|bg-white border border-slate-300 font-bold h-9 px-4 rounded-lg text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|font-semibold hover:underline text-amber-800",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|font-semibold hover:underline text-slate-600 text-sm",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "button|font-semibold text-slate-600 text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "div|bg-red-50 border border-red-200 flex flex-wrap gap-2 items-center mt-3 p-3 rounded-lg text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "section|bg-white border border-amber-200 mt-6 p-5 rounded-xl shadow-sm sm:p-6",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "section|bg-white border border-slate-200 mt-6 p-5 rounded-xl shadow-sm sm:p-6",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "section|bg-white border border-slate-300 mt-6 p-5 rounded-xl shadow-sm sm:p-6",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-empty-state-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "p|px-5 py-10 text-center text-slate-500 text-sm",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "p|bg-emerald-50 border border-emerald-200 font-semibold mt-4 px-4 py-3 rounded-lg text-emerald-800 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "p|bg-red-50 border border-red-200 font-semibold mt-4 px-4 py-3 rounded-lg text-red-700 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "input|dynamic:{inputClass} />",
+      "count": 14
+    },
+    {
+      "rule": "duplicate-select-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "select|dynamic:{inputClass}>",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "table|min-w-[70rem] text-left text-sm w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "tbody|divide-slate-100 divide-y",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "td|font-bold px-4 py-3",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "td|font-bold px-4 py-3 tabular-nums text-right",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "td|font-medium px-4 py-3",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "td|font-semibold px-4 py-3 tabular-nums text-right",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "td|px-4 py-3",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "td|px-4 py-3 tabular-nums text-right",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "td|px-4 py-3 text-right",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "td|px-4 py-3 whitespace-nowrap",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "th|px-4 py-3",
+      "count": 6
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "th|px-4 py-3 text-right",
+      "count": 4
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "thead|bg-white border-b border-slate-200 shadow-sm sticky text-slate-500 text-xs top-0 tracking-wide uppercase z-10",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "tr|dynamic:{record.status === \"void\" ? \"bg-slate-50 text-slate-500\" : \"bg-white\"}>",
+      "count": 1
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "formatChallanDate(",
+      "count": 7
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "formatSalesMoney(",
+      "count": 12
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "Cancel",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "Close",
+      "count": 3
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "Date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "Due",
+      "count": 3
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "From date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "Name",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "Open",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "Payment amount",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "Payment date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "Payment mode",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "Saving...",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "Select mode",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "Status",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "To date",
+      "count": 1
+    },
+    {
+      "rule": "status-presentation-bypass",
+      "file": "src/features/office/components/expenses-office-section.tsx",
+      "fingerprint": "span|\"bg-emerald-100 \"bg-slate-200 \"void\" ${record.status : === ? font-bold px-2.5 py-1 rounded-full text-emerald-800\"} text-slate-700\" text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "button|\"border-amber-300 \"border-amber-700 ${rangePreset : === ? bg-amber-700 bg-white border font-semibold h-9 option.value px-3 rounded-lg text-slate-700\"} text-sm text-white\"",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "button|bg-emerald-700 font-bold mt-3 px-4 py-2 rounded-lg text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "button|bg-red-700 disabled:opacity-50 font-semibold px-4 py-2 rounded-lg text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "button|bg-slate-950 disabled:opacity-60 font-semibold h-11 md:col-span-5 px-5 rounded-lg text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "button|bg-slate-950 disabled:opacity-60 font-semibold h-11 px-4 rounded-lg sm:col-span-3 text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "button|bg-slate-950 disabled:opacity-60 font-semibold h-11 px-4 rounded-lg text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "button|bg-slate-950 disabled:opacity-60 font-semibold h-11 px-5 rounded-lg text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "button|border border-slate-300 disabled:opacity-60 font-semibold h-11 px-4 rounded-lg",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "button|border border-slate-300 disabled:opacity-60 font-semibold px-4 py-2 rounded-lg",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "button|dynamic:{smallButton}>",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "div|bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "section|bg-amber-50 border border-amber-200 mt-6 p-4 rounded-lg",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "section|bg-white border border-slate-200 mt-8 p-6 rounded-xl shadow-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "div|\"border-amber-200 \"border-emerald-200 ${ready : ? bg-amber-50 bg-emerald-50 border mt-2 px-3 py-2 rounded-lg text-amber-900\"} text-emerald-900\" text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "p|bg-red-50 border border-red-200 font-semibold mt-5 p-3 rounded-lg text-red-900 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "input|bg-white border border-amber-300 h-10 mt-1 px-3 rounded-lg text-slate-950 text-sm w-full",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "input|dynamic:{inputClass} />",
+      "count": 19
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": ".toLocaleString(",
+      "count": 2
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "₹${",
+      "count": 1
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "Intl.DateTimeFormat(",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "Amount",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "Cancel",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "Loading...",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/mud-group-management.tsx",
+      "fingerprint": "Unavailable",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "button|\"border-amber-300 \"border-amber-700 ${rangePreset : === ? bg-amber-700 bg-white border font-semibold h-9 option.value px-3 rounded-lg text-slate-700\"} text-sm text-white\"",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "button|bg-slate-950 disabled:cursor-not-allowed disabled:opacity-60 font-semibold h-10 px-4 rounded-lg text-white",
+      "count": 5
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "button|bg-slate-950 disabled:cursor-not-allowed disabled:opacity-60 font-semibold h-11 px-5 rounded-lg sm:col-span-3 text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "button|bg-slate-950 disabled:cursor-not-allowed disabled:opacity-60 font-semibold h-11 px-5 rounded-lg text-white",
+      "count": 4
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "button|bg-slate-950 disabled:opacity-60 font-semibold h-10 px-4 rounded-lg text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "button|bg-white border border-slate-300 font-semibold h-10 mt-4 px-4 rounded-lg",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "button|border border-slate-300 disabled:cursor-not-allowed disabled:opacity-60 font-semibold h-10 px-4 rounded-lg",
+      "count": 12
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "button|border border-slate-300 font-semibold h-10 px-4 rounded-lg",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "section|bg-amber-50 border border-amber-200 p-4 rounded-lg",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "section|bg-white border border-slate-200 max-w-xl mt-8 p-6 rounded-xl shadow-sm",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "section|bg-white border border-slate-200 mt-8 p-6 rounded-xl shadow-sm",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "section|bg-white border border-slate-200 px-6 py-5 rounded-xl shadow-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-empty-state-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "p|px-6 py-10 text-center text-slate-500",
+      "count": 4
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "input|bg-white border border-amber-300 h-10 mt-1 px-3 rounded-lg text-slate-950 text-sm w-full",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "input|bg-white border border-slate-300 disabled:bg-slate-100 h-10 mt-1 px-3 rounded-lg text-slate-950 w-full",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "input|bg-white border border-slate-300 h-10 px-3 rounded-lg text-slate-950",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "input|border border-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed h-10 mt-1 px-3 rounded-lg text-slate-950 w-full",
+      "count": 4
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "input|border border-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed h-11 mt-1 px-3 rounded-lg text-slate-950 w-full",
+      "count": 6
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "input|border border-slate-300 disabled:bg-slate-100 h-10 mt-1 px-3 rounded-lg text-slate-950 w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "input|border border-slate-300 h-10 mt-1 px-3 rounded-lg text-slate-950 w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "input|border border-slate-300 h-11 mt-1 px-3 rounded-lg text-slate-950 w-full",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-select-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "select|bg-white border border-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed h-10 mt-1 px-3 rounded-lg text-slate-950 w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-select-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "select|bg-white border border-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed h-11 mt-1 px-3 rounded-lg text-slate-950 w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-select-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "select|bg-white border border-slate-300 h-10 mt-1 px-3 rounded-lg text-slate-950 w-full",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-select-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "select|bg-white border border-slate-300 h-11 mt-1 px-3 rounded-lg text-slate-950 w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "table|border-collapse text-left text-sm w-full",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "table|border-collapse text-left w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "tbody|divide-slate-100 divide-y",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "td|font-medium px-4 py-3",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "td|font-medium px-6 py-5",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "td|font-semibold px-4 py-3 tabular-nums text-right",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "td|font-semibold px-6 py-5 tabular-nums text-right",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "td|px-4 py-3 tabular-nums text-right",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "th|px-4 py-3",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "th|px-4 py-3 text-right",
+      "count": 4
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "th|px-6 py-4",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "th|px-6 py-4 text-right",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "thead|bg-slate-50 border-b border-slate-200 font-semibold text-slate-600",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "thead|bg-slate-50 border-b border-slate-200 font-semibold text-slate-600 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "tr|text-base",
+      "count": 1
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": ".toLocaleString(",
+      "count": 12
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "₹${",
+      "count": 4
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "formatStoredCurrency(",
+      "count": 6
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "Intl.DateTimeFormat(",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "Amount",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "Cancel",
+      "count": 3
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "Loading...",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "Save",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "Saving...",
+      "count": 8
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "Unavailable",
+      "count": 1
+    },
+    {
+      "rule": "status-presentation-bypass",
+      "file": "src/features/office/components/office-dashboard.tsx",
+      "fingerprint": "inline-status-label",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "button|-translate-y-1/2 absolute hover:text-slate-950 mt-0.5 px-2 right-8 text-lg text-slate-500 top-1/2",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "button|\"bg-cyan-50 \"text-slate-900 ${index : === ? block highlightedIndex hover:bg-slate-50\"} px-3 py-2 text-cyan-950\" text-left w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "button|\"bg-cyan-50 \"text-slate-900 ${index : === ? flex gap-3 highlightedIndex hover:bg-slate-50\"} items-center justify-between px-3 py-2 text-cyan-950\" text-left w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "button|${primaryButton} mt-4",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "button|bg-red-700 disabled:opacity-50 font-semibold h-10 px-4 rounded-lg text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "button|bg-white border border-red-300 disabled:cursor-not-allowed disabled:opacity-40 font-semibold h-10 px-4 rounded-lg text-red-700 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "button|border border-red-200 disabled:cursor-not-allowed disabled:opacity-40 font-semibold h-9 px-3 rounded-lg text-red-700 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "button|border border-slate-300 disabled:cursor-not-allowed disabled:opacity-40 font-semibold h-10 px-3 rounded-lg text-slate-700 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "button|border border-slate-300 disabled:cursor-not-allowed disabled:opacity-40 font-semibold h-9 px-3 rounded-lg text-sm",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "button|disabled:cursor-not-allowed disabled:opacity-50 font-semibold hover:underline text-cyan-800 underline-offset-2",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "button|dynamic:{primaryButton}>",
+      "count": 6
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "button|dynamic:{secondaryButton} >",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "button|dynamic:{secondaryButton}>",
+      "count": 12
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "button|dynamic:{vehicle.isActive ? \"h-10 rounded-lg border border-red-200 px-4 text-sm font-semibold text-red-700 disabled:opacity-40\" : primaryButton}>",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "button|focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:ring-inset hover:bg-slate-50 px-5 py-4 text-left w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "article|bg-white border border-slate-200 p-5 rounded-xl shadow-sm sm:p-6",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "div|absolute bg-white border border-slate-300 max-h-64 mt-1 overflow-y-auto py-1 rounded-lg shadow-xl text-sm w-full z-30",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "div|bg-amber-50 border border-amber-200 max-w-sm mt-4 p-4 rounded-lg",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "div|bg-cyan-50 border border-cyan-100 gap-1 grid mt-3 px-4 py-3 rounded-lg sm:grid-cols-[minmax(0,1fr)_auto] text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "div|bg-cyan-50 border border-cyan-200 mt-4 p-4 rounded-lg",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "div|bg-red-50 border border-red-300 mt-4 p-4 rounded-lg",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "div|bg-white border border-slate-200 px-6 py-12 rounded-xl shadow-sm text-center",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "section|\"border-amber-300 \"border-slate-200 ${complete : ? bg-amber-50\"} bg-white\" border p-4 rounded-xl shadow-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "section|bg-white border border-slate-200 p-5 rounded-xl shadow-sm sm:p-6",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-empty-state-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "div|bg-white border border-slate-200 px-6 py-12 rounded-xl shadow-sm text-center text-slate-500 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-empty-state-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "p|px-4 py-5 text-center text-slate-500 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "div|bg-red-50 border border-red-200 font-semibold px-6 py-10 rounded-xl text-center text-red-700 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "p|bg-amber-50 border border-amber-300 font-semibold mb-4 px-4 py-3 rounded-lg text-amber-900 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "p|bg-amber-50 border border-amber-300 font-semibold mt-4 px-4 py-3 rounded-lg text-amber-900 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "p|bg-emerald-50 border border-emerald-200 font-semibold mb-4 px-4 py-3 rounded-lg text-emerald-800 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "p|bg-emerald-50 font-semibold mt-4 mx-4 px-4 py-3 rounded-lg text-emerald-800 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "p|bg-red-50 border border-red-200 font-semibold mb-4 px-4 py-3 rounded-lg text-red-800 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "p|bg-red-50 font-semibold mt-4 mx-4 px-4 py-3 rounded-lg text-red-700 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "input|${inputClass} cursor-pointer pr-16",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "input|${inputClass} pr-16",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "input|dynamic:{inputClass} />",
+      "count": 30
+    },
+    {
+      "rule": "duplicate-select-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "select|dynamic:{inputClass} >",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-select-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "select|dynamic:{inputClass}>",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "table|min-w-[38rem] text-left text-sm w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "tbody|divide-slate-100 divide-y",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "td|font-medium px-4 py-3",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "td|font-semibold px-4 py-3 tabular-nums text-right",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "td|px-4 py-3 tabular-nums text-right",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "td|px-4 py-5 text-center text-slate-500",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "th|px-4 py-3",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "th|px-4 py-3 text-right",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "thead|border-b border-slate-200 text-slate-500 text-xs tracking-wide uppercase",
+      "count": 1
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": ".toLocaleString(",
+      "count": 2
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "formatChallanDate(",
+      "count": 2
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "formatSalesMoney(",
+      "count": 12
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "Amount",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "Archive",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "Cancel",
+      "count": 4
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "Edit",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "Note",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "Open",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "Payment date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "Payment mode",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "Restore",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "Saving...",
+      "count": 3
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "Select mode",
+      "count": 1
+    },
+    {
+      "rule": "status-presentation-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "span|\"bg-amber-200 \"bg-emerald-100 ${complete : ? font-bold px-2.5 py-1 rounded-full text-amber-900\"} text-emerald-800\" text-xs",
+      "count": 1
+    },
+    {
+      "rule": "status-presentation-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "span|bg-amber-100 font-bold px-2.5 py-1 rounded-full text-amber-800 text-xs",
+      "count": 1
+    },
+    {
+      "rule": "status-presentation-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "span|bg-emerald-100 font-bold px-2.5 py-1 rounded-full text-emerald-800 text-xs",
+      "count": 1
+    },
+    {
+      "rule": "status-presentation-bypass",
+      "file": "src/features/office/components/sales-office-section.tsx",
+      "fingerprint": "span|bg-slate-200 font-bold px-2.5 py-1 rounded-full text-slate-700 text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "button|\"border-cyan-700 \"border-slate-300 ${preset : === ? bg-cyan-700 bg-white border font-semibold h-9 option.value px-3 rounded-lg text-slate-700\"} text-sm text-white\"",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-empty-state-style",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "p|px-5 py-10 text-center text-slate-500 text-sm",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "input|bg-white border border-slate-300 h-10 mt-1 px-3 rounded-lg text-sm w-full",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "table|min-w-[68rem] text-left text-sm w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "tbody|divide-slate-100 divide-y",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "td|font-bold px-4 py-3 tabular-nums text-right text-slate-900",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "td|font-bold px-4 py-3 text-slate-900",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "td|font-medium px-4 py-3",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "td|font-medium px-4 py-3 text-slate-900",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "td|font-semibold px-4 py-3 tabular-nums text-right",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "td|px-4 py-3",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "td|px-4 py-3 text-right",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "td|px-4 py-3 whitespace-nowrap",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "th|px-4 py-3",
+      "count": 7
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "th|px-4 py-3 text-right",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "thead|bg-white border-b border-slate-200 shadow-sm sticky text-slate-500 text-xs top-0 tracking-wide uppercase z-10",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "tr|dynamic:{entry.status === \"void\" ? \"bg-slate-50 text-slate-500\" : \"bg-white\"}>",
+      "count": 1
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": ".toLocaleString(",
+      "count": 5
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "formatChallanDate(",
+      "count": 3
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "formatSalesMoney(",
+      "count": 6
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "Date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "From date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "Status",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "To date",
+      "count": 1
+    },
+    {
+      "rule": "status-presentation-bypass",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "inline-status-label",
+      "count": 1
+    },
+    {
+      "rule": "status-presentation-bypass",
+      "file": "src/features/office/components/sales-register-section.tsx",
+      "fingerprint": "span|\"bg-emerald-100 \"bg-slate-200 \"void\" ${entry.status : === ? font-bold px-2.5 py-1 rounded-full text-emerald-800\"} text-slate-700\" text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/search-choice.tsx",
+      "fingerprint": "button|absolute px-2 right-2 text-lg text-slate-500 top-7",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/search-choice.tsx",
+      "fingerprint": "button|block hover:bg-stone-100 px-3 py-2 rounded text-left text-sm w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/search-choice.tsx",
+      "fingerprint": "div|absolute bg-white border border-slate-200 max-h-48 mt-1 overflow-auto p-1 rounded-lg shadow-lg w-full z-20",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/search-choice.tsx",
+      "fingerprint": "input|dynamic:{inputClass} />",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "button|\"border-amber-300 \"border-amber-700 ${earningsPreset : === ? bg-amber-700 bg-white border font-semibold h-9 option.value px-3 rounded-lg text-slate-700\"} text-sm text-white\"",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "button|bg-red-700 disabled:opacity-50 font-semibold h-9 px-3 rounded-lg text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "button|bg-white border border-red-300 disabled:opacity-50 font-semibold h-10 px-4 rounded-lg text-red-700 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "button|dynamic:{primaryButton}>",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "button|dynamic:{secondaryButton}>",
+      "count": 5
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "article|\"border-amber-400 \"border-slate-200\"} ${isSelected : ? bg-amber-50\" border p-4 rounded-lg",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "article|bg-white border border-amber-300 mt-6 p-6 rounded-xl shadow-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "div|bg-red-50 border border-red-300 mt-4 p-4 rounded-lg",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "div|bg-slate-50 border border-slate-200 p-4 rounded-lg",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "section|bg-amber-50 border border-amber-200 mt-5 p-4 rounded-lg",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "section|bg-slate-50 border border-slate-200 mt-6 p-6 rounded-xl",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "section|bg-white border border-slate-200 mt-6 p-6 rounded-xl shadow-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "input|dynamic:{inputClass} />",
+      "count": 12
+    },
+    {
+      "rule": "duplicate-select-style",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "select|dynamic:{inputClass}>",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "Amount",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "Archive",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "Cancel",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "Close",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "Date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "Loading...",
+      "count": 6
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "No payments recorded yet.",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "Payment date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "Restore",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "Saving...",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/soil-office-section.tsx",
+      "fingerprint": "Unavailable",
+      "count": 6
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "button|bg-red-700 disabled:opacity-50 font-semibold h-9 px-3 rounded-lg text-sm text-white",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "button|bg-white border border-red-300 disabled:cursor-not-allowed disabled:opacity-50 font-semibold h-9 px-3 rounded-lg text-red-700 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "button|bg-white border border-red-300 disabled:opacity-50 font-semibold h-9 px-3 rounded-lg text-red-700 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "button|dynamic:{primaryButton}>",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "button|dynamic:{secondaryButton}>",
+      "count": 8
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "section|bg-slate-50 border border-slate-200 mt-6 p-6 rounded-xl",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "section|bg-white border border-slate-200 mt-6 p-6 rounded-xl shadow-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "section|bg-white border border-slate-200 p-6 rounded-xl shadow-sm",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "input|dynamic:{inputClass} />",
+      "count": 8
+    },
+    {
+      "rule": "duplicate-select-style",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "select|dynamic:{inputClass}>",
+      "count": 1
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "formatStaffMoney(",
+      "count": 3
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "Archive",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "Cancel",
+      "count": 3
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "Could not load payment history.",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "Delete",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "Edit",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "Loading payment history...",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "Loading...",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "Name",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "No payments recorded yet.",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "Note (optional)",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "Payment date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "Payment history",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "Restore",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "Save",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "Saving...",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "Unavailable",
+      "count": 1
+    },
+    {
+      "rule": "status-presentation-bypass",
+      "file": "src/features/office/components/staff-office-section.tsx",
+      "fingerprint": "span|\"bg-emerald-100 \"bg-slate-200 ${active : ? font-semibold px-2.5 py-1 rounded-full text-emerald-800\" text-slate-700\"} text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "button|\"border-amber-300 \"border-amber-700 ${earningsPreset : === ? bg-amber-700 bg-white border font-semibold h-9 option.value px-3 rounded-lg text-slate-700\"} text-sm text-white\"",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "button|bg-slate-950 disabled:cursor-not-allowed disabled:opacity-60 font-semibold h-11 px-5 rounded-lg sm:col-span-2 text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "button|bg-slate-950 disabled:cursor-not-allowed disabled:opacity-60 font-semibold h-11 px-5 rounded-lg text-white",
+      "count": 5
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "button|border border-slate-300 disabled:cursor-not-allowed disabled:opacity-60 font-semibold h-10 px-4 rounded-lg",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "button|border border-slate-300 font-semibold h-10 px-4 rounded-lg",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "section|bg-amber-50 border border-amber-200 mt-4 p-4 rounded-lg",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "section|bg-white border border-slate-200 mt-6 p-6 rounded-xl shadow-sm",
+      "count": 4
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "section|bg-white border border-slate-200 p-6 rounded-xl shadow-sm",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "input|bg-white border border-slate-300 h-11 mt-1 px-3 rounded-lg text-slate-950 w-full",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "input|border border-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed h-11 mt-1 px-3 rounded-lg text-slate-950 w-full",
+      "count": 7
+    },
+    {
+      "rule": "duplicate-select-style",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "select|bg-white border border-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed h-11 mt-1 px-3 rounded-lg text-slate-950 w-full",
+      "count": 5
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "table|border-collapse text-left text-sm w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "tbody|divide-slate-100 divide-y",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "td|font-medium px-4 py-3",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "td|font-semibold px-4 py-3 tabular-nums text-right",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "th|px-4 py-3",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "th|px-4 py-3 text-right",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "thead|bg-slate-50 border-b border-slate-200 font-semibold text-slate-600",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "Amount",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "Saving...",
+      "count": 2
+    },
+    {
+      "rule": "status-presentation-bypass",
+      "file": "src/features/office/components/transport-office-section.tsx",
+      "fingerprint": "span|bg-emerald-100 font-bold px-3 py-1 rounded-full text-emerald-800 text-xs tracking-wide uppercase w-fit",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "button|${primaryButton} mt-3",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "button|${primaryButton} mt-4",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "button|${secondaryButton} mt-3",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "button|bg-red-700 font-bold h-10 px-4 rounded-lg text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "button|dynamic:{primaryButton}>",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "button|dynamic:{secondaryButton}>",
+      "count": 5
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "button|font-semibold text-sm",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "section|bg-stone-50 border border-stone-300 p-5 rounded-2xl shadow-sm sm:p-6",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "section|bg-white border border-slate-200 mt-6 p-5 rounded-xl",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "div|bg-amber-50 mt-3 px-4 py-3 rounded-lg text-amber-950 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "p|bg-emerald-50 mt-4 p-3 rounded-lg text-emerald-800 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "p|bg-red-50 mt-4 p-3 rounded-lg text-red-800 text-sm",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "input|\"\"} \"bg-emerald-50\" ${derived ${inputClass} : ?",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "input|dynamic:{inputClass} />",
+      "count": 12
+    },
+    {
+      "rule": "duplicate-select-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "select|dynamic:{inputClass}>",
+      "count": 5
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "table|min-w-[80rem] text-left text-sm w-full",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "tbody|divide-slate-100 divide-y",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "td|font-bold px-3 py-3 text-right",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "td|font-semibold px-3 py-3",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "td|px-3 py-3",
+      "count": 8
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "td|px-3 py-3 text-right",
+      "count": 4
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "th|px-3 py-3",
+      "count": 10
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "th|px-3 py-3 text-right",
+      "count": 6
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "thead|border-slate-200 border-y text-slate-500 text-xs uppercase",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "thead|text-slate-500 text-xs uppercase",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "tr|align-top",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "tr|cursor-pointer hover:bg-stone-50",
+      "count": 1
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": ".toLocaleString(",
+      "count": 5
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "formatChallanDate(",
+      "count": 5
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "formatFuelTime(",
+      "count": 4
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "formatSalesMoney(",
+      "count": 13
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "Amount",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "Cancel",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "Close",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "Date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "Due",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "From date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "Note",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "Note (optional)",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "Outstanding",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "Payment date",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "Payment mode",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "Status",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "To date",
+      "count": 1
+    },
+    {
+      "rule": "status-presentation-bypass",
+      "file": "src/features/office/components/vehicle-fuel-office-section.tsx",
+      "fingerprint": "inline-status-label",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "button|${primaryButton} mt-3",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "button|${primaryButton} mt-4",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "button|${primaryButton} mt-5",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "button|${secondaryButton} mt-3",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "button|bg-red-700 font-bold h-9 px-3 rounded text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "button|dynamic:{primaryButton}>",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "button|dynamic:{secondaryButton}>",
+      "count": 4
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "button|font-semibold text-sm",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "section|bg-stone-50 border border-stone-300 p-5 rounded-2xl shadow-sm sm:p-6",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "section|bg-white border border-slate-200 mt-6 p-5 rounded-xl shadow-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "section|bg-white border border-stone-300 mt-6 p-5 rounded-xl shadow-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "p|bg-emerald-50 mt-4 p-3 rounded-lg text-emerald-800 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "p|bg-red-50 mt-4 p-3 rounded-lg text-red-800 text-sm",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "input|dynamic:{inputClass} />",
+      "count": 13
+    },
+    {
+      "rule": "duplicate-select-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "select|dynamic:{inputClass}>",
+      "count": 4
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "table|min-w-[70rem] text-left text-sm w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "tbody|divide-slate-100 divide-y",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "td|font-bold px-3 py-3 text-right",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "td|font-semibold px-3 py-3",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "td|px-3 py-3",
+      "count": 4
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "td|px-3 py-3 text-right",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "th|px-3 py-3",
+      "count": 5
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "th|px-3 py-3 text-right",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "thead|border-slate-200 border-y text-slate-500 text-xs uppercase",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "tr|cursor-pointer hover:bg-stone-50",
+      "count": 1
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "formatChallanDate(",
+      "count": 4
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "formatSalesMoney(",
+      "count": 9
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "Amount",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "Cancel",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "Close",
+      "count": 3
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "Date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "Due",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "Name",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "Note (optional)",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "Outstanding",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "Payment mode",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "Saving...",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "Select mode",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "Status",
+      "count": 1
+    },
+    {
+      "rule": "status-presentation-bypass",
+      "file": "src/features/office/components/vehicle-maintenance-office-section.tsx",
+      "fingerprint": "inline-status-label",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "button|\"border-cyan-700 \"border-slate-300 ${preset : === ? bg-cyan-700 bg-white border font-semibold h-9 option.value px-3 rounded-lg text-slate-700\"} text-sm text-white\"",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "button|bg-red-700 disabled:opacity-50 font-bold h-9 px-3 rounded-lg text-white text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "button|bg-slate-950 disabled:cursor-not-allowed disabled:opacity-50 font-bold h-10 mt-4 px-4 rounded-lg text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "button|bg-white border border-slate-300 disabled:opacity-50 font-bold h-9 px-3 rounded-lg text-slate-700 text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "button|disabled:opacity-50 font-bold hover:underline mt-2 text-red-700 text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "button|focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:ring-inset hover:bg-slate-50 px-4 py-4 text-left w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-empty-state-style",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "p|px-5 py-10 text-center text-slate-500 text-sm",
+      "count": 4
+    },
+    {
+      "rule": "duplicate-feedback-style",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "div|bg-amber-50 border border-amber-200 mt-2 px-3 py-2 rounded-lg text-amber-900 text-xs",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "input|dynamic:{dateInputClass} />",
+      "count": 7
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": ".toLocaleString(",
+      "count": 4
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "formatChallanDate(",
+      "count": 5
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "formatSalesMoney(",
+      "count": 11
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "Amount",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "Cancel",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "Could not load payment history.",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "From date",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "Loading payment history...",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "Loading...",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "No payments recorded yet.",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "Note (optional)",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "To date",
+      "count": 1
+    },
+    {
+      "rule": "status-presentation-bypass",
+      "file": "src/features/office/components/vehicle-wage-accounts-section.tsx",
+      "fingerprint": "inline-status-label",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/production/components/production-entry-screen.tsx",
+      "fingerprint": "button|active:bg-orange-800 bg-orange-700 font-semibold h-14 px-6 rounded-xl shrink-0 text-base text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/production/components/production-entry-screen.tsx",
+      "fingerprint": "button|active:bg-orange-800 bg-orange-700 font-semibold px-5 py-3 rounded-xl text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/production/components/production-entry-screen.tsx",
+      "fingerprint": "article|bg-white border border-stone-200 p-4 rounded-2xl shadow-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/production/components/production-entry-screen.tsx",
+      "fingerprint": "input|\"border-red-500\" \"border-stone-300\"} ${hasError : ? bg-white border focus:border-orange-600 focus:ring-2 focus:ring-orange-100 font-semibold h-14 outline-none placeholder:font-normal placeholder:text-slate-400 px-4 rounded-xl text-lg ",
+      "count": 1
+    },
+    {
+      "rule": "formatting-bypass",
+      "file": "src/features/production/components/production-entry-screen.tsx",
+      "fingerprint": "Intl.DateTimeFormat(",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/production/components/production-entry-screen.tsx",
+      "fingerprint": "Retry",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/production/components/production-entry-screen.tsx",
+      "fingerprint": "Save",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/production/components/production-entry-screen.tsx",
+      "fingerprint": "Saving...",
+      "count": 1
+    },
+    {
+      "rule": "status-presentation-bypass",
+      "file": "src/features/production/components/production-entry-screen.tsx",
+      "fingerprint": "span|bg-emerald-100 flex font-bold h-8 items-center justify-center min-w-8 px-2 rounded-full text-emerald-700 text-lg",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "button|bg-slate-950 font-semibold h-10 px-4 rounded-lg text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "button|bg-white border border-slate-300 font-semibold h-10 px-4 rounded-lg text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "section|bg-white border border-red-200 max-w-lg p-6 rounded-xl shadow-sm text-center w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "table|border-b-2 border-black border-x-2 challan-print-table table-fixed text-sm w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "td|border-black border-r break-words font-medium px-3 py-3",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "td|border-black border-r font-black px-3 py-3 text-base text-right",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "td|border-black border-r px-2 py-3 tabular-nums text-right",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "td|border-black border-r px-2 py-3 text-center",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "td|break-words px-3 py-3",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "td|font-black px-2 py-3 tabular-nums text-base text-right",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "td|font-semibold px-2 py-3 tabular-nums text-right",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "th|border-black border-r px-2 py-2 text-center w-[8%]",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "th|border-black border-r px-2 py-2 text-right w-[20%]",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "th|border-black border-r px-3 py-2 text-left",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "th|px-2 py-2 text-right w-[20%]",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "tr|border-b border-black last:border-b-0",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "tr|border-b-2 border-black",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "tr|border-black border-t-2",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/sales/components/challan-print-screen.tsx",
+      "fingerprint": "Amount",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/sales/components/payment-receipt-screen.tsx",
+      "fingerprint": "button|bg-slate-950 font-semibold h-10 px-4 rounded-lg text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/sales/components/payment-receipt-screen.tsx",
+      "fingerprint": "button|bg-white border border-slate-300 font-semibold h-10 px-4 rounded-lg text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/sales/components/payment-receipt-screen.tsx",
+      "fingerprint": "section|bg-white border border-red-200 max-w-lg p-6 rounded-xl shadow-sm text-center w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/payment-receipt-screen.tsx",
+      "fingerprint": "table|border-b-2 border-black border-x-2 challan-print-table table-fixed text-sm w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/payment-receipt-screen.tsx",
+      "fingerprint": "td|border-black border-r font-semibold px-3 py-3",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/payment-receipt-screen.tsx",
+      "fingerprint": "td|border-black border-r px-2 py-3 text-center",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/payment-receipt-screen.tsx",
+      "fingerprint": "td|font-semibold px-3 py-3 tabular-nums text-right",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/payment-receipt-screen.tsx",
+      "fingerprint": "th|border-black border-r px-2 py-2 text-center w-20",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/payment-receipt-screen.tsx",
+      "fingerprint": "th|border-black border-r px-3 py-2 text-left",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/payment-receipt-screen.tsx",
+      "fingerprint": "th|px-3 py-2 text-right w-48",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/payment-receipt-screen.tsx",
+      "fingerprint": "tr|border-b border-black last:border-b-0",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-table-style",
+      "file": "src/features/sales/components/payment-receipt-screen.tsx",
+      "fingerprint": "tr|border-b-2 border-black",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/sales/components/payment-receipt-screen.tsx",
+      "fingerprint": "Amount",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/soil/components/soil-daily-entry-screen.tsx",
+      "fingerprint": "button|active:bg-orange-800 bg-orange-700 disabled:bg-stone-300 disabled:cursor-not-allowed disabled:text-stone-600 font-semibold h-14 px-6 rounded-xl text-base text-white w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/soil/components/soil-daily-entry-screen.tsx",
+      "fingerprint": "button|active:bg-orange-800 bg-orange-700 font-semibold px-5 py-3 rounded-xl text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/soil/components/soil-daily-entry-screen.tsx",
+      "fingerprint": "button|font-semibold shrink-0 text-orange-700 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/soil/components/soil-daily-entry-screen.tsx",
+      "fingerprint": "section|bg-white border border-stone-200 p-4 rounded-2xl shadow-sm",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/soil/components/soil-daily-entry-screen.tsx",
+      "fingerprint": "input|bg-white border border-stone-300 disabled:bg-stone-100 disabled:cursor-not-allowed disabled:text-slate-600 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 font-semibold h-12 mt-3 outline-none placeholder:font-normal placeho",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/soil/components/soil-daily-entry-screen.tsx",
+      "fingerprint": "input|bg-white border border-stone-300 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 font-medium h-12 outline-none px-3 rounded-xl text-base text-slate-950 w-full",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/soil/components/soil-daily-entry-screen.tsx",
+      "fingerprint": "Retry",
+      "count": 2
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/soil/components/soil-daily-entry-screen.tsx",
+      "fingerprint": "Saving...",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/transport/components/transport-daily-entry-screen.tsx",
+      "fingerprint": "button|active:bg-orange-50 disabled:text-slate-400 font-semibold px-3 py-2 rounded-lg text-orange-700 text-sm",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/transport/components/transport-daily-entry-screen.tsx",
+      "fingerprint": "button|active:bg-orange-800 bg-orange-700 disabled:bg-stone-300 disabled:cursor-not-allowed disabled:text-stone-600 font-semibold h-14 px-6 rounded-xl text-base text-white w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/transport/components/transport-daily-entry-screen.tsx",
+      "fingerprint": "button|active:bg-orange-800 bg-orange-700 font-semibold px-5 py-3 rounded-xl text-sm text-white",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-button-style",
+      "file": "src/features/transport/components/transport-daily-entry-screen.tsx",
+      "fingerprint": "button|font-semibold shrink-0 text-orange-700 text-sm",
+      "count": 2
+    },
+    {
+      "rule": "duplicate-card-surface",
+      "file": "src/features/transport/components/transport-daily-entry-screen.tsx",
+      "fingerprint": "section|bg-white border border-stone-200 p-4 rounded-2xl shadow-sm",
+      "count": 3
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/transport/components/transport-daily-entry-screen.tsx",
+      "fingerprint": "input|bg-white border border-stone-300 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 font-medium h-12 outline-none px-3 rounded-xl text-base text-slate-950 w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-input-style",
+      "file": "src/features/transport/components/transport-daily-entry-screen.tsx",
+      "fingerprint": "input|bg-white border border-stone-300 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 font-semibold h-14 outline-none placeholder:font-normal placeholder:text-slate-400 px-4 rounded-xl text-lg text-slate-950 w-full",
+      "count": 1
+    },
+    {
+      "rule": "duplicate-select-style",
+      "file": "src/features/transport/components/transport-daily-entry-screen.tsx",
+      "fingerprint": "select|bg-white border border-stone-300 disabled:bg-stone-100 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 font-medium h-12 outline-none px-3 rounded-xl text-base text-slate-950 w-full",
+      "count": 1
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/transport/components/transport-daily-entry-screen.tsx",
+      "fingerprint": "Retry",
+      "count": 3
+    },
+    {
+      "rule": "shared-string-bypass",
+      "file": "src/features/transport/components/transport-daily-entry-screen.tsx",
+      "fingerprint": "Saving...",
+      "count": 2
+    }
+  ]
+}

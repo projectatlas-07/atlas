@@ -61,11 +61,11 @@ await mock.module("../../../lib/supabase/client.ts", {
 });
 
 const {
-  TransportCrewAssignmentServiceError,
-  assignTransportWorkerToCrew,
-  listAssignedTransportWorkersForCrew,
-  listTransportCrewAssignments,
-  unassignTransportWorkerFromCrew,
+  TransportGroupAssignmentServiceError,
+  assignTransportWorkerToGroup,
+  listAssignedTransportWorkersForGroup,
+  listTransportGroupAssignments,
+  unassignTransportWorkerFromGroup,
 } = await import("./transport-crew-assignment-service.ts");
 
 const assignmentRows = [
@@ -79,7 +79,6 @@ const assignmentRows = [
     transport_crew: {
       id: "crew-b",
       name: "Kiln return",
-      work_direction: "KILN_TO_FIELD",
       is_active: true,
     },
   },
@@ -93,7 +92,6 @@ const assignmentRows = [
     transport_crew: {
       id: "crew-a",
       name: "Field carriers",
-      work_direction: "FIELD_TO_KILN",
       is_active: false,
     },
   },
@@ -104,13 +102,13 @@ function reset(): void {
   response = { data: [], error: null };
 }
 
-test("one worker can have multiple deterministic crew assignments", async () => {
+test("one worker can have multiple deterministic Transport Group assignments", async () => {
   reset();
   response.data = assignmentRows;
 
-  const assignments = await listTransportCrewAssignments({ factoryId: "factory-a" });
+  const assignments = await listTransportGroupAssignments({ factoryId: "factory-a" });
 
-  assert.deepEqual(assignments.map((assignment) => assignment.transportCrewId), [
+  assert.deepEqual(assignments.map((assignment) => assignment.transportGroupId), [
     "crew-a",
     "crew-b",
   ]);
@@ -120,14 +118,14 @@ test("one worker can have multiple deterministic crew assignments", async () => 
   ]);
 });
 
-test("assign sends only factory, worker, and crew with no membership dates", async () => {
+test("assign sends only factory, worker, and Transport Group with no membership dates", async () => {
   reset();
   response.data = assignmentRows[0];
 
-  const result = await assignTransportWorkerToCrew({
+  const result = await assignTransportWorkerToGroup({
     factoryId: "factory-a",
     transportWorkerId: "worker-a",
-    transportCrewId: "crew-b",
+    transportGroupId: "crew-b",
   });
 
   assert.equal(result.id, "assignment-b");
@@ -143,7 +141,7 @@ test("unassign is scoped by assignment and factory", async () => {
   reset();
   response.data = [assignmentRows[0]];
 
-  assert.equal((await unassignTransportWorkerFromCrew({
+  assert.equal((await unassignTransportWorkerFromGroup({
     factoryId: "factory-a",
     assignmentId: "assignment-b",
   })).id, "assignment-b");
@@ -153,7 +151,7 @@ test("unassign is scoped by assignment and factory", async () => {
   ]);
 });
 
-test("manager worker list is crew scoped and filters active workers", async () => {
+test("manager worker list is Transport Group scoped and filters active workers", async () => {
   reset();
   response.data = [
     {
@@ -166,9 +164,9 @@ test("manager worker list is crew scoped and filters active workers", async () =
     },
   ];
 
-  assert.deepEqual(await listAssignedTransportWorkersForCrew({
+  assert.deepEqual(await listAssignedTransportWorkersForGroup({
     factoryId: "factory-a",
-    transportCrewId: "crew-a",
+    transportGroupId: "crew-a",
   }), [
     {
       transportWorkerId: "worker-a",
@@ -202,13 +200,13 @@ test("duplicate assignment has a focused typed error", async () => {
   };
 
   await assert.rejects(
-    assignTransportWorkerToCrew({
+    assignTransportWorkerToGroup({
       factoryId: "factory-a",
       transportWorkerId: "worker-a",
-      transportCrewId: "crew-a",
+      transportGroupId: "crew-a",
     }),
     (error: unknown) => {
-      assert.ok(error instanceof TransportCrewAssignmentServiceError);
+      assert.ok(error instanceof TransportGroupAssignmentServiceError);
       assert.equal(error.code, "23505");
       assert.equal(error.details, "assignment exists");
       assert.match(error.message, /already assigned/);
@@ -230,9 +228,9 @@ test("request errors preserve database metadata", async () => {
   };
 
   await assert.rejects(
-    listTransportCrewAssignments({ factoryId: "factory-a" }),
+    listTransportGroupAssignments({ factoryId: "factory-a" }),
     (error: unknown) => {
-      assert.ok(error instanceof TransportCrewAssignmentServiceError);
+      assert.ok(error instanceof TransportGroupAssignmentServiceError);
       assert.equal(error.code, "08006");
       assert.equal(error.details, "connection lost");
       assert.equal(error.hint, "retry");

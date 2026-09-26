@@ -70,7 +70,7 @@ const assignmentService = await import("./transport-crew-assignment-service.ts")
 const {
   TransportDailyEntryServiceError,
   getTransportDailyEntry,
-  listAssignedTransportWorkersForCrew,
+  listAssignedTransportWorkersForGroup,
   saveTransportDailyEntry,
 } = await import("./transport-daily-entry-service.ts");
 
@@ -82,7 +82,7 @@ function reset(): void {
 
 const validSaveInput = {
   factoryId: "factory-a",
-  transportCrewId: "crew-a",
+  transportGroupId: "crew-a",
   workDate: "2026-08-18",
   payaQuantity: 12.75,
   transportWorkerIds: ["worker-a", "worker-b"],
@@ -93,7 +93,7 @@ test("no existing daily entry returns null", async () => {
 
   assert.equal(await getTransportDailyEntry({
     factoryId: "factory-a",
-    transportCrewId: "crew-a",
+    transportGroupId: "crew-a",
     workDate: "2026-08-18",
   }), null);
 });
@@ -120,12 +120,12 @@ test("existing entry maps numeric paya and exactly its saved attendance IDs", as
 
   assert.deepEqual(await getTransportDailyEntry({
     factoryId: "factory-a",
-    transportCrewId: "crew-a",
+    transportGroupId: "crew-a",
     workDate: "2026-08-18",
   }), {
     dailyEntryId: "entry-a",
     factoryId: "factory-a",
-    transportCrewId: "crew-a",
+    transportGroupId: "crew-a",
     workDate: "2026-08-18",
     payaQuantity: 12.75,
     attendanceWorkerIds: ["worker-a", "worker-b"],
@@ -144,12 +144,12 @@ test("existing entry maps numeric paya and exactly its saved attendance IDs", as
   });
 });
 
-test("daily entry read remains factory, crew, and work-date scoped", async () => {
+test("daily entry read remains factory, Transport Group, and work-date scoped", async () => {
   reset();
 
   await getTransportDailyEntry({
     factoryId: "factory-a",
-    transportCrewId: "crew-a",
+    transportGroupId: "crew-a",
     workDate: "2026-08-18",
   });
 
@@ -165,8 +165,8 @@ test("daily entry read remains factory, crew, and work-date scoped", async () =>
 
 test("eligible worker loading is the current assignment resolver", () => {
   assert.equal(
-    listAssignedTransportWorkersForCrew,
-    assignmentService.listAssignedTransportWorkersForCrew,
+    listAssignedTransportWorkersForGroup,
+    assignmentService.listAssignedTransportWorkersForGroup,
   );
 });
 
@@ -238,7 +238,7 @@ test("required IDs and canonical work dates are validated before querying", asyn
   await assert.rejects(
     () => getTransportDailyEntry({
       factoryId: "",
-      transportCrewId: "crew-a",
+      transportGroupId: "crew-a",
       workDate: "2026-08-18",
     }),
     /factoryId is required/,
@@ -246,15 +246,15 @@ test("required IDs and canonical work dates are validated before querying", asyn
   await assert.rejects(
     () => getTransportDailyEntry({
       factoryId: "factory-a",
-      transportCrewId: "",
+      transportGroupId: "",
       workDate: "2026-08-18",
     }),
-    /transportCrewId is required/,
+    /transportGroupId is required/,
   );
   await assert.rejects(
     () => getTransportDailyEntry({
       factoryId: "factory-a",
-      transportCrewId: "crew-a",
+      transportGroupId: "crew-a",
       workDate: "2026-02-30",
     }),
     /workDate must be a valid YYYY-MM-DD date/,
@@ -305,7 +305,7 @@ test("read request failures preserve Supabase metadata", async () => {
   await assert.rejects(
     () => getTransportDailyEntry({
       factoryId: "factory-b",
-      transportCrewId: "crew-b",
+      transportGroupId: "crew-b",
       workDate: "2026-08-18",
     }),
     (error: unknown) => error instanceof TransportDailyEntryServiceError

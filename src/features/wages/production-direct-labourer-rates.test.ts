@@ -10,6 +10,14 @@ const dashboard = readFileSync(
   new URL("../office/components/office-dashboard.tsx", import.meta.url),
   "utf8",
 );
+const managementDrawer = readFileSync(
+  new URL("../office/components/production-worker-management-drawer.tsx", import.meta.url),
+  "utf8",
+);
+const bulkRateSetting = readFileSync(
+  new URL("../office/components/production-bulk-rate-setting.tsx", import.meta.url),
+  "utf8",
+);
 const rangeService = readFileSync(
   new URL("./services/production-range-summary-service.ts", import.meta.url),
   "utf8",
@@ -44,19 +52,21 @@ test("new resolution is direct-only and missing rate fails explicitly", () => {
 test("origin is optional selection metadata and never rate math", () => {
   assert.match(migration, /production_origin_label text/);
   assert.match(migration, /never affects rate resolution, eligibility, or accounting/);
-  assert.match(activeWorkflow, /Filter by origin/);
-  assert.match(activeWorkflow, /setProductionLabourerOrigin/);
+  assert.match(bulkRateSetting, /Filter by Origin/);
+  assert.match(managementDrawer, /setProductionLabourerOrigin/);
+  assert.match(managementDrawer, /For identification and filtering only\. It never changes wage calculations\./);
   assert.doesNotMatch(resolver, /production_origin_label/);
   assert.doesNotMatch(rangeService, /origin/);
 });
 
-test("individual and bulk Set Rate share one component and one mutation", () => {
-  assert.equal((activeWorkflow.match(/<ProductionLabourerRateControls/g) ?? []).length, 2);
-  assert.equal((activeWorkflow.match(/setProductionLabourerRates\(/g) ?? []).length, 1);
-  for (const label of ["Select All", "Select Manually", "Effective From", "Backdated change", "Direct Production rate history"]) {
-    assert.ok(activeWorkflow.includes(label));
-  }
-  assert.doesNotMatch(activeWorkflow, /Manage Crew|Manage Override|ProductionCrewManagement/);
+test("individual drawer and V2 bulk tools share the direct-rate mutation", () => {
+  assert.equal((activeWorkflow.match(/<ProductionBulkRateSetting/g) ?? []).length, 1);
+  assert.equal((bulkRateSetting.match(/setProductionLabourerRates\(/g) ?? []).length, 1);
+  assert.equal((managementDrawer.match(/setProductionLabourerRates\(/g) ?? []).length, 1);
+  for (const label of ["All matching workers", "Selected workers", "Effective from", "Backdated change"]) assert.ok(bulkRateSetting.includes(label));
+  for (const label of ["Effective from", "Direct rate history"]) assert.ok(managementDrawer.includes(label));
+  assert.doesNotMatch(bulkRateSetting, /crew|default rate|brick.?type/i);
+  assert.doesNotMatch(managementDrawer, /crew|default rate/i);
 });
 
 test("migration preserves locked accounting, withdrawals, and Chamber Transport boundaries", () => {

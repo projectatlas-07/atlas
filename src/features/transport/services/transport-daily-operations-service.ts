@@ -1,9 +1,6 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "../../../lib/supabase/client.ts";
-import type {
-  TransportDailyOperationsEntry,
-  TransportWorkDirection,
-} from "../types.ts";
+import type { TransportDailyOperationsEntry } from "../types.ts";
 
 type TransportDailyOperationsRow = {
   id: string;
@@ -14,7 +11,6 @@ type TransportDailyOperationsRow = {
   transport_crew: {
     id: string;
     name: string;
-    work_direction: TransportWorkDirection;
   };
   attendance: Array<{
     transport_worker_id: string;
@@ -57,8 +53,7 @@ export async function listTransportDailyOperations({
       paya_quantity,
       transport_crew:transport_crews!transport_daily_entries_crew_factory_fkey(
         id,
-        name,
-        work_direction
+        name
       ),
       attendance:transport_daily_attendance!transport_daily_attendance_parent_fkey(
         transport_worker_id,
@@ -92,9 +87,8 @@ export async function listTransportDailyOperations({
       return {
         dailyEntryId: entry.id,
         factoryId: entry.factory_id,
-        transportCrewId: entry.transport_crew_id,
-        transportCrewName: entry.transport_crew.name,
-        transportCrewWorkDirection: entry.transport_crew.work_direction,
+        transportGroupId: entry.transport_crew_id,
+        transportGroupName: entry.transport_crew.name,
         workDate: entry.work_date,
         payaQuantity: Number(entry.paya_quantity),
         attendanceCount: attendanceWorkers.length,
@@ -102,9 +96,8 @@ export async function listTransportDailyOperations({
       };
     })
     .sort((left, right) =>
-      left.transportCrewName.localeCompare(right.transportCrewName, "en-IN")
-      || left.transportCrewWorkDirection.localeCompare(right.transportCrewWorkDirection)
-      || left.transportCrewId.localeCompare(right.transportCrewId)
+      left.transportGroupName.localeCompare(right.transportGroupName, "en-IN")
+      || left.transportGroupId.localeCompare(right.transportGroupId)
       || left.dailyEntryId.localeCompare(right.dailyEntryId),
     );
 }

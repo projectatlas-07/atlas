@@ -53,6 +53,7 @@ await mock.module("../../../lib/supabase/client.ts", {
 
 const {
   TransportWeeklyEarningReadError,
+  listTransportRangeEarningDetails,
   listTransportWeeklyEarningDetails,
   listTransportWeeklyEarnings,
   listTransportWorkerEarningDetails,
@@ -100,7 +101,7 @@ test("weekly earnings map numbers, retain inactive workers, and sort determinist
   ]);
 });
 
-test("daily details map immutable snapshots and retain two crews on one worker date", async () => {
+test("daily details map immutable snapshots and retain two Transport Groups on one worker date", async () => {
   reset([
     detailRow({
       id: "detail-a",
@@ -110,7 +111,7 @@ test("daily details map immutable snapshots and retain two crews on one worker d
       daily_crew_pool_snapshot: "500",
       worker_daily_share_snapshot: "500",
       daily_entry: {
-        transport_crew: { id: "crew-a", name: "Crew A", work_direction: "FIELD_TO_KILN" },
+        transport_crew: { id: "crew-a", name: "Group A" },
       },
     }),
     detailRow({
@@ -121,7 +122,7 @@ test("daily details map immutable snapshots and retain two crews on one worker d
       daily_crew_pool_snapshot: "300",
       worker_daily_share_snapshot: "300",
       daily_entry: {
-        transport_crew: { id: "crew-b", name: "Crew B", work_direction: "KILN_TO_FIELD" },
+        transport_crew: { id: "crew-b", name: "Group B" },
       },
     }),
   ]);
@@ -133,7 +134,7 @@ test("daily details map immutable snapshots and retain two crews on one worker d
 
   assert.equal(details.length, 2);
   assert.ok(details.every((detail) => detail.workDate === "2026-08-04"));
-  assert.deepEqual(details.map((detail) => detail.transportCrewId), ["crew-a", "crew-b"]);
+  assert.deepEqual(details.map((detail) => detail.transportGroupId), ["crew-a", "crew-b"]);
   assert.deepEqual(details.map((detail) => detail.workerDailyShareSnapshot), [500, 300]);
   assert.deepEqual(calls.filter(([method]) => method === "eq"), [
     ["eq", "factory_id", "factory-a"],
@@ -158,7 +159,7 @@ test("snapshot mapping does not recalculate inconsistent stored values", async (
   assert.equal(detail.payaQuantitySnapshot, 7.25);
   assert.equal(detail.ratePerPayaSnapshot, 901.5);
   assert.equal(detail.attendanceCountSnapshot, 3);
-  assert.equal(detail.dailyCrewPoolSnapshot, 1234.56);
+  assert.equal(detail.dailyGroupPoolSnapshot, 1234.56);
   assert.equal(detail.workerDailyShareSnapshot, 411.52);
 });
 
@@ -184,6 +185,30 @@ test("worker period details use inclusive authoritative work dates with factory 
     ["lte", "work_date", "2026-08-11"],
   ]);
   assert.equal(calls.some(([, column]) => column === "created_at"), false);
+});
+
+test("overview period read returns every worker share in one inclusive factory-scoped query", async () => {
+  reset([
+    detailRow({ id: "worker-a-detail", transport_worker_id: "worker-a", worker_daily_share_snapshot: "500" }),
+    detailRow({ id: "worker-b-detail", transport_worker_id: "worker-b", worker_daily_share_snapshot: "300" }),
+  ]);
+
+  const details = await listTransportRangeEarningDetails({
+    factoryId: "factory-a",
+    range: { fromDate: "2026-08-03", toDate: "2026-08-09" },
+  });
+
+  assert.deepEqual(details.map((detail) => [detail.transportWorkerId, detail.workerDailyShareSnapshot]), [
+    ["worker-a", 500],
+    ["worker-b", 300],
+  ]);
+  assert.deepEqual(calls.filter(([method]) => method === "eq"), [
+    ["eq", "factory_id", "factory-a"],
+  ]);
+  assert.deepEqual(calls.filter(([method]) => method === "gte" || method === "lte"), [
+    ["gte", "work_date", "2026-08-03"],
+    ["lte", "work_date", "2026-08-09"],
+  ]);
 });
 
 test("worker period details reject invalid identity and date ranges before reading", async () => {
@@ -241,7 +266,7 @@ function detailRow(overrides: Record<string, unknown> = {}): Record<string, unkn
     worker_daily_share_snapshot: "500",
     created_at: "2026-08-10T00:00:00Z",
     daily_entry: {
-      transport_crew: { id: "crew-a", name: "Crew A", work_direction: "FIELD_TO_KILN" },
+      transport_crew: { id: "crew-a", name: "Group A" },
     },
     ...overrides,
   };

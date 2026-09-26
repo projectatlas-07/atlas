@@ -1,38 +1,42 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { dashboardSnapshotQueryOptions } from "../dashboard-query";
+import { Button } from "../../../components/ui/button";
+import { Feedback } from "../../../components/ui/feedback";
+import { ATLAS_UI_STRINGS } from "../../../lib/strings";
+import { ownerDashboardQueryOptions } from "../dashboard-query";
 import { DashboardView } from "./dashboard-view";
 
 export interface DashboardContainerProps {
   factoryId: string;
-  dateFrom: string;
-  dateTo: string;
+  businessDate: string;
+  weekStart: string;
 }
 
 export function DashboardContainer({
   factoryId,
-  dateFrom,
-  dateTo,
+  businessDate,
+  weekStart,
 }: Readonly<DashboardContainerProps>) {
   const snapshotQuery = useQuery(
-    dashboardSnapshotQueryOptions(factoryId, dateFrom, dateTo),
+    ownerDashboardQueryOptions(factoryId, businessDate, weekStart),
   );
 
   if (snapshotQuery.isLoading) {
-    return (
-      <section aria-label="Dashboard" aria-busy="true" className="rounded-xl border border-slate-200 bg-white px-5 py-10 text-center shadow-sm">
-        <p className="text-sm font-medium text-slate-600">Loading Dashboard...</p>
-      </section>
-    );
+    return <Feedback aria-label="Dashboard" aria-busy="true" role="status" tone="neutral">Loading Dashboard...</Feedback>;
   }
 
   if (snapshotQuery.error || !snapshotQuery.data) {
     return (
-      <section role="alert" aria-label="Dashboard unavailable" className="rounded-xl border border-red-200 bg-red-50 px-5 py-8 text-center">
-        <p className="font-semibold text-red-800">Dashboard could not be loaded.</p>
-        <p className="mt-1 text-sm text-red-700">Change the selected period or reopen this screen to try again.</p>
-      </section>
+      <Feedback role="alert" aria-label="Dashboard unavailable" tone="danger">
+        <div className="flex flex-col gap-atlas-3 sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            <span className="block font-atlas-semibold">Dashboard could not be loaded.</span>
+            <span className="mt-atlas-1 block">The existing module data is unavailable right now.</span>
+          </span>
+          <Button variant="secondary" onClick={() => { void snapshotQuery.refetch(); }}>{ATLAS_UI_STRINGS.actions.retry}</Button>
+        </div>
+      </Feedback>
     );
   }
 

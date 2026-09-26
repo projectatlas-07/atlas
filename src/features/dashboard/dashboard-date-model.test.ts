@@ -7,6 +7,7 @@ import {
   ATLAS_BUSINESS_TIME_ZONE,
   getAtlasBusinessDate,
   getCustomDashboardRange,
+  getOwnerDashboardDateRanges,
   getSingleDateDashboardRange,
   getTodayDashboardRange,
 } from "./dashboard-date-model.ts";
@@ -30,15 +31,31 @@ test("Today returns the same explicit IST date at both endpoints", () => {
   });
 });
 
+test("owner ranges use one Kolkata date and a Monday-to-Today week", () => {
+  assert.deepEqual(getOwnerDashboardDateRanges(new Date("2026-09-22T18:30:00Z")), {
+    today: { dateFrom: "2026-09-23", dateTo: "2026-09-23" },
+    thisWeek: { dateFrom: "2026-09-21", dateTo: "2026-09-23" },
+  });
+  assert.deepEqual(getOwnerDashboardDateRanges(new Date("2026-09-20T18:30:00Z")), {
+    today: { dateFrom: "2026-09-21", dateTo: "2026-09-21" },
+    thisWeek: { dateFrom: "2026-09-21", dateTo: "2026-09-21" },
+  });
+  assert.deepEqual(getOwnerDashboardDateRanges(new Date("2026-09-20T18:29:59Z")), {
+    today: { dateFrom: "2026-09-20", dateTo: "2026-09-20" },
+    thisWeek: { dateFrom: "2026-09-14", dateTo: "2026-09-20" },
+  });
+});
+
 test("host timezone does not change IST Today or supplied calendar-date selections", () => {
   const modelUrl = new URL("./dashboard-date-model.ts", import.meta.url).href;
   const script = `
-    import { getTodayDashboardRange, getSingleDateDashboardRange, getCustomDashboardRange } from ${JSON.stringify(modelUrl)};
+    import { getTodayDashboardRange, getSingleDateDashboardRange, getCustomDashboardRange, getOwnerDashboardDateRanges } from ${JSON.stringify(modelUrl)};
     process.stdout.write(JSON.stringify([
       getTodayDashboardRange(new Date("2026-09-02T18:29:59Z")),
       getTodayDashboardRange(new Date("2026-09-02T18:30:00Z")),
       getSingleDateDashboardRange("2026-09-03"),
       getCustomDashboardRange("2026-08-01", "2026-08-31"),
+      getOwnerDashboardDateRanges(new Date("2026-09-22T18:30:00Z")),
     ]));
   `;
   for (const timezone of ["UTC", "America/Los_Angeles", "Asia/Tokyo"]) {
@@ -51,6 +68,10 @@ test("host timezone does not change IST Today or supplied calendar-date selectio
       { dateFrom: "2026-09-03", dateTo: "2026-09-03" },
       { dateFrom: "2026-09-03", dateTo: "2026-09-03" },
       { dateFrom: "2026-08-01", dateTo: "2026-08-31" },
+      {
+        today: { dateFrom: "2026-09-23", dateTo: "2026-09-23" },
+        thisWeek: { dateFrom: "2026-09-21", dateTo: "2026-09-23" },
+      },
     ], timezone);
   }
 });

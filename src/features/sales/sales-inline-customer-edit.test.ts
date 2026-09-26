@@ -113,7 +113,7 @@ const historicalChallan: Challan = {
 };
 
 test("selected customer exposes a creation-only inline Edit action", () => {
-  assert.match(office, /\{!challan && <button[^>]*onClick=\{startCustomerEdit\}[^>]*>Edit<\/button>\}/);
+  assert.match(office, /\{!challan && <Button[^>]*onClick=\{startCustomerEdit\}[^>]*>\{ATLAS_UI_STRINGS\.actions\.edit\}<\/Button>\}/);
   assert.match(office, /Edit selected customer/);
   assert.match(office, /Save customer/);
   assert.match(office, /onClick=\{cancelCustomerEdit\}/);

@@ -107,7 +107,7 @@ test("direct and calculated Extra Charges retain authoritative persisted values"
     ["Engine Oil", 2.5, 400, 1000],
   ]);
   assert.match(detail, /line\.quantity !== null && line\.rate !== null/);
-  assert.match(detail, /formatSalesMoney\(line\.amount\)/);
+  assert.match(detail, /formatIndianCurrency\(line\.amount, MONEY_WITH_PAISE\)/);
 });
 
 test("multiple flexible rows preserve order_index instead of sorting by type or text", () => {

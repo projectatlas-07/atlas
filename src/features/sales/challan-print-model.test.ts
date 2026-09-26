@@ -265,7 +265,7 @@ test("print-only document contains no Office or internal customer-facing fields"
 });
 
 test("Office links to the dedicated authenticated route with browser-native print and PDF actions", () => {
-  assert.match(officeSource, /View Challan/);
+  assert.match(officeSource, /Print \/ download PDF/);
   assert.match(officeSource, /\/office\/challans\/\$\{challan\.id\}/);
   assert.match(routeSource, /<AuthGuard>/);
   assert.match(screenSource, />Print</);

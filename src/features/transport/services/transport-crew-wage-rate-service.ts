@@ -1,41 +1,41 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "../../../lib/supabase/client.ts";
-import type { TransportCrewWageRate } from "../types.ts";
+import type { TransportGroupWageRate } from "../types.ts";
 
-export type ListTransportCrewWageRatesInput = {
+export type ListTransportGroupWageRatesInput = {
   factoryId: string;
-  transportCrewId: string;
+  transportGroupId: string;
 };
 
-export type CreateTransportCrewWageRateInput = {
+export type CreateTransportGroupWageRateInput = {
   factoryId: string;
-  transportCrewId: string;
+  transportGroupId: string;
   effectiveFrom: string;
   ratePerPaya: number;
 };
 
-export type GetTransportCrewWageRateForDateInput = {
+export type GetTransportGroupWageRateForDateInput = {
   factoryId: string;
-  transportCrewId: string;
+  transportGroupId: string;
   workDate: string;
 };
 
-export type TransportCrewWageRateResolutionFailure = "missing" | "overlapping";
+export type TransportGroupWageRateResolutionFailure = "missing" | "overlapping";
 
-export class TransportCrewWageRateResolutionError extends Error {
-  readonly failure: TransportCrewWageRateResolutionFailure;
+export class TransportGroupWageRateResolutionError extends Error {
+  readonly failure: TransportGroupWageRateResolutionFailure;
 
   constructor(
-    failure: TransportCrewWageRateResolutionFailure,
+    failure: TransportGroupWageRateResolutionFailure,
     message: string,
   ) {
     super(message);
-    this.name = "TransportCrewWageRateResolutionError";
+    this.name = "TransportGroupWageRateResolutionError";
     this.failure = failure;
   }
 }
 
-type TransportCrewWageRateRow = {
+type TransportGroupWageRateRow = {
   id: string;
   factory_id: string;
   transport_crew_id: string;
@@ -45,14 +45,14 @@ type TransportCrewWageRateRow = {
   created_at: string;
 };
 
-export class TransportCrewWageRateServiceError extends Error {
+export class TransportGroupWageRateServiceError extends Error {
   readonly code: string;
   readonly details: string | null;
   readonly hint: string | null;
 
   constructor(error: PostgrestError) {
     super(readableRateErrorMessage(error));
-    this.name = "TransportCrewWageRateServiceError";
+    this.name = "TransportGroupWageRateServiceError";
     this.code = error.code;
     this.details = error.details;
     this.hint = error.hint;
@@ -61,23 +61,23 @@ export class TransportCrewWageRateServiceError extends Error {
 
 function readableRateErrorMessage(error: PostgrestError): string {
   if (error.code === "23P01") {
-    return "Transport crew wage-rate periods cannot overlap.";
+    return "Transport Group wage-rate periods cannot overlap.";
   }
 
   if (error.code === "23503") {
-    return "Transport crew does not belong to this factory.";
+    return "Transport Group does not belong to this factory.";
   }
 
   return error.message;
 }
 
-function mapTransportCrewWageRate(
-  row: TransportCrewWageRateRow,
-): TransportCrewWageRate {
+function mapTransportGroupWageRate(
+  row: TransportGroupWageRateRow,
+): TransportGroupWageRate {
   return {
     id: row.id,
     factoryId: row.factory_id,
-    transportCrewId: row.transport_crew_id,
+    transportGroupId: row.transport_crew_id,
     ratePerPaya: row.rate_per_paya,
     effectiveFrom: row.effective_from,
     effectiveTo: row.effective_to,
@@ -95,48 +95,48 @@ function assertCanonicalWorkDate(workDate: string): void {
   }
 }
 
-export async function listTransportCrewWageRates({
+export async function listTransportGroupWageRates({
   factoryId,
-  transportCrewId,
-}: ListTransportCrewWageRatesInput): Promise<TransportCrewWageRate[]> {
+  transportGroupId,
+}: ListTransportGroupWageRatesInput): Promise<TransportGroupWageRate[]> {
   const { data, error } = await supabase
     .from("transport_crew_wage_rates")
     .select(
       "id, factory_id, transport_crew_id, rate_per_paya, effective_from, effective_to, created_at",
     )
     .eq("factory_id", factoryId)
-    .eq("transport_crew_id", transportCrewId)
+    .eq("transport_crew_id", transportGroupId)
     .order("effective_from", { ascending: false })
     .order("id", { ascending: false });
 
-  if (error) throw new TransportCrewWageRateServiceError(error);
-  return (data ?? []).map(mapTransportCrewWageRate);
+  if (error) throw new TransportGroupWageRateServiceError(error);
+  return (data ?? []).map(mapTransportGroupWageRate);
 }
 
-export async function createTransportCrewWageRate({
+export async function createTransportGroupWageRate({
   factoryId,
-  transportCrewId,
+  transportGroupId,
   effectiveFrom,
   ratePerPaya,
-}: CreateTransportCrewWageRateInput): Promise<TransportCrewWageRate> {
+}: CreateTransportGroupWageRateInput): Promise<TransportGroupWageRate> {
   const { data, error } = await supabase.rpc("create_transport_crew_wage_rate", {
     p_factory_id: factoryId,
-    p_transport_crew_id: transportCrewId,
+    p_transport_crew_id: transportGroupId,
     p_effective_from: effectiveFrom,
     p_rate_per_paya: ratePerPaya,
   });
 
-  if (error) throw new TransportCrewWageRateServiceError(error);
+  if (error) throw new TransportGroupWageRateServiceError(error);
   if (!data) throw new Error("create_transport_crew_wage_rate returned no rate.");
 
-  return mapTransportCrewWageRate(data);
+  return mapTransportGroupWageRate(data);
 }
 
-export async function getTransportCrewWageRateForDate({
+export async function getTransportGroupWageRateForDate({
   factoryId,
-  transportCrewId,
+  transportGroupId,
   workDate,
-}: GetTransportCrewWageRateForDateInput): Promise<TransportCrewWageRate> {
+}: GetTransportGroupWageRateForDateInput): Promise<TransportGroupWageRate> {
   assertCanonicalWorkDate(workDate);
 
   const { data, error } = await supabase
@@ -145,26 +145,26 @@ export async function getTransportCrewWageRateForDate({
       "id, factory_id, transport_crew_id, rate_per_paya, effective_from, effective_to, created_at",
     )
     .eq("factory_id", factoryId)
-    .eq("transport_crew_id", transportCrewId)
+    .eq("transport_crew_id", transportGroupId)
     .lte("effective_from", workDate)
     .or(`effective_to.is.null,effective_to.gte.${workDate}`)
     .limit(2);
 
-  if (error) throw new TransportCrewWageRateServiceError(error);
+  if (error) throw new TransportGroupWageRateServiceError(error);
 
-  const applicableRates = (data ?? []).map(mapTransportCrewWageRate);
+  const applicableRates = (data ?? []).map(mapTransportGroupWageRate);
 
   if (applicableRates.length === 0) {
-    throw new TransportCrewWageRateResolutionError(
+    throw new TransportGroupWageRateResolutionError(
       "missing",
-      `No transport crew wage rate applies to crew ${transportCrewId} on ${workDate}.`,
+      `No Transport Group wage rate applies to group ${transportGroupId} on ${workDate}.`,
     );
   }
 
   if (applicableRates.length > 1) {
-    throw new TransportCrewWageRateResolutionError(
+    throw new TransportGroupWageRateResolutionError(
       "overlapping",
-      `Overlapping transport crew wage rates apply to crew ${transportCrewId} on ${workDate}.`,
+      `Overlapping Transport Group wage rates apply to group ${transportGroupId} on ${workDate}.`,
     );
   }
 

@@ -27,6 +27,8 @@ export type ListTransportWorkerWithdrawalsInput = {
   transportWorkerId: string;
 };
 
+export type LatestTransportWorkerWithdrawal = TransportWorkerWithdrawal;
+
 export class TransportWorkerFinancialServiceError extends Error {
   readonly code: string;
   readonly details: string | null;
@@ -151,4 +153,36 @@ export async function listTransportWorkerWithdrawals({
     amount: withdrawal.amount,
     createdAt: withdrawal.created_at,
   }));
+}
+
+export async function listLatestTransportWorkerWithdrawalsForFactory(
+  factoryId: string,
+): Promise<LatestTransportWorkerWithdrawal[]> {
+  if (!factoryId.trim()) throw new Error("factoryId is required.");
+
+  const { data, error } = await supabase
+    .from("transport_withdrawals")
+    .select("id, factory_id, transport_worker_id, withdrawal_date, amount, created_at")
+    .eq("factory_id", factoryId)
+    .order("transport_worker_id", { ascending: true })
+    .order("withdrawal_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false });
+
+  if (error) throw new TransportWorkerFinancialServiceError(error);
+
+  const latestByWorker = new Map<string, LatestTransportWorkerWithdrawal>();
+  for (const withdrawal of data ?? []) {
+    if (latestByWorker.has(withdrawal.transport_worker_id)) continue;
+    latestByWorker.set(withdrawal.transport_worker_id, {
+      withdrawalId: withdrawal.id,
+      factoryId: withdrawal.factory_id,
+      transportWorkerId: withdrawal.transport_worker_id,
+      withdrawalDate: withdrawal.withdrawal_date,
+      amount: withdrawal.amount,
+      createdAt: withdrawal.created_at,
+    });
+  }
+
+  return [...latestByWorker.values()];
 }

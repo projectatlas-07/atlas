@@ -99,9 +99,9 @@ export function sortCustomerOutstandingChallans(
 export function clearCustomerPaymentAllocations(
   form: CustomerPaymentForm,
 ): CustomerPaymentForm {
-  return Object.keys(form.allocations).length === 0
+  return Object.keys(form.allocations).length === 0 && !form.amount
     ? form
-    : { ...form, allocations: {} };
+    : { ...form, amount: "", allocations: {} };
 }
 
 export function emptyCustomerPaymentForm(localToday: string): CustomerPaymentForm {
@@ -112,31 +112,40 @@ export function setPaymentAmount(
   form: CustomerPaymentForm,
   amount: string,
 ): CustomerPaymentForm {
-  return { ...form, amount };
+  const selectedChallanIds = Object.keys(form.allocations);
+  if (selectedChallanIds.length !== 1) return { ...form, amount };
+  return {
+    ...form,
+    amount,
+    allocations: { [selectedChallanIds[0]!]: amount },
+  };
 }
 
 export function togglePaymentAllocation(
   form: CustomerPaymentForm,
-  challanId: string,
+  challan: CustomerOutstandingChallan,
   selected: boolean,
 ): CustomerPaymentForm {
   const allocations = { ...form.allocations };
-  if (selected) allocations[challanId] = allocations[challanId] ?? "";
-  else delete allocations[challanId];
-  return { ...form, allocations };
+  if (selected) allocations[challan.challanId] = formatEditableMoney(challan.outstandingAmount);
+  else delete allocations[challan.challanId];
+  return { ...form, amount: formatAllocationTotal(allocations), allocations };
+}
+
+export function setPaymentAllocation(
+  form: CustomerPaymentForm,
+  challanId: string,
+  amount: string,
+): CustomerPaymentForm {
+  const allocations = { ...form.allocations, [challanId]: amount };
+  return { ...form, amount: formatAllocationTotal(allocations), allocations };
 }
 
 export function fillOutstandingAllocation(
   form: CustomerPaymentForm,
   challan: CustomerOutstandingChallan,
 ): CustomerPaymentForm {
-  return {
-    ...form,
-    allocations: {
-      ...form.allocations,
-      [challan.challanId]: formatEditableMoney(challan.outstandingAmount),
-    },
-  };
+  return togglePaymentAllocation(form, challan, true);
 }
 
 export function getCustomerPaymentFormStatus(
@@ -226,6 +235,19 @@ function parseMoneyToPaise(value: string): number | null {
 
 function formatEditableMoney(amount: number): string {
   return amount.toFixed(2).replace(/\.00$/, "");
+}
+
+function formatAllocationTotal(allocations: Readonly<Record<string, string>>): string {
+  const values = Object.values(allocations);
+  if (values.length === 0) return "";
+  let totalPaise = 0;
+  for (const value of values) {
+    const paise = parseMoneyToPaise(value);
+    if (paise === null) return "";
+    totalPaise += paise;
+    if (!Number.isSafeInteger(totalPaise)) return "";
+  }
+  return formatEditableMoney(totalPaise / 100);
 }
 
 function isCanonicalDate(value: string): boolean {

@@ -1,15 +1,14 @@
 import {
   getTransportDailyEntry,
-  listAssignedTransportWorkersForCrew,
+  listAssignedTransportWorkersForGroup,
 } from "./services/transport-daily-entry-service.ts";
-import { listTransportCrews } from "./services/transport-crew-service.ts";
+import { listTransportGroups } from "./services/transport-crew-service.ts";
 import type {
   SaveTransportDailyEntryInput,
   TransportAssignedWorker,
-  TransportCrew,
+  TransportGroup,
   TransportDailyEntryWorkerChoice,
   TransportDailyEntryWithAttendance,
-  TransportWorkDirection,
 } from "./types.ts";
 
 export type TransportDailyEntrySelectionState = {
@@ -19,24 +18,24 @@ export type TransportDailyEntrySelectionState = {
   existingDailyEntryId: string | null;
 };
 
-export async function loadActiveTransportCrews(
+export async function loadActiveTransportGroups(
   factoryId: string,
-): Promise<TransportCrew[]> {
-  return (await listTransportCrews(factoryId)).filter((crew) => crew.isActive);
+): Promise<TransportGroup[]> {
+  return (await listTransportGroups(factoryId)).filter((group) => group.isActive);
 }
 
 export async function loadTransportDailyEntrySelection({
   factoryId,
-  transportCrewId,
+  transportGroupId,
   workDate,
 }: Readonly<{
   factoryId: string;
-  transportCrewId: string;
+  transportGroupId: string;
   workDate: string;
 }>): Promise<TransportDailyEntrySelectionState> {
   const [members, existingEntry] = await Promise.all([
-    listAssignedTransportWorkersForCrew({ factoryId, transportCrewId }),
-    getTransportDailyEntry({ factoryId, transportCrewId, workDate }),
+    listAssignedTransportWorkersForGroup({ factoryId, transportGroupId }),
+    getTransportDailyEntry({ factoryId, transportGroupId, workDate }),
   ]);
 
   return prepareTransportDailyEntrySelection({ members, existingEntry });
@@ -102,37 +101,31 @@ export function parseTransportPayaInput(value: string): number | null {
 
 export function buildTransportDailyEntrySaveInput({
   factoryId,
-  transportCrewId,
+  transportGroupId,
   workDate,
   payaInput,
   selectedWorkerIds,
 }: Readonly<{
   factoryId: string;
-  transportCrewId: string;
+  transportGroupId: string;
   workDate: string;
   payaInput: string;
   selectedWorkerIds: ReadonlySet<string>;
 }>): SaveTransportDailyEntryInput | null {
   const payaQuantity = parseTransportPayaInput(payaInput);
-  if (!factoryId || !transportCrewId || !payaQuantity || selectedWorkerIds.size === 0) {
+  if (!factoryId || !transportGroupId || !payaQuantity || selectedWorkerIds.size === 0) {
     return null;
   }
 
   return {
     factoryId,
-    transportCrewId,
+    transportGroupId,
     workDate,
     payaQuantity,
     transportWorkerIds: [...selectedWorkerIds].sort((left, right) =>
       left.localeCompare(right),
     ),
   };
-}
-
-export function formatTransportWorkDirection(
-  direction: TransportWorkDirection,
-): string {
-  return direction === "FIELD_TO_KILN" ? "Field → Kiln" : "Kiln → Field";
 }
 
 export function transportDailyEntryErrorMessage(error: unknown): string {
@@ -145,7 +138,7 @@ export function transportDailyEntryErrorMessage(error: unknown): string {
   const message = typeof failure.message === "string" ? failure.message : "";
 
   if (code === "23514") {
-    return "New attendance workers must be active and assigned to this crew.";
+    return "New attendance workers must be active and assigned to this Transport Group.";
   }
   if (code === "22023") {
     return "Check the work date, paya quantity, and selected workers.";

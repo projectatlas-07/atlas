@@ -31,8 +31,9 @@ const sharedWageRange = readFileSync(
   "utf8",
 );
 
-test("Vehicle Wages remains one focused account beside Vehicle management", () => {
-  assert.match(salesOffice, /<VehicleManagementSection[\s\S]*<VehicleWageAccountsSection/);
+test("Vehicle Wages remains one focused account under Workforce while Vehicle management is in Settings", () => {
+  assert.match(salesOffice, /hidden=\{!showVehicleWages\}[\s\S]*<VehicleWageAccountsSection/);
+  assert.match(salesOffice, /id="settings"[\s\S]*<VehicleManagementSection/);
   assert.match(component, /Vehicle Wages/);
   assert.match(component, /Delivery Labour Wage accounts/);
   assert.match(component, /Vehicle accounts/);

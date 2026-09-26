@@ -6,6 +6,10 @@ const migration = readFileSync(
   new URL("../../../supabase/migrations/20260915000050_protect_settled_production_cutover.sql", import.meta.url),
   "utf8",
 );
+const brickTypeCutover = readFileSync(
+  new URL("../../../supabase/migrations/20260924000065_remove_production_brick_types.sql", import.meta.url),
+  "utf8",
+);
 const entryScreen = readFileSync(
   new URL("./components/production-entry-screen.tsx", import.meta.url),
   "utf8",
@@ -23,9 +27,9 @@ const dailyUniquenessMigration = readFileSync(
   "utf8",
 );
 
-const saveFunction = migration.slice(
-  migration.indexOf("create or replace function public.save_production_entry"),
-  migration.indexOf("revoke insert, update, delete on public.production_entries"),
+const saveFunction = brickTypeCutover.slice(
+  brickTypeCutover.indexOf("create or replace function public.save_production_entry"),
+  brickTypeCutover.indexOf("revoke insert, update, delete on public.production_entries"),
 );
 const rateFunction = migration.slice(
   migration.indexOf("create or replace function public.set_production_labourer_rates"),
@@ -39,25 +43,28 @@ const legacyCalculator = migration.slice(
 test("Production entry UI uses one controlled RPC and no direct table mutation", () => {
   assert.match(entryScreen, /rpc\("save_production_entry"/);
   assert.match(entryScreen, /p_entry_id: payload\.savedEntryId \?\? payload\.newEntryId/);
+  assert.doesNotMatch(entryScreen, /p_brick_type_id|brick_type_id|assigned_brick_type_id/);
   assert.doesNotMatch(entryScreen, /\.from\("production_entries"\)[\s\S]{0,100}\.(?:insert|update|delete)\(/);
-  assert.match(migration, /revoke insert, update, delete on public\.production_entries from authenticated/);
+  assert.match(brickTypeCutover, /revoke insert, update, delete on public\.production_entries from authenticated/);
 });
 
-test("save RPC preserves one daily row, retry identity, and brick snapshot semantics", () => {
+test("save RPC preserves one daily row and retry identity without Brick Type", () => {
   assert.match(dailyUniquenessMigration, /unique \(factory_id, labourer_id, production_date\)/);
   assert.match(saveFunction, /pg_advisory_xact_lock|assert_production_date_is_unsettled/);
   assert.match(saveFunction, /on conflict \(factory_id, labourer_id, production_date\)/);
   assert.match(saveFunction, /do update set quantity = excluded\.quantity/);
-  assert.doesNotMatch(saveFunction, /do update set[^;]*brick_type_id/s);
+  assert.doesNotMatch(saveFunction, /brick_type/i);
   assert.match(saveFunction, /Production entry does not belong to this labourer and date/);
 });
 
-test("database trigger blocks insert, update, and delete through the latest settlement cutoff", () => {
-  assert.match(migration, /before insert or update or delete on public\.production_entries/);
+test("database trigger still blocks insert, update, and delete through the latest settlement cutoff", () => {
+  assert.match(brickTypeCutover, /before insert or update or delete on public\.production_entries/);
+  assert.match(brickTypeCutover, /assert_production_date_is_unsettled/);
   assert.match(migration, /p_production_date <= latest_cutoff/);
   assert.match(migration, /Production through % is settled and cannot be changed/);
   assert.match(migration, /using errcode = 'P2520'/);
-  assert.match(migration, /Production record identity and brick type snapshot cannot be changed/);
+  assert.match(brickTypeCutover, /Production record identity cannot be changed/);
+  assert.doesNotMatch(brickTypeCutover, /brick type snapshot/i);
 });
 
 test("Production saves and settlements share the exact same account lock", () => {
@@ -89,6 +96,10 @@ test("Mud and every unrelated module remain outside the cutover", () => {
   for (const boundary of ["transport_", "soil_", "staff_", "challans", "coal_", "vehicle_", "expense_"]) {
     const mutation = new RegExp(`(?:alter|drop|truncate|delete\\s+from|update|insert\\s+into)\\s+(?:table\\s+)?public\\.${boundary}`, "i");
     assert.doesNotMatch(migration, mutation);
+  }
+  for (const protectedBoundary of ["weekly_earnings", "production_earning_settlements", "production_earning_settlement_details", "withdrawals", "challans", "challan_items", "brick_types"]) {
+    const mutation = new RegExp(`(?:alter|drop|truncate|delete\\s+from|update|insert\\s+into)\\s+(?:table\\s+)?public\\.${protectedBoundary}\\b`, "i");
+    assert.doesNotMatch(brickTypeCutover, mutation);
   }
 });
 

@@ -9,6 +9,8 @@ import {
   emptyCustomerPaymentForm,
   getCustomerPaymentFormStatus,
   resolveCustomerDuesDateFilter,
+  setPaymentAllocation,
+  setPaymentAmount,
   sortCustomerOutstandingChallans,
   togglePaymentAllocation,
   fillOutstandingAllocation,
@@ -195,7 +197,7 @@ export function CustomerPaymentsSection({
         <form onSubmit={savePayment} className="border-b border-slate-200 p-5 sm:p-6">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="text-xs font-medium text-slate-600">Payment date<input type="date" required value={form.paymentDate} onChange={(event) => setForm({ ...form, paymentDate: event.target.value })} className={inputClass} /></label>
-            <label className="text-xs font-medium text-slate-600">Payment amount<input inputMode="decimal" placeholder="0.00" required value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} className={inputClass} /></label>
+            <label className="text-xs font-medium text-slate-600">Payment amount<input inputMode="decimal" placeholder="0.00" required value={form.amount} onChange={(event) => setForm((current) => setPaymentAmount(current, event.target.value))} className={inputClass} /></label>
             <label className="text-xs font-medium text-slate-600">Payment mode<select required value={form.paymentMode} onChange={(event) => setForm({ ...form, paymentMode: event.target.value })} className={inputClass}><option value="">Select mode</option>{NEW_CUSTOMER_PAYMENT_MODES.map((mode) => <option key={mode} value={mode}>{formatCustomerPaymentMode(mode)}</option>)}</select></label>
             <label className="text-xs font-medium text-slate-600">Note (optional)<input maxLength={500} value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} className={inputClass} /></label>
           </div>
@@ -231,7 +233,7 @@ export function CustomerPaymentsSection({
               {candidates.map((challan) => {
                 const selected = Object.prototype.hasOwnProperty.call(form.allocations, challan.challanId);
                 return <li key={challan.challanId} className="grid gap-3 px-4 py-4 lg:grid-cols-[2rem_minmax(0,1fr)_minmax(9rem,auto)_10rem_7rem] lg:items-center">
-                  <input type="checkbox" aria-label={`Allocate payment to ${formatChallanLabel(challan.challanNumber)}`} checked={selected} onChange={(event) => setForm(togglePaymentAllocation(form, challan.challanId, event.target.checked))} className="h-4 w-4" />
+                  <input type="checkbox" aria-label={`Allocate payment to ${formatChallanLabel(challan.challanNumber)}`} checked={selected} onChange={(event) => setForm((current) => togglePaymentAllocation(current, challan, event.target.checked))} className="h-4 w-4" />
                   <div>
                     <p className="text-xs text-slate-500">{formatChallanDate(challan.challanDate)}</p>
                     {challan.challanNumber && <p className="mt-1 font-bold">Challan No. {challan.challanNumber}</p>}
@@ -243,8 +245,8 @@ export function CustomerPaymentsSection({
                     <p className="font-bold tabular-nums text-slate-950">{formatSalesMoney(challan.outstandingAmount)} due</p>
                     {challan.totalPaid > 0 && <p className="mt-1 text-xs text-slate-500">Original {formatSalesMoney(challan.saleTotal)} · Paid {formatSalesMoney(challan.totalPaid)}</p>}
                   </div>
-                  <label className="text-xs font-medium text-slate-600">Allocation<input inputMode="decimal" aria-label={`Allocation for ${formatChallanLabel(challan.challanNumber)}`} disabled={!selected} value={form.allocations[challan.challanId] ?? ""} onChange={(event) => setForm({ ...form, allocations: { ...form.allocations, [challan.challanId]: event.target.value } })} className={inputClass} /></label>
-                  <button type="button" onClick={() => setForm(fillOutstandingAllocation(form, challan))} className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold">Use outstanding</button>
+                  <label className="text-xs font-medium text-slate-600">Allocation<input inputMode="decimal" aria-label={`Allocation for ${formatChallanLabel(challan.challanNumber)}`} disabled={!selected} value={form.allocations[challan.challanId] ?? ""} onChange={(event) => setForm((current) => setPaymentAllocation(current, challan.challanId, event.target.value))} className={inputClass} /></label>
+                  <button type="button" onClick={() => setForm((current) => fillOutstandingAllocation(current, challan))} className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold">Use outstanding</button>
                 </li>;
               })}
             </ul>}

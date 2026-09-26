@@ -1,14 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ProductionEntryScreen } from "@/features/production/components/production-entry-screen";
 import { SoilDailyEntryScreen } from "@/features/soil/components/soil-daily-entry-screen";
 import { TransportDailyEntryScreen } from "@/features/transport/components/transport-daily-entry-screen";
-
-type ManagerWorkflow = "production" | "soil" | "transport";
+import { resolveManagerWorkflowFromHash, type ManagerWorkflow } from "@/features/manager/manager-workflow-navigation";
 
 export function ManagerEntryScreen() {
   const [workflow, setWorkflow] = useState<ManagerWorkflow>("production");
+
+  useEffect(() => {
+    function syncWorkflowFromHash() {
+      setWorkflow(resolveManagerWorkflowFromHash(window.location.hash));
+    }
+
+    syncWorkflowFromHash();
+    window.addEventListener("hashchange", syncWorkflowFromHash);
+    return () => window.removeEventListener("hashchange", syncWorkflowFromHash);
+  }, []);
 
   return (
     <div className="min-h-screen bg-stone-50">

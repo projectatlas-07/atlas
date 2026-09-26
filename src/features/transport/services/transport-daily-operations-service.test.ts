@@ -17,7 +17,6 @@ type DailyRow = {
   transport_crew: {
     id: string;
     name: string;
-    work_direction: "FIELD_TO_KILN" | "KILN_TO_FIELD";
   };
   attendance: Array<{
     transport_worker_id: string;
@@ -64,18 +63,16 @@ const {
 
 function row({
   entryId,
-  crewId,
-  crewName,
-  direction,
+  groupId,
+  groupName,
   paya,
   workers,
   factoryId = "factory-a",
   workDate = "2026-08-19",
 }: Readonly<{
   entryId: string;
-  crewId: string;
-  crewName: string;
-  direction: "FIELD_TO_KILN" | "KILN_TO_FIELD";
+  groupId: string;
+  groupName: string;
   paya: number | string;
   workers: Array<{ id: string; name: string; isActive: boolean }>;
   factoryId?: string;
@@ -84,10 +81,10 @@ function row({
   return {
     id: entryId,
     factory_id: factoryId,
-    transport_crew_id: crewId,
+    transport_crew_id: groupId,
     work_date: workDate,
     paya_quantity: paya,
-    transport_crew: { id: crewId, name: crewName, work_direction: direction },
+    transport_crew: { id: groupId, name: groupName },
     attendance: workers.map((worker) => ({
       transport_worker_id: worker.id,
       transport_worker: {
@@ -115,22 +112,20 @@ test("daily operations read is factory and work-date scoped", async () => {
   ]);
 });
 
-test("multiple crews map decimal paya, persisted attendance counts, and deterministic crew order", async () => {
+test("multiple Transport Groups map decimal paya, persisted attendance counts, and deterministic group order", async () => {
   reset();
   response.data = [
     row({
       entryId: "entry-b",
-      crewId: "crew-b",
-      crewName: "Zeta Crew",
-      direction: "KILN_TO_FIELD",
+      groupId: "crew-b",
+      groupName: "Zeta Group",
       paya: 4,
       workers: [{ id: "worker-shared", name: "Asha", isActive: true }],
     }),
     row({
       entryId: "entry-a",
-      crewId: "crew-a",
-      crewName: "Alpha Crew",
-      direction: "FIELD_TO_KILN",
+      groupId: "crew-a",
+      groupName: "Alpha Group",
       paya: "6.5",
       workers: [
         { id: "worker-inactive", name: "Bina", isActive: false },
@@ -146,13 +141,12 @@ test("multiple crews map decimal paya, persisted attendance counts, and determin
 
   assert.deepEqual(result.map((entry) => ({
     id: entry.dailyEntryId,
-    crew: entry.transportCrewName,
-    direction: entry.transportCrewWorkDirection,
+    group: entry.transportGroupName,
     paya: entry.payaQuantity,
     attendanceCount: entry.attendanceCount,
   })), [
-    { id: "entry-a", crew: "Alpha Crew", direction: "FIELD_TO_KILN", paya: 6.5, attendanceCount: 2 },
-    { id: "entry-b", crew: "Zeta Crew", direction: "KILN_TO_FIELD", paya: 4, attendanceCount: 1 },
+    { id: "entry-a", group: "Alpha Group", paya: 6.5, attendanceCount: 2 },
+    { id: "entry-b", group: "Zeta Group", paya: 4, attendanceCount: 1 },
   ]);
   assert.deepEqual(result[0]?.attendanceWorkers, [
     { transportWorkerId: "worker-shared", transportWorkerName: "Asha", transportWorkerIsActive: true },
@@ -160,12 +154,12 @@ test("multiple crews map decimal paya, persisted attendance counts, and determin
   ]);
 });
 
-test("the same persisted worker remains visible once inside each crew record", async () => {
+test("the same persisted worker remains visible once inside each Transport Group record", async () => {
   reset();
   const shared = [{ id: "worker-shared", name: "Asha", isActive: false }];
   response.data = [
-    row({ entryId: "entry-a", crewId: "crew-a", crewName: "Crew A", direction: "FIELD_TO_KILN", paya: 1, workers: shared }),
-    row({ entryId: "entry-b", crewId: "crew-b", crewName: "Crew B", direction: "KILN_TO_FIELD", paya: 1, workers: shared }),
+    row({ entryId: "entry-a", groupId: "crew-a", groupName: "Group A", paya: 1, workers: shared }),
+    row({ entryId: "entry-b", groupId: "crew-b", groupName: "Group B", paya: 1, workers: shared }),
   ];
 
   const result = await listTransportDailyOperations({
@@ -175,7 +169,7 @@ test("the same persisted worker remains visible once inside each crew record", a
 
   assert.equal(result.length, 2);
   assert.deepEqual(result.map((entry) => [
-    entry.transportCrewId,
+    entry.transportGroupId,
     entry.attendanceWorkers[0]?.transportWorkerId,
     entry.attendanceWorkers[0]?.transportWorkerIsActive,
   ]), [
@@ -184,7 +178,7 @@ test("the same persisted worker remains visible once inside each crew record", a
   ]);
 });
 
-test("an empty date returns no fabricated crew rows", async () => {
+test("an empty date returns no fabricated Transport Group rows", async () => {
   reset();
   assert.deepEqual(await listTransportDailyOperations({
     factoryId: "factory-a",

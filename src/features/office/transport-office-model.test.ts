@@ -1,38 +1,36 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type {
-  TransportCrew,
-  TransportCrewAssignment,
-  TransportCrewWageRate,
+  TransportGroup,
+  TransportGroupAssignment,
+  TransportGroupWageRate,
 } from "@/features/transport/types";
 import {
   buildTransportAssignmentInput,
   buildTransportAssignmentListItem,
-  buildTransportCrewCreateInput,
-  buildTransportCrewWageRateInput,
-  buildTransportRateCrewOption,
+  buildTransportGroupCreateInput,
+  buildTransportGroupWageRateInput,
+  buildTransportRateGroupOption,
   buildTransportRateHistoryItem,
   buildTransportWorkerCreateInput,
   formatTransportActiveStatus,
-  formatTransportDirection,
   formatTransportRatePerPaya,
   getTransportRateRefreshQueryKeys,
-  selectTransportRateCrew,
+  selectTransportRateGroup,
   transportOfficeErrorMessage,
   transportRateFormAfterSuccess,
   transportRateOfficeErrorMessage,
 } from "./transport-office-model.ts";
 
-const assignment: TransportCrewAssignment = {
+const assignment: TransportGroupAssignment = {
   id: "assignment-a",
   factoryId: "factory-a",
   transportWorkerId: "worker-a",
   transportWorkerName: "Asha",
   transportWorkerIsActive: false,
-  transportCrewId: "crew-a",
-  transportCrewName: "Morning carriers",
-  transportCrewWorkDirection: "FIELD_TO_KILN",
-  transportCrewIsActive: false,
+  transportGroupId: "crew-a",
+  transportGroupName: "Morning carriers",
+  transportGroupIsActive: false,
   createdAt: "2026-08-18T03:00:00Z",
 };
 
@@ -44,30 +42,22 @@ test("worker creation trims names and rejects blank names", () => {
   assert.equal(buildTransportWorkerCreateInput("factory-a", "   "), null);
 });
 
-test("worker and crew active states remain visible", () => {
+test("worker and Transport Group active states remain visible", () => {
   assert.equal(formatTransportActiveStatus(true), "Active");
   assert.equal(formatTransportActiveStatus(false), "Inactive");
 });
 
-test("both crew directions have readable labels", () => {
-  assert.equal(formatTransportDirection("FIELD_TO_KILN"), "Field → Kiln");
-  assert.equal(formatTransportDirection("KILN_TO_FIELD"), "Kiln → Field");
-});
-
-test("crew creation validates name and direction", () => {
-  assert.deepEqual(buildTransportCrewCreateInput({
+test("Transport Group creation validates and trims the name without direction", () => {
+  assert.deepEqual(buildTransportGroupCreateInput({
     factoryId: "factory-a",
     name: "  Morning carriers ",
-    workDirection: "FIELD_TO_KILN",
   }), {
     factoryId: "factory-a",
     name: "Morning carriers",
-    workDirection: "FIELD_TO_KILN",
   });
-  assert.equal(buildTransportCrewCreateInput({
+  assert.equal(buildTransportGroupCreateInput({
     factoryId: "factory-a",
-    name: "Morning carriers",
-    workDirection: "INVALID",
+    name: "   ",
   }), null);
 });
 
@@ -75,29 +65,28 @@ test("assignment payload has no membership dates", () => {
   const payload = buildTransportAssignmentInput({
     factoryId: "factory-a",
     transportWorkerId: "worker-a",
-    transportCrewId: "crew-a",
+    transportGroupId: "crew-a",
   });
   assert.deepEqual(payload, {
     factoryId: "factory-a",
     transportWorkerId: "worker-a",
-    transportCrewId: "crew-a",
+    transportGroupId: "crew-a",
   });
   assert.doesNotMatch(JSON.stringify(payload), /effective_from|effective_to|effectiveFrom|effectiveTo/);
   assert.equal(buildTransportAssignmentInput({
     factoryId: "factory-a",
     transportWorkerId: "",
-    transportCrewId: "crew-a",
+    transportGroupId: "crew-a",
   }), null);
 });
 
-test("assignment rows retain inactive worker and crew status", () => {
+test("assignment rows retain inactive worker and Transport Group status", () => {
   assert.deepEqual(buildTransportAssignmentListItem(assignment), {
     assignmentId: "assignment-a",
     workerName: "Asha",
     workerStatus: "Inactive",
-    crewName: "Morning carriers",
-    crewDirection: "Field → Kiln",
-    crewStatus: "Inactive",
+    groupName: "Morning carriers",
+    groupStatus: "Inactive",
   });
 });
 
@@ -105,7 +94,7 @@ test("assignment and request errors remain understandable", () => {
   assert.match(
     transportOfficeErrorMessage({
       code: "23505",
-      message: "Transport worker is already assigned to this crew.",
+      message: "Transport worker is already assigned to this Transport Group.",
     }, "fallback"),
     /already assigned/,
   );
@@ -119,37 +108,36 @@ test("assignment and request errors remain understandable", () => {
   );
 });
 
-const inactiveCrew: TransportCrew = {
+const inactiveGroup: TransportGroup = {
   id: "crew-inactive",
   factoryId: "factory-a",
   name: "Old carriers",
-  workDirection: "KILN_TO_FIELD",
   isActive: false,
   createdAt: "2026-08-01T00:00:00Z",
   updatedAt: "2026-08-18T00:00:00Z",
 };
 
-const openRate: TransportCrewWageRate = {
+const openRate: TransportGroupWageRate = {
   id: "rate-new",
   factoryId: "factory-a",
-  transportCrewId: "crew-a",
+  transportGroupId: "crew-a",
   ratePerPaya: 900.5,
   effectiveFrom: "2026-08-18",
   effectiveTo: null,
   createdAt: "2026-08-18T00:00:00Z",
 };
 
-test("crew selection retains form values and represents inactive crews", () => {
+test("Transport Group selection retains form values and represents inactive groups", () => {
   const initial = {
-    selectedCrewId: "",
+    selectedGroupId: "",
     effectiveFrom: "2026-08-18",
     rateInput: "900.5",
   };
-  assert.deepEqual(selectTransportRateCrew(initial, "crew-inactive"), {
+  assert.deepEqual(selectTransportRateGroup(initial, "crew-inactive"), {
     ...initial,
-    selectedCrewId: "crew-inactive",
+    selectedGroupId: "crew-inactive",
   });
-  assert.deepEqual(buildTransportRateCrewOption(inactiveCrew), {
+  assert.deepEqual(buildTransportRateGroupOption(inactiveGroup), {
     id: "crew-inactive",
     label: "Old carriers (Inactive)",
   });
@@ -182,14 +170,14 @@ test("open and closed rate history use Current or the exact end date", () => {
 });
 
 test("positive decimal rate payload accepts a mid-week calendar date", () => {
-  assert.deepEqual(buildTransportCrewWageRateInput({
+  assert.deepEqual(buildTransportGroupWageRateInput({
     factoryId: "factory-a",
-    selectedCrewId: "crew-a",
+    selectedGroupId: "crew-a",
     effectiveFrom: "2026-08-18",
     rateInput: "900.5",
   }), {
     factoryId: "factory-a",
-    transportCrewId: "crew-a",
+    transportGroupId: "crew-a",
     effectiveFrom: "2026-08-18",
     ratePerPaya: 900.5,
   });
@@ -197,28 +185,28 @@ test("positive decimal rate payload accepts a mid-week calendar date", () => {
 
 test("zero, negative, and invalid-date rate submissions are rejected", () => {
   for (const rateInput of ["0", "-1", "NaN", ""]) {
-    assert.equal(buildTransportCrewWageRateInput({
+    assert.equal(buildTransportGroupWageRateInput({
       factoryId: "factory-a",
-      selectedCrewId: "crew-a",
+      selectedGroupId: "crew-a",
       effectiveFrom: "2026-08-18",
       rateInput,
     }), null);
   }
-  assert.equal(buildTransportCrewWageRateInput({
+  assert.equal(buildTransportGroupWageRateInput({
     factoryId: "factory-a",
-    selectedCrewId: "crew-a",
+    selectedGroupId: "crew-a",
     effectiveFrom: "2026-02-30",
     rateInput: "800",
   }), null);
 });
 
-test("successful submission keeps crew/date and clears only rate input", () => {
+test("successful submission keeps Transport Group/date and clears only rate input", () => {
   assert.deepEqual(transportRateFormAfterSuccess({
-    selectedCrewId: "crew-a",
+    selectedGroupId: "crew-a",
     effectiveFrom: "2026-08-18",
     rateInput: "900",
   }), {
-    selectedCrewId: "crew-a",
+    selectedGroupId: "crew-a",
     effectiveFrom: "2026-08-18",
     rateInput: "",
   });
@@ -227,20 +215,20 @@ test("successful submission keeps crew/date and clears only rate input", () => {
     "crew-a",
     "2026-08-18",
   ), [
-    ["office-transport-crew-wage-rates", "factory-a", "crew-a"],
-    ["office-transport-current-crew-wage-rate", "factory-a", "crew-a", "2026-08-18"],
+    ["office-transport-group-wage-rates", "factory-a", "crew-a"],
+    ["office-transport-current-group-wage-rate", "factory-a", "crew-a", "2026-08-18"],
   ]);
 });
 
 test("failed validation preserves every entered rate form value", () => {
   const form = {
-    selectedCrewId: "crew-a",
+    selectedGroupId: "crew-a",
     effectiveFrom: "2026-08-18",
     rateInput: "-900",
   };
-  assert.equal(buildTransportCrewWageRateInput({ factoryId: "factory-a", ...form }), null);
+  assert.equal(buildTransportGroupWageRateInput({ factoryId: "factory-a", ...form }), null);
   assert.deepEqual(form, {
-    selectedCrewId: "crew-a",
+    selectedGroupId: "crew-a",
     effectiveFrom: "2026-08-18",
     rateInput: "-900",
   });

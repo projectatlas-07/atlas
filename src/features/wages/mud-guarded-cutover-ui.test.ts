@@ -51,7 +51,7 @@ test("successful action refreshes mode and routes from legacy SHADOW to SETTLEME
   assert.match(ui, /invalidateQueries\(\{ queryKey: \["mud-accounting-mode", factoryId\]/);
   assert.match(ui, /mode === "SETTLEMENT" && <SettlementMudAccounting/);
   assert.match(ui, /mode === "LEGACY_WEEKLY" \|\| mode === "SHADOW"/);
-  assert.match(ui, /<LegacyMudAccounting/);
+  assert.match(ui, /<MudGroupAccountDrawer/);
 });
 
 test("database verifier owns stale, duplicate, isolation, and rollback guarantees", () => {

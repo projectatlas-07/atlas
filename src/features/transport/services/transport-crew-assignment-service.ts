@@ -2,8 +2,7 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "../../../lib/supabase/client.ts";
 import type {
   TransportAssignedWorker,
-  TransportCrewAssignment,
-  TransportWorkDirection,
+  TransportGroupAssignment,
 } from "../types.ts";
 
 const assignmentSelect = `
@@ -20,12 +19,11 @@ const assignmentSelect = `
   transport_crew:transport_crews!transport_crew_assignments_crew_factory_fkey(
     id,
     name,
-    work_direction,
     is_active
   )
 `;
 
-type TransportCrewAssignmentRow = {
+type TransportGroupAssignmentRow = {
   id: string;
   factory_id: string;
   transport_worker_id: string;
@@ -39,7 +37,6 @@ type TransportCrewAssignmentRow = {
   transport_crew: {
     id: string;
     name: string;
-    work_direction: TransportWorkDirection;
     is_active: boolean;
   };
 };
@@ -53,20 +50,20 @@ type TransportAssignedWorkerRow = {
   };
 };
 
-export type AssignTransportWorkerToCrewInput = {
+export type AssignTransportWorkerToGroupInput = {
   factoryId: string;
   transportWorkerId: string;
-  transportCrewId: string;
+  transportGroupId: string;
 };
 
-export class TransportCrewAssignmentServiceError extends Error {
+export class TransportGroupAssignmentServiceError extends Error {
   readonly code: string;
   readonly details: string | null;
   readonly hint: string | null;
 
   constructor(error: PostgrestError) {
     super(getAssignmentErrorMessage(error));
-    this.name = "TransportCrewAssignmentServiceError";
+    this.name = "TransportGroupAssignmentServiceError";
     this.code = error.code;
     this.details = error.details;
     this.hint = error.hint;
@@ -75,34 +72,33 @@ export class TransportCrewAssignmentServiceError extends Error {
 
 function getAssignmentErrorMessage(error: PostgrestError): string {
   if (error.code === "23505") {
-    return "Transport worker is already assigned to this crew.";
+    return "Transport worker is already assigned to this Transport Group.";
   }
   if (error.code === "23503") {
-    return "Transport worker, crew, and assignment must belong to the same factory.";
+    return "Transport worker, Transport Group, and assignment must belong to the same factory.";
   }
   return error.message;
 }
 
-function mapTransportCrewAssignment(
-  row: TransportCrewAssignmentRow,
-): TransportCrewAssignment {
+function mapTransportGroupAssignment(
+  row: TransportGroupAssignmentRow,
+): TransportGroupAssignment {
   return {
     id: row.id,
     factoryId: row.factory_id,
     transportWorkerId: row.transport_worker_id,
     transportWorkerName: row.transport_worker.name,
     transportWorkerIsActive: row.transport_worker.is_active,
-    transportCrewId: row.transport_crew_id,
-    transportCrewName: row.transport_crew.name,
-    transportCrewWorkDirection: row.transport_crew.work_direction,
-    transportCrewIsActive: row.transport_crew.is_active,
+    transportGroupId: row.transport_crew_id,
+    transportGroupName: row.transport_crew.name,
+    transportGroupIsActive: row.transport_crew.is_active,
     createdAt: row.created_at,
   };
 }
 
-export async function listTransportCrewAssignments({
+export async function listTransportGroupAssignments({
   factoryId,
-}: Readonly<{ factoryId: string }>): Promise<TransportCrewAssignment[]> {
+}: Readonly<{ factoryId: string }>): Promise<TransportGroupAssignment[]> {
   const { data, error } = await supabase
     .from("transport_crew_assignments")
     .select(assignmentSelect)
@@ -110,43 +106,43 @@ export async function listTransportCrewAssignments({
     .order("transport_worker_id", { ascending: true })
     .order("transport_crew_id", { ascending: true });
 
-  if (error) throw new TransportCrewAssignmentServiceError(error);
-  return ((data ?? []) as unknown as TransportCrewAssignmentRow[])
-    .map(mapTransportCrewAssignment)
+  if (error) throw new TransportGroupAssignmentServiceError(error);
+  return ((data ?? []) as unknown as TransportGroupAssignmentRow[])
+    .map(mapTransportGroupAssignment)
     .sort((left, right) =>
       left.transportWorkerName.localeCompare(right.transportWorkerName, "en-IN")
-      || left.transportCrewName.localeCompare(right.transportCrewName, "en-IN")
+      || left.transportGroupName.localeCompare(right.transportGroupName, "en-IN")
       || left.id.localeCompare(right.id),
     );
 }
 
-export async function assignTransportWorkerToCrew({
+export async function assignTransportWorkerToGroup({
   factoryId,
   transportWorkerId,
-  transportCrewId,
-}: AssignTransportWorkerToCrewInput): Promise<TransportCrewAssignment> {
+  transportGroupId,
+}: AssignTransportWorkerToGroupInput): Promise<TransportGroupAssignment> {
   const { data, error } = await supabase
     .from("transport_crew_assignments")
     .insert({
       factory_id: factoryId,
       transport_worker_id: transportWorkerId,
-      transport_crew_id: transportCrewId,
+      transport_crew_id: transportGroupId,
     })
     .select(assignmentSelect)
     .single();
 
-  if (error) throw new TransportCrewAssignmentServiceError(error);
-  if (!data) throw new Error("Transport crew assignment creation returned no row.");
-  return mapTransportCrewAssignment(data as unknown as TransportCrewAssignmentRow);
+  if (error) throw new TransportGroupAssignmentServiceError(error);
+  if (!data) throw new Error("Transport Group assignment creation returned no row.");
+  return mapTransportGroupAssignment(data as unknown as TransportGroupAssignmentRow);
 }
 
-export async function unassignTransportWorkerFromCrew({
+export async function unassignTransportWorkerFromGroup({
   factoryId,
   assignmentId,
 }: Readonly<{
   factoryId: string;
   assignmentId: string;
-}>): Promise<TransportCrewAssignment> {
+}>): Promise<TransportGroupAssignment> {
   const { data, error } = await supabase
     .from("transport_crew_assignments")
     .delete()
@@ -154,22 +150,22 @@ export async function unassignTransportWorkerFromCrew({
     .eq("factory_id", factoryId)
     .select(assignmentSelect);
 
-  if (error) throw new TransportCrewAssignmentServiceError(error);
+  if (error) throw new TransportGroupAssignmentServiceError(error);
   if (!data || data.length === 0) {
-    throw new Error("Transport crew assignment was not removed.");
+    throw new Error("Transport Group assignment was not removed.");
   }
   if (data.length !== 1) {
-    throw new Error("Unexpected result: more than one transport crew assignment was removed.");
+    throw new Error("Unexpected result: more than one Transport Group assignment was removed.");
   }
-  return mapTransportCrewAssignment(data[0] as unknown as TransportCrewAssignmentRow);
+  return mapTransportGroupAssignment(data[0] as unknown as TransportGroupAssignmentRow);
 }
 
-export async function listAssignedTransportWorkersForCrew({
+export async function listAssignedTransportWorkersForGroup({
   factoryId,
-  transportCrewId,
+  transportGroupId,
 }: Readonly<{
   factoryId: string;
-  transportCrewId: string;
+  transportGroupId: string;
 }>): Promise<TransportAssignedWorker[]> {
   const { data, error } = await supabase
     .from("transport_crew_assignments")
@@ -182,11 +178,11 @@ export async function listAssignedTransportWorkersForCrew({
       )
     `)
     .eq("factory_id", factoryId)
-    .eq("transport_crew_id", transportCrewId)
+    .eq("transport_crew_id", transportGroupId)
     .eq("transport_worker.is_active", true)
     .order("transport_worker_id", { ascending: true });
 
-  if (error) throw new TransportCrewAssignmentServiceError(error);
+  if (error) throw new TransportGroupAssignmentServiceError(error);
 
   return ((data ?? []) as unknown as TransportAssignedWorkerRow[])
     .map((row) => ({

@@ -8,9 +8,11 @@ import type {
   ChallanItem,
   ChallanItemInput,
   CreateChallanInput,
+  CreateChallanWithReceivedPaymentInput,
   FactoryPrintableProfile,
   UpdateChallanInput,
 } from "../types.ts";
+import { isNewCustomerPaymentMode } from "../types.ts";
 
 const FACTORY_COLUMNS =
   "id, name, business_description, village, post_office, police_station, district, state, address, mobile, gstin, created_at, updated_at";
@@ -137,6 +139,9 @@ function readableChallanError(error: PostgrestError): string {
     return "A Challan must contain at least one brick, NOTE, or EXTRA_CHARGE line.";
   }
   if (error.code === "P3102") return "Vehicle does not belong to this factory.";
+  if (error.code === "P3105" && /allocation exceeds/i.test(error.message)) {
+    return "Received Now cannot exceed the authoritative Challan total.";
+  }
   if (error.code === "P3105") return "This Vehicle is archived. Restore it before saving.";
   if (error.code === "P3106") {
     return "Trip Labour Wage is required for this Vehicle and must be a positive amount.";
@@ -161,13 +166,13 @@ function requireText(value: string, label: string): string {
   return normalized;
 }
 
-function assertCanonicalDate(value: string): void {
+function assertCanonicalDate(value: string, label = "challanDate"): void {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw new Error("challanDate must be a valid YYYY-MM-DD date.");
+    throw new Error(`${label} must be a valid YYYY-MM-DD date.`);
   }
   const parsed = new Date(`${value}T00:00:00.000Z`);
   if (Number.isNaN(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== value) {
-    throw new Error("challanDate must be a valid YYYY-MM-DD date.");
+    throw new Error(`${label} must be a valid YYYY-MM-DD date.`);
   }
 }
 
@@ -595,6 +600,35 @@ export async function createChallan(input: CreateChallanInput): Promise<Challan>
 
   if (error) throw new ChallanServiceError(error);
   if (!data) throw new Error("create_challan returned no Challan.");
+  return { ...mapHeader(data), ...await listChallanLines(input.factoryId, data.id) };
+}
+
+export async function createChallanWithReceivedPayment(
+  input: CreateChallanWithReceivedPaymentInput,
+): Promise<Challan> {
+  const validated = validateMutationInput(input);
+  assertCanonicalDate(input.receivedPayment.paymentDate, "paymentDate");
+  assertMoney(input.receivedPayment.amount, "receivedPayment.amount", false);
+  if (!isNewCustomerPaymentMode(input.receivedPayment.paymentMode)) {
+    throw new Error("Choose a supported payment mode.");
+  }
+
+  const { data, error } = await supabase.rpc("create_challan_with_received_payment", {
+    p_factory_id: input.factoryId,
+    p_challan_number: validated.challanNumber,
+    p_challan_date: input.challanDate,
+    p_customer_id: input.customerId,
+    p_vehicle_id: input.vehicleId,
+    p_trip_labour_wage: input.tripLabourWage,
+    p_items: validated.items,
+    p_flexible_lines: validated.flexibleLines ?? [],
+    p_payment_date: input.receivedPayment.paymentDate,
+    p_payment_amount: input.receivedPayment.amount,
+    p_payment_mode: input.receivedPayment.paymentMode,
+  });
+
+  if (error) throw new ChallanServiceError(error);
+  if (!data) throw new Error("create_challan_with_received_payment returned no Challan.");
   return { ...mapHeader(data), ...await listChallanLines(input.factoryId, data.id) };
 }
 

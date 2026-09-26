@@ -2,28 +2,28 @@ import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 import type {
   TransportAssignedWorker,
-  TransportCrew,
+  TransportGroup,
   TransportDailyEntryWithAttendance,
 } from "./types.ts";
 
 const serviceCalls: Array<[string, unknown]> = [];
-let crews: TransportCrew[] = [];
+let groups: TransportGroup[] = [];
 let assignedWorkers: TransportAssignedWorker[] = [];
 let existingEntry: TransportDailyEntryWithAttendance | null = null;
 
 await mock.module("./services/transport-crew-service.ts", {
   namedExports: {
-    async listTransportCrews(factoryId: string) {
-      serviceCalls.push(["listTransportCrews", factoryId]);
-      return crews;
+    async listTransportGroups(factoryId: string) {
+      serviceCalls.push(["listTransportGroups", factoryId]);
+      return groups;
     },
   },
 });
 
 await mock.module("./services/transport-daily-entry-service.ts", {
   namedExports: {
-    async listAssignedTransportWorkersForCrew(input: unknown) {
-      serviceCalls.push(["listAssignedTransportWorkersForCrew", input]);
+    async listAssignedTransportWorkersForGroup(input: unknown) {
+      serviceCalls.push(["listAssignedTransportWorkersForGroup", input]);
       return assignedWorkers;
     },
     async getTransportDailyEntry(input: unknown) {
@@ -35,8 +35,7 @@ await mock.module("./services/transport-daily-entry-service.ts", {
 
 const {
   buildTransportDailyEntrySaveInput,
-  formatTransportWorkDirection,
-  loadActiveTransportCrews,
+  loadActiveTransportGroups,
   loadTransportDailyEntrySelection,
   parseTransportPayaInput,
   prepareTransportDailyEntrySelection,
@@ -45,11 +44,10 @@ const {
   transportDailyEntryErrorMessage,
 } = await import("./transport-daily-entry-screen-model.ts");
 
-const activeCrew: TransportCrew = {
-  id: "crew-a",
+const activeGroup: TransportGroup = {
+  id: "group-a",
   factoryId: "factory-a",
   name: "Morning carriers",
-  workDirection: "FIELD_TO_KILN",
   isActive: true,
   createdAt: "2026-08-01T09:00:00Z",
   updatedAt: "2026-08-01T09:00:00Z",
@@ -67,7 +65,7 @@ function savedEntry(
   return {
     dailyEntryId: "entry-a",
     factoryId: "factory-a",
-    transportCrewId: "crew-a",
+    transportGroupId: "group-a",
     workDate: "2026-08-18",
     payaQuantity: 6.5,
     attendanceWorkerIds: attendanceWorkers.map((worker) => worker.transportWorkerId),
@@ -77,15 +75,15 @@ function savedEntry(
 
 function reset(): void {
   serviceCalls.length = 0;
-  crews = [];
+  groups = [];
   assignedWorkers = [];
   existingEntry = null;
 }
 
-test("crew loading returns only active crews", async () => {
+test("Transport Group loading returns only active groups", async () => {
   reset();
-  crews = [activeCrew, { ...activeCrew, id: "crew-old", isActive: false }];
-  assert.deepEqual(await loadActiveTransportCrews("factory-a"), [activeCrew]);
+  groups = [activeGroup, { ...activeGroup, id: "group-old", isActive: false }];
+  assert.deepEqual(await loadActiveTransportGroups("factory-a"), [activeGroup]);
 });
 
 test("work date scopes the entry but not current assignment eligibility", async () => {
@@ -94,29 +92,29 @@ test("work date scopes the entry but not current assignment eligibility", async 
 
   await loadTransportDailyEntrySelection({
     factoryId: "factory-a",
-    transportCrewId: "crew-a",
+    transportGroupId: "group-a",
     workDate: "2026-08-18",
   });
 
   assert.deepEqual(serviceCalls, [
-    ["listAssignedTransportWorkersForCrew", {
+    ["listAssignedTransportWorkersForGroup", {
       factoryId: "factory-a",
-      transportCrewId: "crew-a",
+      transportGroupId: "group-a",
     }],
     ["getTransportDailyEntry", {
       factoryId: "factory-a",
-      transportCrewId: "crew-a",
+      transportGroupId: "group-a",
       workDate: "2026-08-18",
     }],
   ]);
 });
 
-test("the same worker is independently selectable in multiple assigned crews", async () => {
+test("the same worker is independently selectable in multiple assigned Transport Groups", async () => {
   reset();
   assignedWorkers = [activeAssignedWorker];
   const first = await loadTransportDailyEntrySelection({
     factoryId: "factory-a",
-    transportCrewId: "crew-a",
+    transportGroupId: "group-a",
     workDate: "2026-08-18",
   });
 
@@ -124,7 +122,7 @@ test("the same worker is independently selectable in multiple assigned crews", a
   assignedWorkers = [activeAssignedWorker];
   const second = await loadTransportDailyEntrySelection({
     factoryId: "factory-a",
-    transportCrewId: "crew-b",
+    transportGroupId: "group-b",
     workDate: "2026-08-18",
   });
 
@@ -192,13 +190,13 @@ test("decimal paya and deterministic save payload remain unchanged", () => {
   assert.equal(parseTransportPayaInput("0"), null);
   assert.deepEqual(buildTransportDailyEntrySaveInput({
     factoryId: "factory-a",
-    transportCrewId: "crew-a",
+    transportGroupId: "group-a",
     workDate: "2026-08-18",
     payaInput: "6.5",
     selectedWorkerIds: new Set(["worker-b", "worker-a"]),
   }), {
     factoryId: "factory-a",
-    transportCrewId: "crew-a",
+    transportGroupId: "group-a",
     workDate: "2026-08-18",
     payaQuantity: 6.5,
     transportWorkerIds: ["worker-a", "worker-b"],
@@ -208,10 +206,5 @@ test("decimal paya and deterministic save payload remain unchanged", () => {
 test("inactive or unassigned errors use current assignment language", () => {
   const message = transportDailyEntryErrorMessage({ code: "23514", message: "constraint" });
   assert.match(message, /active and assigned/);
-  assert.doesNotMatch(message, /date|another crew/);
-});
-
-test("work directions retain manager-readable labels", () => {
-  assert.equal(formatTransportWorkDirection("FIELD_TO_KILN"), "Field → Kiln");
-  assert.equal(formatTransportWorkDirection("KILN_TO_FIELD"), "Kiln → Field");
+  assert.doesNotMatch(message, /date|another Transport Group/);
 });

@@ -16,7 +16,7 @@ const migration = readFileSync(
 );
 
 test("S7B adds one coherent Expenses & Purchases Office workflow and stops before later accounting", () => {
-  assert.match(dashboard, /<ExpensesOfficeSection factoryId=/);
+  assert.match(dashboard, /<ExpensesOfficeSection activeArea=\{activeArea\} factoryId=/);
   assert.match(component, /Record Purchase/);
   assert.match(component, /Record Expense/);
   assert.match(component, /Expense \/ Purchase Register/);
@@ -25,14 +25,16 @@ test("S7B adds one coherent Expenses & Purchases Office workflow and stops befor
   assert.doesNotMatch(component, /general ledger|chart of accounts|balance sheet|stock valuation|vehicle delivery wage/i);
 });
 
-test("source and supplier forms use only the completed controlled S7A services", () => {
+test("source and Settings supplier forms use only the completed controlled S7A services", () => {
   assert.match(component, /await createExpenseRecord\(input\)/);
   assert.match(component, /await updateExpenseRecord\(/);
   assert.match(component, /await voidExpenseRecord\(factoryId, record\.id\)/);
   assert.match(component, /await createSupplier\(input\)/);
   assert.match(component, /await updateSupplier\(/);
   assert.doesNotMatch(component, /supabase\.|\.insert\(|\.update\(|\.delete\(/);
-  assert.match(component, /Quick-create supplier/);
+  assert.match(component, /SupplierManagementSection/);
+  assert.match(component, /hidden=\{activeArea !== "settings"\}/);
+  assert.doesNotMatch(component.slice(component.indexOf("function ExpenseRecordEditor")), /Quick-create supplier/);
   assert.match(component, /Edit supplier/);
   assert.match(component, /Supplier \/ counterparty/);
 });

@@ -18,7 +18,30 @@ import {
 } from "../../sales/services/customer-payment-service.ts";
 import { getSalesTotal } from "../../sales/services/sales-register-service.ts";
 import { assertInclusiveBusinessDateRange } from "../../../lib/business-date-contract.ts";
-import type { DashboardSnapshot } from "../types.ts";
+import type { DashboardSnapshot, OwnerDashboardSnapshot } from "../types.ts";
+
+export async function getOwnerDashboardSnapshot(
+  factoryId: string,
+  businessDate: string,
+  weekStart: string,
+): Promise<OwnerDashboardSnapshot> {
+  assertInclusiveBusinessDateRange(factoryId, businessDate, businessDate);
+  assertInclusiveBusinessDateRange(factoryId, weekStart, businessDate);
+
+  const [today, thisWeekSalesAmount] = await Promise.all([
+    getDashboardSnapshot(factoryId, businessDate, businessDate),
+    getSalesTotal(factoryId, weekStart, businessDate),
+  ]);
+
+  return {
+    today,
+    thisWeekSales: {
+      dateFrom: weekStart,
+      dateTo: businessDate,
+      amount: thisWeekSalesAmount,
+    },
+  };
+}
 
 export async function getDashboardSnapshot(
   factoryId: string,

@@ -6,11 +6,11 @@ import type {
   TransportDailyEntryWithAttendance,
 } from "../types.ts";
 
-export { listAssignedTransportWorkersForCrew } from "./transport-crew-assignment-service.ts";
+export { listAssignedTransportWorkersForGroup } from "./transport-crew-assignment-service.ts";
 
 export type GetTransportDailyEntryInput = {
   factoryId: string;
-  transportCrewId: string;
+  transportGroupId: string;
   workDate: string;
 };
 
@@ -60,20 +60,20 @@ function assertCanonicalWorkDate(workDate: string): void {
 
 function validateEntryIdentity({
   factoryId,
-  transportCrewId,
+  transportGroupId,
   workDate,
 }: GetTransportDailyEntryInput): void {
   assertRequiredId(factoryId, "factoryId");
-  assertRequiredId(transportCrewId, "transportCrewId");
+  assertRequiredId(transportGroupId, "transportGroupId");
   assertCanonicalWorkDate(workDate);
 }
 
 export async function getTransportDailyEntry({
   factoryId,
-  transportCrewId,
+  transportGroupId,
   workDate,
 }: GetTransportDailyEntryInput): Promise<TransportDailyEntryWithAttendance | null> {
-  validateEntryIdentity({ factoryId, transportCrewId, workDate });
+  validateEntryIdentity({ factoryId, transportGroupId, workDate });
 
   const { data, error } = await supabase
     .from("transport_daily_entries")
@@ -93,7 +93,7 @@ export async function getTransportDailyEntry({
       )
     `)
     .eq("factory_id", factoryId)
-    .eq("transport_crew_id", transportCrewId)
+    .eq("transport_crew_id", transportGroupId)
     .eq("work_date", workDate)
     .maybeSingle();
 
@@ -114,7 +114,7 @@ export async function getTransportDailyEntry({
   return {
     dailyEntryId: entry.id,
     factoryId: entry.factory_id,
-    transportCrewId: entry.transport_crew_id,
+    transportGroupId: entry.transport_crew_id,
     workDate: entry.work_date,
     payaQuantity: Number(entry.paya_quantity),
     attendanceWorkerIds: attendanceWorkers
@@ -126,12 +126,12 @@ export async function getTransportDailyEntry({
 
 export async function saveTransportDailyEntry({
   factoryId,
-  transportCrewId,
+  transportGroupId,
   workDate,
   payaQuantity,
   transportWorkerIds,
 }: SaveTransportDailyEntryInput): Promise<SaveTransportDailyEntryResult> {
-  validateEntryIdentity({ factoryId, transportCrewId, workDate });
+  validateEntryIdentity({ factoryId, transportGroupId, workDate });
 
   if (!Number.isFinite(payaQuantity) || payaQuantity <= 0) {
     throw new Error("payaQuantity must be greater than zero.");
@@ -148,7 +148,7 @@ export async function saveTransportDailyEntry({
 
   const { data, error } = await supabase.rpc("save_transport_daily_entry", {
     p_factory_id: factoryId,
-    p_transport_crew_id: transportCrewId,
+    p_transport_crew_id: transportGroupId,
     p_work_date: workDate,
     p_paya_quantity: payaQuantity,
     p_transport_worker_ids: transportWorkerIds,

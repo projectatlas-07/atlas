@@ -102,3 +102,10 @@ test("date changes clear draft allocations and invalid or empty filtered ranges 
   assert.match(office, /duesDateFilter\.error && <p role="alert"/);
   assert.match(office, /No outstanding Challans in this date range\./);
 });
+
+test("Customer Dues wires selection and edits through the outstanding-derived draft helpers", () => {
+  assert.match(office, /togglePaymentAllocation\(current, challan, event\.target\.checked\)/);
+  assert.match(office, /setPaymentAmount\(current, event\.target\.value\)/);
+  assert.match(office, /setPaymentAllocation\(current, challan\.challanId, event\.target\.value\)/);
+  assert.match(office, /fillOutstandingAllocation\(current, challan\)/);
+});

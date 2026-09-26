@@ -49,7 +49,7 @@ test("active and inactive transport workers are both selectable", () => {
   });
 });
 
-test("worker selection remains one worker identity without crew scope", () => {
+test("worker selection remains one worker identity without Transport Group scope", () => {
   assert.deepEqual(selectTransportFinanceWorker(form, "worker-inactive"), {
     selectedWorkerId: "worker-inactive",
     withdrawalDate: "2026-08-18",
@@ -92,7 +92,7 @@ test("period earned sums saved daily shares across weeks, rates, and attendance 
     workDate: "2026-08-09",
     ratePerPayaSnapshot: 400,
     attendanceCountSnapshot: 2,
-    dailyCrewPoolSnapshot: 800,
+    dailyGroupPoolSnapshot: 800,
     workerDailyShareSnapshot: 400,
     createdAt: "2026-08-20T00:00:00Z",
   });
@@ -102,7 +102,7 @@ test("period earned sums saved daily shares across weeks, rates, and attendance 
     workDate: "2026-08-10",
     ratePerPayaSnapshot: 750,
     attendanceCountSnapshot: 3,
-    dailyCrewPoolSnapshot: 1500,
+    dailyGroupPoolSnapshot: 1500,
     workerDailyShareSnapshot: 500,
     createdAt: "2026-08-01T00:00:00Z",
   });
@@ -235,15 +235,14 @@ function detail(
     transportWorkerId: "worker-active",
     weekStart: "2026-08-03",
     workDate: "2026-08-04",
-    transportCrewId: "crew-a",
-    transportCrewName: "Crew A",
-    transportCrewWorkDirection: "FIELD_TO_KILN",
+    transportGroupId: "crew-a",
+    transportGroupName: "Group A",
     transportDailyEntryId: "entry-a",
-    transportCrewWageRateId: "rate-a",
+    transportGroupWageRateId: "rate-a",
     ratePerPayaSnapshot: 500,
     payaQuantitySnapshot: 1,
     attendanceCountSnapshot: 1,
-    dailyCrewPoolSnapshot: 500,
+    dailyGroupPoolSnapshot: 500,
     workerDailyShareSnapshot: 500,
     createdAt: "2026-08-10T00:00:00Z",
     ...overrides,

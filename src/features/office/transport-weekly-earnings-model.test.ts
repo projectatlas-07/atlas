@@ -84,10 +84,10 @@ test("one inactive worker remains one locked weekly earning", () => {
   });
 });
 
-test("two same-day crews remain two snapshot detail displays without recalculation", () => {
+test("two same-day Transport Groups remain two snapshot detail displays without recalculation", () => {
   const details = [
-    detail({ detailId: "detail-a", transportCrewId: "crew-a", transportCrewName: "Crew A", workerDailyShareSnapshot: 500 }),
-    detail({ detailId: "detail-b", transportCrewId: "crew-b", transportCrewName: "Crew B", workerDailyShareSnapshot: 300 }),
+    detail({ detailId: "detail-a", transportGroupId: "crew-a", transportGroupName: "Group A", workerDailyShareSnapshot: 500 }),
+    detail({ detailId: "detail-b", transportGroupId: "crew-b", transportGroupName: "Group B", workerDailyShareSnapshot: 300 }),
   ].map(buildTransportWeeklyDetailDisplay);
 
   assert.equal(details.length, 2);
@@ -101,16 +101,16 @@ test("detail display uses stored snapshot values directly", () => {
     payaQuantitySnapshot: 7.25,
     attendanceCountSnapshot: 3,
     ratePerPayaSnapshot: 901.5,
-    dailyCrewPoolSnapshot: 1234.56,
+    dailyGroupPoolSnapshot: 1234.56,
     workerDailyShareSnapshot: 411.52,
   })), {
     detailId: "detail-a",
     workDate: "2026-08-04",
-    crewLabel: "Crew A · Field → Kiln",
+    groupLabel: "Group A",
     paya: "7.25",
     attendanceCount: "3",
     ratePerPaya: "₹901.50 / paya",
-    dailyCrewPool: "₹1,234.56",
+    dailyGroupPool: "₹1,234.56",
     workerShare: "₹411.52",
   });
 });
@@ -120,13 +120,13 @@ test("calculation failures do not mutate the selected week", () => {
   assert.match(transportWeeklySettlementErrorMessage({
     code: "P2602",
     message: "No transport crew wage rate applies to Crew A on 2026-08-04.",
-  }), /No transport crew wage rate/);
+  }), /Transport Group rate/);
   assert.equal(selectedWeek, "2026-08-03");
 });
 
 test("defensive financial errors have concise messages", () => {
   assert.match(transportWeeklySettlementErrorMessage({ code: "P2601", message: "zero" }), /zero attendance/);
-  assert.match(transportWeeklySettlementErrorMessage({ code: "P2603", message: "multiple" }), /Multiple transport crew rates/);
+  assert.match(transportWeeklySettlementErrorMessage({ code: "P2603", message: "multiple" }), /Multiple Transport Group rates/);
   assert.match(transportWeeklySettlementErrorMessage({ code: "42501", message: "denied" }), /do not have access/);
 });
 
@@ -138,15 +138,14 @@ function detail(overrides: Partial<TransportWeeklyEarningDetail> = {}): Transpor
     transportWorkerId: "worker-a",
     weekStart: "2026-08-03",
     workDate: "2026-08-04",
-    transportCrewId: "crew-a",
-    transportCrewName: "Crew A",
-    transportCrewWorkDirection: "FIELD_TO_KILN",
+    transportGroupId: "crew-a",
+    transportGroupName: "Group A",
     transportDailyEntryId: "entry-a",
-    transportCrewWageRateId: "rate-a",
+    transportGroupWageRateId: "rate-a",
     ratePerPayaSnapshot: 500,
     payaQuantitySnapshot: 1,
     attendanceCountSnapshot: 1,
-    dailyCrewPoolSnapshot: 500,
+    dailyGroupPoolSnapshot: 500,
     workerDailyShareSnapshot: 500,
     createdAt: "2026-08-10T00:00:00Z",
     ...overrides,

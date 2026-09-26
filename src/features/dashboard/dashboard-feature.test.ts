@@ -1,44 +1,36 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import * as jsxRuntime from "react/jsx-runtime";
 import ts from "typescript";
 import type { DashboardContainerProps } from "./components/dashboard-container.tsx";
-import type { DashboardDateControlsProps } from "./components/dashboard-date-controls.tsx";
+
+type TestElement = ReactElement<Record<string, unknown>>;
 
 const source = readFileSync(new URL("./components/dashboard-feature.tsx", import.meta.url), "utf8");
-// Node's strip-types runner does not load TSX. Compile only this shell in memory,
-// then isolate its state and children; no child, query, or date implementation runs.
 const compiled = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
 }).outputText;
 
 function mountFeature() {
-  const todayRange = { dateFrom: "2026-09-03", dateTo: "2026-09-03" };
-  let todayCalls = 0;
-  const state: unknown[] = [];
-  let hookIndex = 0;
-  const DateControls = () => null;
+  const ranges = {
+    today: { dateFrom: "2026-09-23", dateTo: "2026-09-23" },
+    thisWeek: { dateFrom: "2026-09-21", dateTo: "2026-09-23" },
+  };
+  let dateCalls = 0;
   const Container = () => null;
+  const Link = () => null;
   const dependencies: Record<string, unknown> = {
     "react/jsx-runtime": jsxRuntime,
-    react: {
-      useState<T>(initial: T | (() => T)) {
-        const index = hookIndex++;
-        if (!(index in state)) state[index] = typeof initial === "function" ? (initial as () => T)() : initial;
-        return [state[index], (next: T | ((previous: T) => T)) => {
-          state[index] = typeof next === "function" ? (next as (previous: T) => T)(state[index] as T) : next;
-        }];
-      },
-    },
+    "next/link": { default: Link },
+    "../../../lib/formatting": { formatDateOnly: () => "23/09/2026" },
     "../dashboard-date-model": {
-      getTodayDashboardRange: () => {
-        todayCalls += 1;
-        return todayRange;
+      getOwnerDashboardDateRanges: () => {
+        dateCalls += 1;
+        return ranges;
       },
     },
-    "./dashboard-date-controls": { DashboardDateControls: DateControls },
     "./dashboard-container": { DashboardContainer: Container },
   };
   const moduleExports: Record<string, unknown> = {};
@@ -47,77 +39,48 @@ function mountFeature() {
     return dependencies[name];
   }, moduleExports);
   const Feature = moduleExports.DashboardFeature as typeof import("./components/dashboard-feature.tsx").DashboardFeature;
-
-  return {
-    todayRange,
-    todayCalls: () => todayCalls,
-    render(factoryId = "factory-a") {
-      hookIndex = 0;
-      const tree = Feature({ factoryId }) as ReactElement<{
-        children: [ReactElement<DashboardDateControlsProps>, ReactElement<DashboardContainerProps>];
-      }>;
-      const [controls, container] = tree.props.children;
-      assert.equal(controls.type, DateControls);
-      assert.equal(container.type, Container);
-      return { controls: controls.props, container: container.props };
-    },
-  };
+  const tree = Feature({ factoryId: "factory-a" }) as ReactElement;
+  return { tree, Container, Link, dateCalls };
 }
 
-test("initializes Today lazily from D3.4 and forwards the same selection to both children", () => {
-  const feature = mountFeature();
-  const { controls, container } = feature.render();
-  assert.equal(controls.mode, "today");
-  assert.strictEqual(controls.range, feature.todayRange);
-  assert.deepEqual(container, { factoryId: "factory-a", ...feature.todayRange });
-  feature.render();
-  assert.equal(feature.todayCalls(), 1);
+function collectElements(node: ReactNode, target: TestElement[] = []): TestElement[] {
+  if (node == null || typeof node === "boolean" || typeof node === "string" || typeof node === "number") return target;
+  if (Array.isArray(node)) {
+    node.forEach((child) => collectElements(child, target));
+    return target;
+  }
+  const element = node as TestElement;
+  target.push(element);
+  collectElements(element.props.children as ReactNode, target);
+  return target;
+}
+
+test("derives one consistent Today/week range and gives it to the sole data container", () => {
+  const { tree, Container, dateCalls } = mountFeature();
+  const containers = collectElements(tree).filter((element) => element.type === Container);
+  assert.equal(dateCalls, 1);
+  assert.equal(containers.length, 1);
+  assert.deepEqual(containers[0]?.props as unknown as DashboardContainerProps, {
+    factoryId: "factory-a",
+    businessDate: "2026-09-23",
+    weekStart: "2026-09-21",
+  });
 });
 
-test("a valid Single Date emission updates controls and container without fetching", () => {
-  const feature = mountFeature();
-  const range = { dateFrom: "2026-08-15", dateTo: "2026-08-15" };
-  feature.render().controls.onChange("single-date", range);
-  const next = feature.render();
-  assert.equal(next.controls.mode, "single-date");
-  assert.strictEqual(next.controls.range, range);
-  assert.deepEqual(next.container, { factoryId: "factory-a", ...range });
+test("header exposes exactly the two approved touch-friendly shortcuts", () => {
+  const { tree, Link } = mountFeature();
+  const shortcutNav = collectElements(tree).find((element) => element.type === "nav" && element.props["aria-label"] === "Dashboard shortcuts");
+  assert.ok(shortcutNav);
+  const links = collectElements(shortcutNav).filter((element) => element.type === "a" || element.type === Link);
+  assert.deepEqual(links.map((link) => ({ href: link.props.href, label: link.props.children })), [
+    { href: "/", label: "Record Production" },
+    { href: "#new-challan", label: "New Challan" },
+  ]);
+  for (const link of links) assert.match(String(link.props.className), /min-h-atlas-12/);
 });
 
-test("a valid custom range emission updates the container with unchanged endpoints", () => {
-  const feature = mountFeature();
-  const range = { dateFrom: "2026-08-01", dateTo: "2026-08-31" };
-  feature.render().controls.onChange("range", range);
-  const next = feature.render();
-  assert.equal(next.controls.mode, "range");
-  assert.strictEqual(next.controls.range, range);
-  assert.deepEqual(next.container, { factoryId: "factory-a", ...range });
-});
-
-test("switching back to Today uses the range emitted by the approved controls", () => {
-  const feature = mountFeature();
-  feature.render().controls.onChange("single-date", { dateFrom: "2026-08-15", dateTo: "2026-08-15" });
-  const emittedToday = { dateFrom: "2026-09-04", dateTo: "2026-09-04" };
-  feature.render().controls.onChange("today", emittedToday);
-  const next = feature.render();
-  assert.equal(next.controls.mode, "today");
-  assert.strictEqual(next.controls.range, emittedToday);
-  assert.deepEqual(next.container, { factoryId: "factory-a", ...emittedToday });
-  assert.equal(feature.todayCalls(), 1);
-});
-
-test("a factory change reaches the container while preserving the selected mode and range", () => {
-  const feature = mountFeature();
-  const range = { dateFrom: "2026-08-01", dateTo: "2026-08-31" };
-  feature.render().controls.onChange("range", range);
-  const next = feature.render("factory-b");
-  assert.equal(next.controls.mode, "range");
-  assert.strictEqual(next.controls.range, range);
-  assert.deepEqual(next.container, { factoryId: "factory-b", ...range });
-  assert.equal(feature.todayCalls(), 1);
-});
-
-test("shell contains no direct loading, timezone logic, input drafts, or background work", () => {
-  assert.doesNotMatch(source, /getDashboardSnapshot|dashboard-query|\/services\/|compensation|supabase|fetch\(|refetch|invalidateQueries|useEffect|setInterval|setTimeout|addEventListener|new Date|getLocalDate|Intl\.|draft|createContext|type="date"/i);
+test("feature shell contains no direct data access, state machine, or legacy date controls", () => {
+  assert.doesNotMatch(source, /getDashboardSnapshot|dashboard-query|\/services\/|compensation|supabase|fetch\(|refetch|invalidateQueries|useEffect|useState|setInterval|setTimeout|addEventListener|new Date|getLocalDate|Intl\.|DashboardDateControls|type="date"/i);
   assert.match(source, /export interface DashboardFeatureProps\s*\{\s*factoryId: string;\s*\}/);
+  assert.doesNotMatch(source, /(?:bg|text|border)-(?:slate|stone|red|amber|emerald|blue|cyan|indigo)-|#[0-9a-f]{3,8}/i);
 });

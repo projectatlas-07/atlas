@@ -85,6 +85,7 @@ const {
   TransportWorkerFinancialServiceError,
   createTransportWorkerWithdrawal,
   getTransportWorkerAvailableBalance,
+  listLatestTransportWorkerWithdrawalsForFactory,
   listTransportWorkerWithdrawals,
 } = await import("./transport-worker-financial-service.ts");
 
@@ -260,6 +261,52 @@ test("lists transport withdrawals newest-first with deterministic tie-breakers",
     ["select", "id, factory_id, transport_worker_id, withdrawal_date, amount, created_at"],
     ["eq", "factory_id", "factory-a"],
     ["eq", "transport_worker_id", "worker-a"],
+    ["order", "withdrawal_date", { ascending: false }],
+    ["order", "created_at", { ascending: false }],
+    ["order", "id", { ascending: false }],
+  ]);
+});
+
+test("lists only each worker's latest real withdrawal for the overview", async () => {
+  reset();
+  historyResponse.data = [
+    {
+      id: "worker-a-latest",
+      factory_id: "factory-a",
+      transport_worker_id: "worker-a",
+      withdrawal_date: "2026-08-16",
+      amount: 1500,
+      created_at: "2026-08-16T11:00:00Z",
+    },
+    {
+      id: "worker-a-older",
+      factory_id: "factory-a",
+      transport_worker_id: "worker-a",
+      withdrawal_date: "2026-08-09",
+      amount: 2000,
+      created_at: "2026-08-09T10:00:00Z",
+    },
+    {
+      id: "worker-b-latest",
+      factory_id: "factory-a",
+      transport_worker_id: "worker-b",
+      withdrawal_date: "2026-08-12",
+      amount: 800,
+      created_at: "2026-08-12T10:00:00Z",
+    },
+  ];
+
+  const latest = await listLatestTransportWorkerWithdrawalsForFactory("factory-a");
+
+  assert.deepEqual(latest.map((withdrawal) => withdrawal.withdrawalId), [
+    "worker-a-latest",
+    "worker-b-latest",
+  ]);
+  assert.deepEqual(calls, [
+    ["from", "transport_withdrawals"],
+    ["select", "id, factory_id, transport_worker_id, withdrawal_date, amount, created_at"],
+    ["eq", "factory_id", "factory-a"],
+    ["order", "transport_worker_id", { ascending: true }],
     ["order", "withdrawal_date", { ascending: false }],
     ["order", "created_at", { ascending: false }],
     ["order", "id", { ascending: false }],

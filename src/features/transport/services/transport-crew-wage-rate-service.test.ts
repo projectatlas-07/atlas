@@ -60,9 +60,9 @@ await mock.module("../../../lib/supabase/client.ts", {
   namedExports: { supabase: fakeSupabase },
 });
 const {
-  TransportCrewWageRateServiceError,
-  createTransportCrewWageRate,
-  listTransportCrewWageRates,
+  TransportGroupWageRateServiceError,
+  createTransportGroupWageRate,
+  listTransportGroupWageRates,
 } = await import("./transport-crew-wage-rate-service.ts");
 
 function row(overrides: Partial<Row> = {}): Row {
@@ -78,7 +78,7 @@ function row(overrides: Partial<Row> = {}): Row {
   };
 }
 
-test("lists one crew's rates in deterministic newest-first order", async () => {
+test("lists one Transport Group's rates in deterministic newest-first order", async () => {
   calls.length = 0;
   listResponse = {
     data: [
@@ -88,14 +88,14 @@ test("lists one crew's rates in deterministic newest-first order", async () => {
     error: null,
   };
 
-  assert.deepEqual(await listTransportCrewWageRates({
+  assert.deepEqual(await listTransportGroupWageRates({
     factoryId: "factory-a",
-    transportCrewId: "crew-a",
+    transportGroupId: "crew-a",
   }), [
     {
       id: "rate-b",
       factoryId: "factory-a",
-      transportCrewId: "crew-a",
+      transportGroupId: "crew-a",
       ratePerPaya: 900,
       effectiveFrom: "2026-08-18",
       effectiveTo: null,
@@ -104,7 +104,7 @@ test("lists one crew's rates in deterministic newest-first order", async () => {
     {
       id: "rate-a",
       factoryId: "factory-a",
-      transportCrewId: "crew-a",
+      transportGroupId: "crew-a",
       ratePerPaya: 800,
       effectiveFrom: "2026-08-01",
       effectiveTo: "2026-08-17",
@@ -134,9 +134,9 @@ test("creates a rate through the controlled RPC and maps its result", async () =
     error: null,
   };
 
-  const result = await createTransportCrewWageRate({
+  const result = await createTransportGroupWageRate({
     factoryId: "factory-a",
-    transportCrewId: "crew-a",
+    transportGroupId: "crew-a",
     effectiveFrom: "2026-08-18",
     ratePerPaya: 900.5,
   });
@@ -165,15 +165,15 @@ test("preserves useful database errors and translates constraint failures", asyn
   };
 
   await assert.rejects(
-    () => createTransportCrewWageRate({
+    () => createTransportGroupWageRate({
       factoryId: "factory-a",
-      transportCrewId: "crew-a",
+      transportGroupId: "crew-a",
       effectiveFrom: "2026-08-10",
       ratePerPaya: 850,
     }),
     (error: unknown) => {
-      assert.ok(error instanceof TransportCrewWageRateServiceError);
-      assert.equal(error.message, "Transport crew wage-rate periods cannot overlap.");
+      assert.ok(error instanceof TransportGroupWageRateServiceError);
+      assert.equal(error.message, "Transport Group wage-rate periods cannot overlap.");
       assert.equal(error.code, "23P01");
       assert.equal(error.details, "overlapping inclusive ranges");
       return true;
@@ -186,9 +186,9 @@ test("rejects an RPC response without a created rate", async () => {
   rpcResponse = { data: null, error: null };
 
   await assert.rejects(
-    () => createTransportCrewWageRate({
+    () => createTransportGroupWageRate({
       factoryId: "factory-a",
-      transportCrewId: "crew-a",
+      transportGroupId: "crew-a",
       effectiveFrom: "2026-08-18",
       ratePerPaya: 900,
     }),

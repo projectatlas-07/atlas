@@ -27,7 +27,7 @@ const fakeSupabase = {
   from(table: string) {
     calls.push(["from", table]);
     let factoryId: string | undefined;
-    let transportCrewId: string | undefined;
+    let transportGroupId: string | undefined;
     let workDate: string | undefined;
 
     const builder = {
@@ -38,7 +38,7 @@ const fakeSupabase = {
       eq(column: string, value: string) {
         calls.push(["eq", column, value]);
         if (column === "factory_id") factoryId = value;
-        if (column === "transport_crew_id") transportCrewId = value;
+        if (column === "transport_crew_id") transportGroupId = value;
         return builder;
       },
       lte(column: string, value: string) {
@@ -54,7 +54,7 @@ const fakeSupabase = {
         calls.push(["limit", count]);
         const data = rows.filter((rate) =>
           rate.factory_id === factoryId
-          && rate.transport_crew_id === transportCrewId
+          && rate.transport_crew_id === transportGroupId
           && workDate !== undefined
           && rate.effective_from <= workDate
           && (rate.effective_to === null || rate.effective_to >= workDate),
@@ -71,9 +71,9 @@ await mock.module("../../../lib/supabase/client.ts", {
   namedExports: { supabase: fakeSupabase },
 });
 const {
-  TransportCrewWageRateResolutionError,
-  TransportCrewWageRateServiceError,
-  getTransportCrewWageRateForDate,
+  TransportGroupWageRateResolutionError,
+  TransportGroupWageRateServiceError,
+  getTransportGroupWageRateForDate,
 } = await import("./transport-crew-wage-rate-service.ts");
 
 const oldRate: Row = {
@@ -103,9 +103,9 @@ function reset(nextRows: Row[] = [oldRate, currentRate]): void {
 }
 
 async function resolve(workDate: string) {
-  return getTransportCrewWageRateForDate({
+  return getTransportGroupWageRateForDate({
     factoryId: "factory-a",
-    transportCrewId: "crew-a",
+    transportGroupId: "crew-a",
     workDate,
   });
 }
@@ -116,18 +116,18 @@ async function expectResolutionFailure(
 ): Promise<void> {
   await assert.rejects(
     () => resolve(workDate),
-    (error: unknown) => error instanceof TransportCrewWageRateResolutionError
+    (error: unknown) => error instanceof TransportGroupWageRateResolutionError
       && error.failure === failure,
   );
 }
 
-test("resolves exactly one applicable transport crew rate and maps its record", async () => {
+test("resolves exactly one applicable Transport Group rate and maps its record", async () => {
   reset();
 
   assert.deepEqual(await resolve("2026-08-10"), {
     id: "rate-800",
     factoryId: "factory-a",
-    transportCrewId: "crew-a",
+    transportGroupId: "crew-a",
     ratePerPaya: 800,
     effectiveFrom: "2026-08-01",
     effectiveTo: "2026-08-17",
@@ -188,7 +188,7 @@ test("multiple matching rows throw the typed overlapping condition", async () =>
   await expectResolutionFailure("2026-08-15", "overlapping");
 });
 
-test("another crew's rate is not used", async () => {
+test("another Transport Group's rate is not used", async () => {
   reset([{ ...currentRate, transport_crew_id: "crew-b" }]);
   await expectResolutionFailure("2026-08-18", "missing");
 });
@@ -210,8 +210,8 @@ test("a database request failure stays separate from resolution failures", async
   await assert.rejects(
     () => resolve("2026-08-18"),
     (error: unknown) => {
-      assert.ok(error instanceof TransportCrewWageRateServiceError);
-      assert.equal(error instanceof TransportCrewWageRateResolutionError, false);
+      assert.ok(error instanceof TransportGroupWageRateServiceError);
+      assert.equal(error instanceof TransportGroupWageRateResolutionError, false);
       assert.equal(error.code, "08006");
       assert.equal(error.message, "connection unavailable");
       return true;

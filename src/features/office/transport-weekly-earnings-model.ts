@@ -7,7 +7,6 @@ import type {
   TransportWeeklyEarningDetail,
 } from "../transport/types.ts";
 import { assertCompletedWageWeek } from "../wages/services/completed-wage-week-validation.ts";
-import { formatTransportDirection } from "./transport-office-model.ts";
 
 export function buildTransportWeeklyCalculationInput({
   factoryId,
@@ -90,21 +89,21 @@ export function buildTransportWeeklyDetailDisplay(
 ): {
   detailId: string;
   workDate: string;
-  crewLabel: string;
+  groupLabel: string;
   paya: string;
   attendanceCount: string;
   ratePerPaya: string;
-  dailyCrewPool: string;
+  dailyGroupPool: string;
   workerShare: string;
 } {
   return {
     detailId: detail.detailId,
     workDate: detail.workDate,
-    crewLabel: `${detail.transportCrewName} · ${formatTransportDirection(detail.transportCrewWorkDirection)}`,
+    groupLabel: detail.transportGroupName,
     paya: formatTransportSnapshotNumber(detail.payaQuantitySnapshot),
     attendanceCount: String(detail.attendanceCountSnapshot),
     ratePerPaya: `${formatTransportLockedCurrency(detail.ratePerPayaSnapshot)} / paya`,
-    dailyCrewPool: formatTransportLockedCurrency(detail.dailyCrewPoolSnapshot),
+    dailyGroupPool: formatTransportLockedCurrency(detail.dailyGroupPoolSnapshot),
     workerShare: formatTransportLockedCurrency(detail.workerDailyShareSnapshot),
   };
 }
@@ -118,8 +117,8 @@ export function transportWeeklySettlementErrorMessage(error: unknown): string {
   const message = typeof failure.message === "string" ? failure.message : "";
 
   if (code === "P2601") return "A transport daily entry has zero attendance.";
-  if (code === "P2602") return message || "A required transport crew rate is missing.";
-  if (code === "P2603") return "Multiple transport crew rates apply to a work date; calculation was stopped.";
+  if (code === "P2602") return "A required Transport Group rate is missing.";
+  if (code === "P2603") return "Multiple Transport Group rates apply to a work date; calculation was stopped.";
   if (code === "22023" || /finite monday|must be a monday/i.test(message)) {
     return "Choose a valid Monday week start.";
   }

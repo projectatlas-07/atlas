@@ -7,8 +7,7 @@ import { resolveAuthenticatedFactoryId } from "@/features/auth/services/factory-
 import { saveTransportDailyEntry } from "@/features/transport/services/transport-daily-entry-service";
 import {
   buildTransportDailyEntrySaveInput,
-  formatTransportWorkDirection,
-  loadActiveTransportCrews,
+  loadActiveTransportGroups,
   loadTransportDailyEntrySelection,
   parseTransportPayaInput,
   selectAllTransportWorkers,
@@ -16,7 +15,7 @@ import {
   transportDailyEntryErrorMessage,
 } from "@/features/transport/transport-daily-entry-screen-model";
 import type {
-  TransportCrew,
+  TransportGroup,
   TransportDailyEntryWorkerChoice,
 } from "@/features/transport/types";
 import { getLocalDate } from "@/lib/local-date";
@@ -45,12 +44,12 @@ export function TransportDailyEntryScreen() {
     message: "Loading factory access...",
   });
   const [factoryResolutionAttempt, setFactoryResolutionAttempt] = useState(0);
-  const [crewLoadAttempt, setCrewLoadAttempt] = useState(0);
+  const [groupLoadAttempt, setGroupLoadAttempt] = useState(0);
   const [entryLoadAttempt, setEntryLoadAttempt] = useState(0);
-  const [crews, setCrews] = useState<TransportCrew[]>([]);
-  const [crewLoadState, setCrewLoadState] = useState<LoadState>("idle");
-  const [crewLoadError, setCrewLoadError] = useState("");
-  const [selectedCrewId, setSelectedCrewId] = useState("");
+  const [groups, setGroups] = useState<TransportGroup[]>([]);
+  const [groupLoadState, setGroupLoadState] = useState<LoadState>("idle");
+  const [groupLoadError, setGroupLoadError] = useState("");
+  const [selectedGroupId, setSelectedGroupId] = useState("");
   const [workDate, setWorkDate] = useState(today);
   const [members, setMembers] = useState<TransportDailyEntryWorkerChoice[]>([]);
   const [selectedWorkerIds, setSelectedWorkerIds] = useState<Set<string>>(
@@ -101,33 +100,33 @@ export function TransportDailyEntryScreen() {
   useEffect(() => {
     if (factoryAccess.status !== "ready") return;
     let isCurrent = true;
-    setCrewLoadState("loading");
-    setCrewLoadError("");
+    setGroupLoadState("loading");
+    setGroupLoadError("");
 
-    void loadActiveTransportCrews(factoryAccess.factoryId)
-      .then((loadedCrews) => {
+    void loadActiveTransportGroups(factoryAccess.factoryId)
+      .then((loadedGroups) => {
         if (!isCurrent) return;
-        setCrews(loadedCrews);
-        setSelectedCrewId((currentCrewId) =>
-          loadedCrews.some((crew) => crew.id === currentCrewId)
-            ? currentCrewId
+        setGroups(loadedGroups);
+        setSelectedGroupId((currentGroupId) =>
+          loadedGroups.some((group) => group.id === currentGroupId)
+            ? currentGroupId
             : "",
         );
-        setCrewLoadState("ready");
+        setGroupLoadState("ready");
       })
       .catch((error: unknown) => {
         if (!isCurrent) return;
-        console.error({ context: "Failed to load transport crews", error });
-        setCrews([]);
-        setCrewLoadState("error");
-        setCrewLoadError(transportDailyEntryErrorMessage(error));
+        console.error({ context: "Failed to load transport groups", error });
+        setGroups([]);
+        setGroupLoadState("error");
+        setGroupLoadError(transportDailyEntryErrorMessage(error));
       });
 
     return () => { isCurrent = false; };
-  }, [crewLoadAttempt, factoryAccess]);
+  }, [groupLoadAttempt, factoryAccess]);
 
   useEffect(() => {
-    if (factoryAccess.status !== "ready" || !selectedCrewId || !workDate) {
+    if (factoryAccess.status !== "ready" || !selectedGroupId || !workDate) {
       setMembers([]);
       setSelectedWorkerIds(new Set());
       setPayaInput("");
@@ -149,7 +148,7 @@ export function TransportDailyEntryScreen() {
 
     void loadTransportDailyEntrySelection({
       factoryId: factoryAccess.factoryId,
-      transportCrewId: selectedCrewId,
+      transportGroupId: selectedGroupId,
       workDate,
     }).then((loadedState) => {
       if (!isCurrent) return;
@@ -157,7 +156,7 @@ export function TransportDailyEntryScreen() {
       setSelectedWorkerIds(loadedState.selectedWorkerIds);
       setPayaInput(loadedState.payaInput);
       setEntryLoadState("ready");
-      setLoadedScopeKey(`${factoryAccess.factoryId}:${selectedCrewId}:${workDate}`);
+      setLoadedScopeKey(`${factoryAccess.factoryId}:${selectedGroupId}:${workDate}`);
     }).catch((error: unknown) => {
       if (!isCurrent) return;
       console.error({ context: "Failed to load transport daily entry", error });
@@ -166,19 +165,19 @@ export function TransportDailyEntryScreen() {
     });
 
     return () => { isCurrent = false; };
-  }, [entryLoadAttempt, factoryAccess, selectedCrewId, workDate]);
+  }, [entryLoadAttempt, factoryAccess, selectedGroupId, workDate]);
 
-  const selectedCrew = useMemo(
-    () => crews.find((crew) => crew.id === selectedCrewId) ?? null,
-    [crews, selectedCrewId],
+  const selectedGroup = useMemo(
+    () => groups.find((group) => group.id === selectedGroupId) ?? null,
+    [groups, selectedGroupId],
   );
   const parsedPaya = parseTransportPayaInput(payaInput);
-  const currentScopeKey = factoryAccess.status === "ready" && selectedCrewId && workDate
-    ? `${factoryAccess.factoryId}:${selectedCrewId}:${workDate}`
+  const currentScopeKey = factoryAccess.status === "ready" && selectedGroupId && workDate
+    ? `${factoryAccess.factoryId}:${selectedGroupId}:${workDate}`
     : null;
   const isSaving = saveState.status === "saving";
   const canSave = factoryAccess.status === "ready"
-    && Boolean(selectedCrewId)
+    && Boolean(selectedGroupId)
     && entryLoadState === "ready"
     && loadedScopeKey === currentScopeKey
     && selectedWorkerIds.size > 0
@@ -194,7 +193,7 @@ export function TransportDailyEntryScreen() {
 
     const input = buildTransportDailyEntrySaveInput({
       factoryId: factoryAccess.factoryId,
-      transportCrewId: selectedCrewId,
+      transportGroupId: selectedGroupId,
       workDate,
       payaInput,
       selectedWorkerIds,
@@ -254,7 +253,7 @@ export function TransportDailyEntryScreen() {
           <LogoutButton />
         </div>
         <p className="mt-2 text-base text-slate-600">
-          Choose a crew, mark present workers, and enter paya.
+          Choose a Transport Group, mark present workers, and enter paya.
         </p>
       </header>
 
@@ -274,39 +273,39 @@ export function TransportDailyEntryScreen() {
             </label>
 
             <label>
-              <span className="mb-2 block text-sm font-semibold text-slate-800">Crew</span>
+              <span className="mb-2 block text-sm font-semibold text-slate-800">Transport Group</span>
               <select
-                value={selectedCrewId}
-                onChange={(event) => setSelectedCrewId(event.target.value)}
-                disabled={crewLoadState === "loading" || isSaving}
+                value={selectedGroupId}
+                onChange={(event) => setSelectedGroupId(event.target.value)}
+                disabled={groupLoadState === "loading" || isSaving}
                 className="h-12 w-full rounded-xl border border-stone-300 bg-white px-3 text-base font-medium text-slate-950 outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100 disabled:bg-stone-100"
               >
                 <option value="">
-                  {crewLoadState === "loading" ? "Loading crews..." : "Select crew"}
+                  {groupLoadState === "loading" ? "Loading Transport Groups..." : "Select Transport Group"}
                 </option>
-                {crews.map((crew) => (
-                  <option key={crew.id} value={crew.id}>
-                    {crew.name} — {formatTransportWorkDirection(crew.workDirection)}
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
                   </option>
                 ))}
               </select>
             </label>
           </div>
 
-          {selectedCrew && (
+          {selectedGroup && (
             <p className="mt-3 text-sm text-slate-600">
-              {selectedCrew.name} · {formatTransportWorkDirection(selectedCrew.workDirection)}
+              {selectedGroup.name}
             </p>
           )}
-          {crewLoadState === "ready" && crews.length === 0 && (
-            <p className="mt-3 text-sm font-medium text-slate-600">No active transport crews are available.</p>
+          {groupLoadState === "ready" && groups.length === 0 && (
+            <p className="mt-3 text-sm font-medium text-slate-600">No active Transport Groups are available.</p>
           )}
-          {crewLoadState === "error" && (
+          {groupLoadState === "error" && (
             <div className="mt-3 flex items-center justify-between gap-3">
-              <p role="alert" className="text-sm font-medium text-red-700">{crewLoadError}</p>
+              <p role="alert" className="text-sm font-medium text-red-700">{groupLoadError}</p>
               <button
                 type="button"
-                onClick={() => setCrewLoadAttempt((attempt) => attempt + 1)}
+                onClick={() => setGroupLoadAttempt((attempt) => attempt + 1)}
                 className="shrink-0 text-sm font-semibold text-orange-700"
               >
                 Retry
@@ -315,7 +314,7 @@ export function TransportDailyEntryScreen() {
           )}
         </section>
 
-        {selectedCrewId && (
+        {selectedGroupId && (
           <section aria-labelledby="present-workers-heading" className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -355,7 +354,7 @@ export function TransportDailyEntryScreen() {
               </div>
             )}
             {entryLoadState === "ready" && members.length === 0 && (
-              <p className="mt-4 text-sm font-medium text-slate-600">No active workers are assigned to this crew.</p>
+              <p className="mt-4 text-sm font-medium text-slate-600">No active workers are assigned to this Transport Group.</p>
             )}
 
             {entryLoadState === "ready" && members.length > 0 && (
