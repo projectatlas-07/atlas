@@ -15,6 +15,8 @@ import {
 } from "../../lib/formatting.ts";
 import { sumFiniteNumbers } from "../../lib/numeric-total.ts";
 
+export type SoilWorkerLifecycleFilter = "all" | "active" | "archived";
+
 export const SOIL_SECTION_HEADING = "Soil Supply";
 
 export function splitSoilWorkers(workers: readonly SoilWorker[]): {
@@ -25,6 +27,57 @@ export function splitSoilWorkers(workers: readonly SoilWorker[]): {
     active: workers.filter((worker) => worker.isActive),
     archived: workers.filter((worker) => !worker.isActive),
   };
+}
+
+export function filterSoilOverviewWorkers({
+  workers,
+  lifecycle,
+  search,
+}: Readonly<{
+  workers: readonly SoilWorker[];
+  lifecycle: SoilWorkerLifecycleFilter;
+  search: string;
+}>): SoilWorker[] {
+  const normalizedSearch = search.trim().toLocaleLowerCase("en-IN");
+  return workers.filter((worker) => {
+    if (lifecycle === "active" && !worker.isActive) return false;
+    if (lifecycle === "archived" && worker.isActive) return false;
+    return !normalizedSearch
+      || worker.name.toLocaleLowerCase("en-IN").includes(normalizedSearch);
+  });
+}
+
+export function sumSoilPeriodTrolleys(
+  earnings: readonly SoilEarning[],
+): number {
+  const latestByDailyEntry = new Map<string, SoilEarning>();
+  for (const earning of earnings) {
+    const current = latestByDailyEntry.get(earning.soilDailyTrolleyEntryId);
+    if (!current || earning.eventSequence > current.eventSequence) {
+      latestByDailyEntry.set(earning.soilDailyTrolleyEntryId, earning);
+    }
+  }
+  return sumFiniteNumbers(
+    [...latestByDailyEntry.values()].map((earning) => earning.trolleyQuantitySnapshot),
+    "Soil/Trolley Period Trolleys",
+  );
+}
+
+export function formatSoilWorkerLastPaid(
+  paymentDate: string | null,
+  localToday: string,
+): string {
+  if (paymentDate === null) return "No payments yet";
+  if (!isCanonicalDate(paymentDate) || !isCanonicalDate(localToday)) {
+    return "Payment date unavailable";
+  }
+
+  const dayDifference = toUtcDay(localToday) - toUtcDay(paymentDate);
+  if (dayDifference === 0) return "Last paid today";
+  if (dayDifference > 0 && dayDifference <= 5) {
+    return `Last paid ${dayDifference} ${dayDifference === 1 ? "day" : "days"} ago`;
+  }
+  return `Last paid ${formatDateOnly(paymentDate)}`;
 }
 
 export function canOfferUnusedSoilWorkerDelete(input: Readonly<{
@@ -249,4 +302,11 @@ function isCanonicalDate(value: string): boolean {
   return date.getFullYear() === year
     && date.getMonth() === month - 1
     && date.getDate() === day;
+}
+
+function toUtcDay(value: string): number {
+  const year = Number(value.slice(0, 4));
+  const month = Number(value.slice(5, 7));
+  const day = Number(value.slice(8, 10));
+  return Date.UTC(year, month - 1, day) / 86_400_000;
 }

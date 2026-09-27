@@ -27,6 +27,14 @@ const officeScreen = readFileSync(
   new URL("../office/components/soil-office-section.tsx", import.meta.url),
   "utf8",
 );
+const officeAccountDrawer = readFileSync(
+  new URL("../office/components/soil-trolley-account-drawer.tsx", import.meta.url),
+  "utf8",
+);
+const officeManagementDrawer = readFileSync(
+  new URL("../office/components/soil-trolley-management-drawer.tsx", import.meta.url),
+  "utf8",
+);
 const supabaseTypes = readFileSync(new URL("../../types/supabase.ts", import.meta.url), "utf8");
 
 test("Soil migrations form one forward-only 00013 through 00019 chain", () => {
@@ -58,19 +66,20 @@ test("archived historical rows remain visible but cannot leak into an active sav
 });
 
 test("site stays quantity-only while Office remains the financial and lifecycle surface", () => {
+  const officeSurface = [officeScreen, officeAccountDrawer, officeManagementDrawer].join("\n");
   assert.match(managerScreen, /workflow === "soil".*<SoilDailyEntryScreen/s);
   assert.match(dailyScreen, /Trolley Quantity|trolley quantity/i);
   assert.doesNotMatch(dailyScreen, /createSoilPayment|financial adjustment|Available Balance|Total Paid/i);
   for (const phrase of [
     "Record payment",
     "Record adjustment",
-    "Total Earned",
-    "Available Balance",
-    "Archived Soil workers",
+    "Total earned",
+    "Available to pay",
+    "SOIL_WORKER_LIFECYCLE_STATUS",
     "archiveSoilWorker",
     "restoreSoilWorker",
     "deleteUnusedSoilWorker",
-  ]) assert.match(officeScreen, new RegExp(phrase));
+  ]) assert.match(officeSurface, new RegExp(phrase));
 });
 
 test("generated Supabase types cover the final Soil RPC boundary", () => {
