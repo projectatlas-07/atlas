@@ -1,0 +1,507 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_dashboard" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"surface-tint":"#2d694d","text-secondary":"#686864","text-tertiary":"#989894","secondary":"#57605d","state-success":"#047857","background":"#f9f9f7","on-tertiary-fixed-variant":"#6f3538","on-error-container":"#93000a","secondary-fixed":"#dce5e0","secondary-fixed-dim":"#bfc9c4","on-background":"#1a1c1b","on-secondary-fixed":"#151d1a","sidebar-surface":"#F2F3F1","on-primary-container":"#aae9c6","border-subtle":"#E5E5E2","on-primary-fixed":"#002113","on-primary":"#ffffff","outline":"#707972","on-surface":"#1a1c1b","surface-container":"#eeeeec","on-secondary":"#ffffff","inverse-surface":"#2f3130","surface-variant":"#e2e3e1","error-container":"#ffdad6","tertiary":"#723739","on-tertiary":"#ffffff","primary":"#125238","error":"#ba1a1a","outline-variant":"#c0c9c1","surface-container-lowest":"#ffffff","on-surface-variant":"#404943","row-hover":"#F1F1EF","text-primary":"#1F1F1D","surface-container-low":"#f4f4f2","surface-container-highest":"#e2e3e1","on-error":"#ffffff","secondary-container":"#dce5e0","on-secondary-container":"#5d6663","tertiary-fixed":"#ffdad9","surface":"#f9f9f7","inverse-primary":"#96d4b2","surface-container-high":"#e8e8e6","inverse-on-surface":"#f1f1ef","tertiary-container":"#8e4e50","surface-dim":"#dadad8","surface-bright":"#f9f9f7","border-strong":"#D5D5D1","primary-fixed-dim":"#96d4b2","on-secondary-fixed-variant":"#404945","on-tertiary-container":"#ffd1d1","primary-container":"#2f6b4f","tertiary-fixed-dim":"#ffb3b4","on-primary-fixed-variant":"#105137","primary-fixed":"#b1f0cd","card-surface":"#FFFFFF","on-tertiary-fixed":"#390b0f"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem",full:"9999px"},spacing:{"space-lg":"1.5rem","space-xs":"0.25rem","space-md":"0.875rem","space-sm":"0.5rem","margin-desktop":"3rem","space-xl":"2.5rem",gutter:"1.5rem","gutter-lg":"2rem",margin:"2rem","margin-mobile":"1rem","gutter-sm":"1rem"},fontFamily:{"headline-xl-mobile":["Plus Jakarta Sans"],"headline-md":["Plus Jakarta Sans"],"headline-lg":["Plus Jakarta Sans"],"label-md":["Plus Jakarta Sans"],caption:["Plus Jakarta Sans"],"headline-sm":["Plus Jakarta Sans"],"label-sm":["Plus Jakarta Sans"],"body-sm":["Plus Jakarta Sans"],"headline-xl":["Plus Jakarta Sans"],"body-md":["Plus Jakarta Sans"],"body-lg":["Plus Jakarta Sans"]},fontSize:{"headline-xl-mobile":["26px",{lineHeight:"34px",letterSpacing:"-0.015em",fontWeight:"600"}],"headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],"headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}],"label-md":["14px",{lineHeight:"20px",fontWeight:"500"}],caption:["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"500"}],"headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],"label-sm":["12px",{lineHeight:"16px",letterSpacing:"0.01em",fontWeight:"500"}],"body-sm":["13px",{lineHeight:"20px",fontWeight:"400"}],"headline-xl":["32px",{lineHeight:"40px",letterSpacing:"-0.02em",fontWeight:"600"}],"body-md":["14px",{lineHeight:"22px",fontWeight:"400"}],"body-lg":["16px",{lineHeight:"26px",fontWeight:"400"}]}}}};</script></head><body class="bg-surface font-body-md text-text-primary antialiased"><aside class="fixed left-0 top-0 h-screen w-64 bg-sidebar-surface z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col flex-1 min-h-0"><div class="px-space-lg pt-space-lg pb-space-md"><div class="font-headline-md text-headline-md tracking-tight text-text-primary">Atlas</div><div class="font-caption text-caption tracking-widest uppercase text-text-tertiary -mt-1">OFFICE</div></div><nav class="flex-1 px-space-sm space-y-1 overflow-y-auto" data-active-classes="bg-secondary-container text-primary font-label-md rounded-lg"><a class="flex items-center gap-space-sm px-space-md py-2.5 rounded-lg text-text-secondary hover:bg-row-hover hover:text-text-primary transition-colors font-label-md text-label-md" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span><span class="">Dashboard</span></a><a class="flex items-center gap-space-sm px-space-md py-2.5 rounded-lg text-text-secondary hover:bg-row-hover hover:text-text-primary transition-colors font-label-md text-label-md" data-path="production" href="#"><span class="material-symbols-outlined text-[20px]">factory</span><span class="">Production</span></a><a class="flex items-center gap-space-sm px-space-md py-2.5 rounded-lg text-text-secondary hover:bg-row-hover hover:text-text-primary transition-colors font-label-md text-label-md" data-path="workforce" href="#"><span class="material-symbols-outlined text-[20px]">groups</span><span class="">Workforce</span></a><a class="flex items-center gap-space-sm px-space-md py-2.5 rounded-lg text-text-secondary hover:bg-row-hover hover:text-text-primary transition-colors font-label-md text-label-md" data-path="sales" href="#"><span class="material-symbols-outlined text-[20px]">point_of_sale</span><span class="">Sales</span></a><a class="flex items-center gap-space-sm px-space-md py-2.5 rounded-lg text-text-secondary hover:bg-row-hover hover:text-text-primary transition-colors font-label-md text-label-md" data-path="purchases-and-expenses" href="#"><span class="material-symbols-outlined text-[20px]">shopping_bag</span><span class="">Purchases &amp; Expenses</span></a><a class="flex items-center gap-space-sm px-space-md py-2.5 rounded-lg text-text-secondary hover:bg-row-hover hover:text-text-primary transition-colors font-label-md text-label-md" data-path="cash-book" href="#"><span class="material-symbols-outlined text-[20px]">menu_book</span><span class="">Cash Book</span></a><a class="flex items-center gap-space-sm px-space-md py-2.5 rounded-lg text-text-secondary hover:bg-row-hover hover:text-text-primary transition-colors font-label-md text-label-md" data-path="reports" href="#"><span class="material-symbols-outlined text-[20px]">bar_chart</span><span class="">Reports</span></a><a class="flex items-center gap-space-sm px-space-md py-2.5 rounded-lg text-text-secondary hover:bg-row-hover hover:text-text-primary transition-colors font-label-md text-label-md" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="">Settings</span></a></nav></div><div class="p-space-md bg-sidebar-surface shadow-[0_-1px_4px_rgba(0,0,0,0.02)] flex flex-col gap-space-xs"><div class="flex items-center gap-space-sm px-space-sm py-space-xs"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="flex flex-col min-w-0 flex-1"><span class="font-label-sm text-label-sm text-text-primary truncate">Operator Admin</span><span class="font-caption text-caption text-text-tertiary truncate">Plant #04 Workspace</span></div></div><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-text-secondary hover:bg-row-hover hover:text-text-primary transition-colors font-label-sm text-label-sm" data-path="logout" href="#"><span class="material-symbols-outlined text-[18px]">logout</span><span class="">Log out</span></a></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-16 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40"><div class="h-16 w-full px-space-xl flex items-center justify-between"><div class="flex items-center gap-space-xs text-text-tertiary font-label-sm text-label-sm"><span class="tracking-wider uppercase">WORKFORCE</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="text-text-primary font-label-sm text-label-sm tracking-wider uppercase">STAFF</span></div><div class="flex items-center gap-space-md"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="relative pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<div class="px-space-xl py-space-lg flex flex-col gap-space-lg">
+<!-- SUB-NAVIGATION BAR -->
+<div class="flex items-center overflow-x-auto pb-1 gap-2 scrollbar-none">
+<a class="px-4 py-1.5 rounded-full font-label-md text-label-md text-text-secondary hover:text-text-primary hover:bg-surface-container transition-colors whitespace-nowrap" href="#">
+        Production workers
+      </a>
+<a class="px-4 py-1.5 rounded-full font-label-md text-label-md text-text-secondary hover:text-text-primary hover:bg-surface-container transition-colors whitespace-nowrap" href="#">
+        Mud Supply
+      </a>
+<a class="px-4 py-1.5 rounded-full font-label-md text-label-md text-text-secondary hover:text-text-primary hover:bg-surface-container transition-colors whitespace-nowrap" href="#">
+        Chamber Transport
+      </a>
+<a class="px-4 py-1.5 rounded-full font-label-md text-label-md text-text-secondary hover:text-text-primary hover:bg-surface-container transition-colors whitespace-nowrap" href="#">
+        Soil / Trolley workers
+      </a>
+<a class="px-4 py-1.5 rounded-full font-label-md text-label-md bg-primary text-on-primary font-medium whitespace-nowrap transition-colors" href="#">
+        Staff
+      </a>
+<a class="px-4 py-1.5 rounded-full font-label-md text-label-md text-text-secondary hover:text-text-primary hover:bg-surface-container transition-colors whitespace-nowrap" href="#">
+        Vehicle Delivery Wages
+      </a>
+</div>
+<!-- PAGE HEADER BLOCK -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md pt-2">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-3">
+<h1 class="font-headline-lg text-headline-lg text-text-primary tracking-tight">Staff</h1>
+<!-- Period Selector Dropdown Button -->
+<div class="relative inline-block text-left" id="period-dropdown-wrap">
+<button class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-label-sm text-label-sm text-text-primary bg-surface-container-lowest hover:bg-surface-container transition-colors" onclick="document.getElementById('period-menu').classList.toggle('hidden')" type="button">
+<span class="material-symbols-outlined text-[15px] text-text-secondary">calendar_today</span>
+<span class="">This Month</span>
+<span class="material-symbols-outlined text-[16px] text-text-tertiary">arrow_drop_down</span>
+</button>
+<div class="hidden absolute left-0 mt-1 w-44 rounded-lg bg-surface-container-lowest shadow-md z-30 py-1 font-label-sm text-label-sm text-text-primary" id="period-menu">
+<button class="w-full text-left px-3 py-1.5 hover:bg-row-hover text-primary font-medium" type="button">This Month</button>
+<button class="w-full text-left px-3 py-1.5 hover:bg-row-hover" type="button">Previous Month</button>
+<button class="w-full text-left px-3 py-1.5 hover:bg-row-hover" type="button">Fiscal Year 2024–25</button>
+</div>
+</div>
+</div>
+<!-- Compact Summary Line -->
+<p class="font-body-md text-body-md text-text-secondary">
+          12 active staff · <span class="font-label-md text-label-md text-text-primary tabular-nums font-semibold">₹84,500</span> paid this month · 2 archived
+        </p>
+</div>
+<!-- Action Buttons -->
+<div class="flex items-center gap-2">
+<button class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-text-primary font-label-sm text-label-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-text-secondary">category</span>
+<span class="">Manage categories</span>
+</button>
+<button class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-text-primary font-label-sm text-label-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary">add</span>
+<span class="">Add staff</span>
+</button>
+</div>
+</div>
+<!-- FILTER & SEARCH TOOLBAR -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+<!-- Status Tabs -->
+<div class="inline-flex items-center bg-surface-container-low p-1 rounded-lg gap-1 self-start">
+<button class="px-2.5 py-1 rounded-md font-label-sm text-label-sm bg-text-primary text-surface font-medium transition-colors" type="button">
+          All 14
+        </button>
+<button class="px-2.5 py-1 rounded-md font-label-sm text-label-sm text-text-secondary hover:text-text-primary transition-colors" type="button">
+          Active 12
+        </button>
+<button class="px-2.5 py-1 rounded-md font-label-sm text-label-sm text-text-secondary hover:text-text-primary transition-colors" type="button">
+          Archived 2
+        </button>
+</div>
+<!-- Search Box -->
+<div class="relative w-full sm:w-64">
+<span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[16px] text-text-tertiary pointer-events-none">search</span>
+<input class="w-full h-8 pl-8 pr-3 bg-surface-container-lowest font-body-sm text-body-sm text-text-primary placeholder:text-text-tertiary rounded-md outline-none focus:bg-surface-container-lowest transition-colors" placeholder="Search staff..." type="text">
+</div>
+</div>
+<!-- MAIN DATA TABLE CONTAINER -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm flex flex-col">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low text-text-secondary font-label-sm text-label-sm">
+<th class="py-3 px-space-md font-medium tracking-wide" scope="col">Staff</th>
+<th class="py-3 px-space-md font-medium tracking-wide" scope="col">Category</th>
+<th class="py-3 px-space-md font-medium tracking-wide" scope="col">Reference Salary</th>
+<th class="py-3 px-space-md font-medium tracking-wide" scope="col">Paid</th>
+<th class="py-3 px-space-md font-medium tracking-wide" scope="col">Last Paid</th>
+<th class="py-3 px-space-md font-medium tracking-wide text-right" scope="col">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container font-body-md text-body-md text-text-primary">
+<!-- Row 1 -->
+<tr class="hover:bg-row-hover transition-colors group">
+<td class="py-3.5 px-space-md font-label-md text-label-md text-text-primary">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded-full bg-secondary-container text-primary font-semibold font-caption text-caption flex items-center justify-center tracking-tight">
+                    RS
+                  </div>
+<span class="font-medium">Rajesh Sharma</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary font-body-sm text-body-sm">
+                Plant Supervisor
+              </td>
+<td class="py-3.5 px-space-md tabular-nums font-body-sm text-body-sm text-text-secondary">
+                ₹22,000 <span class="text-text-tertiary font-caption text-caption">/ month</span>
+</td>
+<td class="py-3.5 px-space-md tabular-nums font-label-md text-label-md font-medium text-text-primary">
+                ₹22,000
+              </td>
+<td class="py-3.5 px-space-md font-body-sm text-body-sm text-text-secondary">
+                Last paid 3 days ago
+              </td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<div class="inline-flex items-center gap-1.5 justify-end">
+<button class="px-3 py-1.5 rounded-md bg-secondary-container hover:bg-primary-fixed text-primary font-label-sm text-label-sm font-semibold transition-colors" type="button">
+                    Account &amp; payment
+                  </button>
+<button class="px-2 py-1.5 rounded-md text-text-secondary hover:text-text-primary hover:bg-surface-container-high font-label-sm text-label-sm font-medium transition-colors" type="button">
+                    Manage
+                  </button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-row-hover transition-colors group">
+<td class="py-3.5 px-space-md font-label-md text-label-md text-text-primary">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded-full bg-secondary-container text-primary font-semibold font-caption text-caption flex items-center justify-center tracking-tight">
+                    AV
+                  </div>
+<span class="font-medium">Amit Kumar Verma</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary font-body-sm text-body-sm">
+                Accountant
+              </td>
+<td class="py-3.5 px-space-md tabular-nums font-body-sm text-body-sm text-text-secondary">
+                ₹18,000 <span class="text-text-tertiary font-caption text-caption">/ month</span>
+</td>
+<td class="py-3.5 px-space-md tabular-nums font-label-md text-label-md font-medium text-text-primary">
+                ₹18,000
+              </td>
+<td class="py-3.5 px-space-md font-body-sm text-body-sm text-text-secondary">
+                Last paid 5 days ago
+              </td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<div class="inline-flex items-center gap-1.5 justify-end">
+<button class="px-3 py-1.5 rounded-md bg-secondary-container hover:bg-primary-fixed text-primary font-label-sm text-label-sm font-semibold transition-colors" type="button">
+                    Account &amp; payment
+                  </button>
+<button class="px-2 py-1.5 rounded-md text-text-secondary hover:text-text-primary hover:bg-surface-container-high font-label-sm text-label-sm font-medium transition-colors" type="button">
+                    Manage
+                  </button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-row-hover transition-colors group">
+<td class="py-3.5 px-space-md font-label-md text-label-md text-text-primary">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded-full bg-secondary-container text-primary font-semibold font-caption text-caption flex items-center justify-center tracking-tight">
+                    PM
+                  </div>
+<span class="font-medium">Pooja Mondal</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary font-body-sm text-body-sm">
+                Office Assistant
+              </td>
+<td class="py-3.5 px-space-md tabular-nums font-body-sm text-body-sm text-text-secondary">
+                ₹12,000 <span class="text-text-tertiary font-caption text-caption">/ month</span>
+</td>
+<td class="py-3.5 px-space-md tabular-nums font-label-md text-label-md font-medium text-text-primary">
+                ₹12,000
+              </td>
+<td class="py-3.5 px-space-md font-body-sm text-body-sm text-text-secondary">
+                Last paid 5 days ago
+              </td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<div class="inline-flex items-center gap-1.5 justify-end">
+<button class="px-3 py-1.5 rounded-md bg-secondary-container hover:bg-primary-fixed text-primary font-label-sm text-label-sm font-semibold transition-colors" type="button">
+                    Account &amp; payment
+                  </button>
+<button class="px-2 py-1.5 rounded-md text-text-secondary hover:text-text-primary hover:bg-surface-container-high font-label-sm text-label-sm font-medium transition-colors" type="button">
+                    Manage
+                  </button>
+</div>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-row-hover transition-colors group">
+<td class="py-3.5 px-space-md font-label-md text-label-md text-text-primary">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded-full bg-secondary-container text-primary font-semibold font-caption text-caption flex items-center justify-center tracking-tight">
+                    BR
+                  </div>
+<span class="font-medium">Bikash Chandra Roy</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary font-body-sm text-body-sm">
+                Chamber Munshi
+              </td>
+<td class="py-3.5 px-space-md tabular-nums font-body-sm text-body-sm text-text-secondary">
+                ₹16,000 <span class="text-text-tertiary font-caption text-caption">/ month</span>
+</td>
+<td class="py-3.5 px-space-md tabular-nums font-label-md text-label-md font-medium text-text-primary">
+                ₹10,000
+              </td>
+<td class="py-3.5 px-space-md font-body-sm text-body-sm text-text-secondary">
+                Last paid 1 week ago
+              </td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<div class="inline-flex items-center gap-1.5 justify-end">
+<button class="px-3 py-1.5 rounded-md bg-secondary-container hover:bg-primary-fixed text-primary font-label-sm text-label-sm font-semibold transition-colors" type="button">
+                    Account &amp; payment
+                  </button>
+<button class="px-2 py-1.5 rounded-md text-text-secondary hover:text-text-primary hover:bg-surface-container-high font-label-sm text-label-sm font-medium transition-colors" type="button">
+                    Manage
+                  </button>
+</div>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-row-hover transition-colors group">
+<td class="py-3.5 px-space-md font-label-md text-label-md text-text-primary">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded-full bg-secondary-container text-primary font-semibold font-caption text-caption flex items-center justify-center tracking-tight">
+                    SS
+                  </div>
+<span class="font-medium">Sanjay Soren</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary font-body-sm text-body-sm">
+                Field Foreman
+              </td>
+<td class="py-3.5 px-space-md tabular-nums font-body-sm text-body-sm text-text-secondary">
+                ₹15,000 <span class="text-text-tertiary font-caption text-caption">/ month</span>
+</td>
+<td class="py-3.5 px-space-md tabular-nums font-label-md text-label-md font-medium text-text-primary">
+                ₹15,000
+              </td>
+<td class="py-3.5 px-space-md font-body-sm text-body-sm text-text-secondary">
+                Last paid 2 weeks ago
+              </td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<div class="inline-flex items-center gap-1.5 justify-end">
+<button class="px-3 py-1.5 rounded-md bg-secondary-container hover:bg-primary-fixed text-primary font-label-sm text-label-sm font-semibold transition-colors" type="button">
+                    Account &amp; payment
+                  </button>
+<button class="px-2 py-1.5 rounded-md text-text-secondary hover:text-text-primary hover:bg-surface-container-high font-label-sm text-label-sm font-medium transition-colors" type="button">
+                    Manage
+                  </button>
+</div>
+</td>
+</tr>
+<!-- Row 6 -->
+<tr class="hover:bg-row-hover transition-colors group">
+<td class="py-3.5 px-space-md font-label-md text-label-md text-text-primary">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded-full bg-secondary-container text-primary font-semibold font-caption text-caption flex items-center justify-center tracking-tight">
+                    DM
+                  </div>
+<span class="font-medium">Deepak Mahato</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary font-body-sm text-body-sm">
+                Security Guard
+              </td>
+<td class="py-3.5 px-space-md tabular-nums font-body-sm text-body-sm text-text-secondary">
+                ₹9,500 <span class="text-text-tertiary font-caption text-caption">/ month</span>
+</td>
+<td class="py-3.5 px-space-md tabular-nums font-label-md text-label-md font-medium text-text-primary">
+                ₹9,500
+              </td>
+<td class="py-3.5 px-space-md font-body-sm text-body-sm text-text-secondary">
+                Last paid 4 days ago
+              </td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<div class="inline-flex items-center gap-1.5 justify-end">
+<button class="px-3 py-1.5 rounded-md bg-secondary-container hover:bg-primary-fixed text-primary font-label-sm text-label-sm font-semibold transition-colors" type="button">
+                    Account &amp; payment
+                  </button>
+<button class="px-2 py-1.5 rounded-md text-text-secondary hover:text-text-primary hover:bg-surface-container-high font-label-sm text-label-sm font-medium transition-colors" type="button">
+                    Manage
+                  </button>
+</div>
+</td>
+</tr>
+<!-- Row 7 -->
+<tr class="hover:bg-row-hover transition-colors group">
+<td class="py-3.5 px-space-md font-label-md text-label-md text-text-primary">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded-full bg-secondary-container text-primary font-semibold font-caption text-caption flex items-center justify-center tracking-tight">
+                    SM
+                  </div>
+<span class="font-medium">Sunil Murmu</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary font-body-sm text-body-sm">
+                Security Guard
+              </td>
+<td class="py-3.5 px-space-md tabular-nums font-body-sm text-body-sm text-text-secondary">
+                ₹9,500 <span class="text-text-tertiary font-caption text-caption">/ month</span>
+</td>
+<td class="py-3.5 px-space-md tabular-nums font-label-md text-label-md font-medium text-text-tertiary">
+                ₹0
+              </td>
+<td class="py-3.5 px-space-md font-body-sm text-body-sm text-text-secondary">
+                Last paid 1 month ago
+              </td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<div class="inline-flex items-center gap-1.5 justify-end">
+<button class="px-3 py-1.5 rounded-md bg-secondary-container hover:bg-primary-fixed text-primary font-label-sm text-label-sm font-semibold transition-colors" type="button">
+                    Account &amp; payment
+                  </button>
+<button class="px-2 py-1.5 rounded-md text-text-secondary hover:text-text-primary hover:bg-surface-container-high font-label-sm text-label-sm font-medium transition-colors" type="button">
+                    Manage
+                  </button>
+</div>
+</td>
+</tr>
+<!-- Row 8 -->
+<tr class="hover:bg-row-hover transition-colors group">
+<td class="py-3.5 px-space-md font-label-md text-label-md text-text-primary">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded-full bg-secondary-container text-primary font-semibold font-caption text-caption flex items-center justify-center tracking-tight">
+                    TB
+                  </div>
+<span class="font-medium">Tarun Biswas</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary font-body-sm text-body-sm">
+                Electrical &amp; Maintenance
+              </td>
+<td class="py-3.5 px-space-md tabular-nums font-body-sm text-body-sm text-text-secondary">
+                ₹14,000 <span class="text-text-tertiary font-caption text-caption">/ month</span>
+</td>
+<td class="py-3.5 px-space-md tabular-nums font-label-md text-label-md font-medium text-text-primary">
+                ₹8,000
+              </td>
+<td class="py-3.5 px-space-md font-body-sm text-body-sm text-text-secondary">
+                Last paid 2 weeks ago
+              </td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<div class="inline-flex items-center gap-1.5 justify-end">
+<button class="px-3 py-1.5 rounded-md bg-secondary-container hover:bg-primary-fixed text-primary font-label-sm text-label-sm font-semibold transition-colors" type="button">
+                    Account &amp; payment
+                  </button>
+<button class="px-2 py-1.5 rounded-md text-text-secondary hover:text-text-primary hover:bg-surface-container-high font-label-sm text-label-sm font-medium transition-colors" type="button">
+                    Manage
+                  </button>
+</div>
+</td>
+</tr>
+<!-- Row 9 (Archived) -->
+<tr class="hover:bg-row-hover transition-colors group opacity-75">
+<td class="py-3.5 px-space-md font-label-md text-label-md text-text-primary">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded-full bg-surface-container text-text-secondary font-semibold font-caption text-caption flex items-center justify-center tracking-tight">
+                    SG
+                  </div>
+<div class="flex items-center gap-2">
+<span class="font-medium text-text-secondary">Subhas Ghosh</span>
+<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-container text-text-tertiary uppercase tracking-wider">Archived</span>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary font-body-sm text-body-sm">
+                Office Assistant
+              </td>
+<td class="py-3.5 px-space-md tabular-nums font-body-sm text-body-sm text-text-secondary">
+                ₹11,000 <span class="text-text-tertiary font-caption text-caption">/ month</span>
+</td>
+<td class="py-3.5 px-space-md tabular-nums font-label-md text-label-md font-medium text-text-tertiary">
+                ₹0
+              </td>
+<td class="py-3.5 px-space-md font-body-sm text-body-sm text-text-tertiary">
+                No payment yet
+              </td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<div class="inline-flex items-center gap-1.5 justify-end">
+<button class="px-3 py-1.5 rounded-md bg-secondary-container hover:bg-primary-fixed text-primary font-label-sm text-label-sm font-semibold transition-colors" type="button">
+                    Account &amp; payment
+                  </button>
+<button class="px-2 py-1.5 rounded-md text-text-secondary hover:text-text-primary hover:bg-surface-container-high font-label-sm text-label-sm font-medium transition-colors" type="button">
+                    Manage
+                  </button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- TABLE FOOTER HELPER NOTE -->
+<div class="px-space-md py-3 bg-surface-container-lowest flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-t border-surface-container">
+<span class="font-caption text-caption text-text-tertiary">
+          Showing 9 staff members
+        </span>
+<span class="font-caption text-caption text-text-tertiary text-right">
+          Reference salary is informational only and does not represent an automatic payable or accrued debt
+        </span>
+</div>
+</div>
+</div>
+</div></main></div>
+<!-- DRAWER OVERLAY & BACKDROP -->
+<div class="fixed inset-0 z-50 flex justify-end" id="account-drawer-wrapper">
+<!-- Semi-transparent backdrop -->
+<div class="fixed inset-0 bg-black/20 backdrop-blur-[1px] transition-opacity" onclick="document.getElementById('account-drawer-wrapper').remove()"></div>
+<!-- Full-height Drawer container -->
+<div class="relative w-full max-w-[480px] h-full bg-white shadow-2xl flex flex-col z-50 border-l border-[#E5E5E2]">
+<!-- Sticky Drawer Header -->
+<div class="p-5 border-b border-[#E5E5E2] bg-white flex items-start justify-between flex-shrink-0">
+<div class="flex items-start gap-3.5">
+<div class="w-10 h-10 rounded-full bg-[#dce5e0] text-[#125238] font-bold text-sm flex items-center justify-center tracking-tight flex-shrink-0 mt-0.5">
+          RS
+        </div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<h2 class="text-[18px] font-semibold text-[#1F1F1D] leading-tight">Rajesh Sharma</h2>
+<span class="px-2 py-0.5 text-[11px] font-medium bg-[#EAF3EE] text-[#125238] rounded-full">Active</span>
+</div>
+<div class="text-sm text-[#686864] mt-0.5">Plant Supervisor</div>
+<div class="text-xs text-[#989894] mt-1">
+            Reference salary: <span class="font-medium text-[#686864]">₹22,000 / month</span>
+</div>
+</div>
+</div>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-[#686864] hover:text-[#1F1F1D] hover:bg-[#F1F1EF] transition-colors -mr-1" onclick="document.getElementById('account-drawer-wrapper').remove()" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Scrollable Drawer Body -->
+<div class="flex-1 overflow-y-auto p-5 space-y-6 bg-white">
+<!-- PERIOD & SUMMARY CARD -->
+<div class="bg-[#F9F9F7] rounded-xl p-4 border border-[#E5E5E2] space-y-3">
+<div class="flex items-center justify-between">
+<span class="text-xs font-semibold uppercase tracking-wider text-[#686864]">Payment Summary</span>
+<div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white border border-[#E5E5E2] text-xs font-medium text-[#1F1F1D] shadow-sm cursor-pointer hover:bg-[#F4F4F2] transition-colors">
+<span class="material-symbols-outlined text-[14px] text-[#686864]">calendar_today</span>
+<span class="">This Month</span>
+<span class="material-symbols-outlined text-[14px] text-[#989894]">expand_more</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3 pt-1">
+<div class="bg-white rounded-lg p-3 border border-[#E5E5E2]">
+<div class="text-xs text-[#686864]">Paid in period</div>
+<div class="text-xl font-bold text-[#1F1F1D] tracking-tight mt-1">₹22,000</div>
+<div class="text-[11px] text-[#989894] mt-0.5">1–27 Sep 2026</div>
+</div>
+<div class="bg-white rounded-lg p-3 border border-[#E5E5E2]">
+<div class="text-xs text-[#686864]">Reference salary</div>
+<div class="text-xl font-bold text-[#686864] tracking-tight mt-1">₹22,000</div>
+<div class="text-[11px] text-[#989894] mt-0.5">Informational only</div>
+</div>
+</div>
+<div class="text-[11px] text-[#989894] leading-relaxed pt-0.5">
+          Reference salary is informational only and does not represent an automatic payable or accrued debt.
+        </div>
+</div>
+<!-- RECORD PAYMENT FORM -->
+<div class="space-y-4 pt-1">
+<div class="flex items-center justify-between border-b border-[#E5E5E2] pb-2"><h3 class="text-xs font-semibold uppercase tracking-wider text-[#686864]">Record Payment</h3></div>
+<div class="space-y-3.5">
+<div>
+<label class="block text-xs font-medium text-[#1F1F1D] mb-1.5">Amount to pay</label>
+<div class="relative rounded-lg shadow-sm">
+<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+<span class="text-sm font-semibold text-[#1F1F1D]">₹</span>
+</div>
+<input class="w-full rounded-lg border border-[#E5E5E2] pl-8 pr-3.5 py-2 text-sm text-[#1F1F1D] placeholder:text-[#989894] focus:outline-none focus:ring-1 focus:ring-[#125238] focus:border-[#125238] bg-white" placeholder="0" type="number">
+</div>
+</div>
+<div><label class="block text-xs font-medium text-[#1F1F1D] mb-1.5">Payment date</label><div class="relative rounded-lg shadow-sm"><input class="w-full rounded-lg border border-[#E5E5E2] px-3 py-2 text-sm text-[#1F1F1D] focus:outline-none focus:ring-1 focus:ring-[#125238] focus:border-[#125238] bg-white" type="text" value="27/09/2026"><span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[16px] text-[#989894] pointer-events-none">event</span></div></div>
+<div>
+<label class="block text-xs font-medium text-[#1F1F1D] mb-1.5">Note (optional)</label>
+<input class="w-full rounded-lg border border-[#E5E5E2] px-3 py-2 text-sm text-[#1F1F1D] placeholder:text-[#989894] focus:outline-none focus:ring-1 focus:ring-[#125238] focus:border-[#125238] bg-white" placeholder="e.g. Advance, monthly disbursement" type="text">
+</div>
+</div>
+</div>
+<!-- RECENT PAYMENTS SECTION -->
+<div class="space-y-3 pt-2">
+<div class="flex items-center justify-between border-b border-[#E5E5E2] pb-2">
+<h3 class="text-xs font-semibold uppercase tracking-wider text-[#686864]">Recent Payments</h3>
+<a class="text-xs font-medium text-[#125238] hover:underline" href="#">View history</a>
+</div>
+<div class="divide-y divide-[#E5E5E2] border border-[#E5E5E2] rounded-xl overflow-hidden bg-white"><div class="p-3.5 flex items-center justify-between hover:bg-[#F9F9F7] transition-colors"><div class="flex items-center gap-3"><div class="w-7 h-7 rounded-full bg-[#EAF3EE] text-[#125238] flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-[15px]">arrow_upward</span></div><div><div class="text-xs font-medium text-[#1F1F1D]">23 Sep 2026</div><div class="text-[11px] text-[#989894]">Monthly disbursement</div></div></div><div class="text-right"><div class="text-sm font-semibold text-[#1F1F1D]">₹10,000</div></div></div><div class="p-3.5 flex items-center justify-between hover:bg-[#F9F9F7] transition-colors"><div class="flex items-center gap-3"><div class="w-7 h-7 rounded-full bg-[#EAF3EE] text-[#125238] flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-[15px]">arrow_upward</span></div><div><div class="text-xs font-medium text-[#1F1F1D]">16 Sep 2026</div><div class="text-[11px] text-[#989894]">Advance disbursement</div></div></div><div class="text-right"><div class="text-sm font-semibold text-[#1F1F1D]">₹12,000</div></div></div></div>
+</div>
+</div>
+<!-- Sticky Drawer Footer -->
+<div class="p-5 border-t border-[#E5E5E2] bg-white flex flex-col gap-2 flex-shrink-0">
+<button class="w-full py-2.5 px-4 rounded-lg bg-[#2F6B4F] hover:bg-[#285D45] text-white text-sm font-medium transition-colors shadow-sm text-center flex items-center justify-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[18px]">payments</span>
+<span class="">Record payment</span>
+</button>
+
+</div>
+</div>
+</div>
+
+</body></html>

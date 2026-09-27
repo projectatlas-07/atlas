@@ -1,0 +1,372 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_dashboard" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"primary-fixed":"#b1f0cd","inverse-primary":"#96d4b2","on-tertiary-fixed":"#390b0f","tertiary-container":"#8e4e50","surface-variant":"#e2e3e1","outline-variant":"#c0c9c1","surface-container-lowest":"#ffffff","on-secondary-container":"#5d6663","on-background":"#1a1c1b","inverse-surface":"#2f3130","on-surface":"#1a1c1b","primary-fixed-dim":"#96d4b2","surface-tint":"#2d694d","secondary-fixed-dim":"#bfc9c4","surface-container-low":"#f4f4f2","outline":"#707972","surface-bright":"#f9f9f7","surface-container":"#eeeeec","primary":"#125238","sidebar-surface":"#F2F3F1","on-secondary":"#ffffff","error":"#ba1a1a","row-hover":"#F1F1EF","border-strong":"#D5D5D1","surface-dim":"#dadad8","on-error":"#ffffff","primary-container":"#2f6b4f","surface-container-high":"#e8e8e6","on-primary-fixed":"#002113","on-tertiary-container":"#ffd1d1","secondary-fixed":"#dce5e0","tertiary-fixed":"#ffdad9","text-primary":"#1F1F1D","state-success":"#047857","error-container":"#ffdad6","border-subtle":"#E5E5E2","on-primary-container":"#aae9c6","on-surface-variant":"#404943","background":"#f9f9f7","on-primary-fixed-variant":"#105137","text-tertiary":"#989894","on-primary":"#ffffff","on-error-container":"#93000a","on-tertiary":"#ffffff","card-surface":"#FFFFFF","surface":"#f9f9f7","inverse-on-surface":"#f1f1ef","secondary":"#57605d","tertiary":"#723739","tertiary-fixed-dim":"#ffb3b4","secondary-container":"#dce5e0","surface-container-highest":"#e2e3e1","on-secondary-fixed-variant":"#404945","on-tertiary-fixed-variant":"#6f3538","text-secondary":"#686864","on-secondary-fixed":"#151d1a"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem",full:"9999px"},spacing:{"space-xs":"0.25rem",gutter:"1.5rem","space-md":"0.875rem","gutter-sm":"1rem","space-lg":"1.5rem","space-xl":"2.5rem",margin:"2rem","gutter-lg":"2rem","space-sm":"0.5rem","margin-mobile":"1rem","margin-desktop":"3rem"},fontFamily:{"headline-xl-mobile":["Plus Jakarta Sans"],"label-md":["Plus Jakarta Sans"],"headline-lg":["Plus Jakarta Sans"],"headline-sm":["Plus Jakarta Sans"],"body-lg":["Plus Jakarta Sans"],"headline-md":["Plus Jakarta Sans"],"body-md":["Plus Jakarta Sans"],"label-sm":["Plus Jakarta Sans"],"headline-xl":["Plus Jakarta Sans"],"body-sm":["Plus Jakarta Sans"],caption:["Plus Jakarta Sans"]},fontSize:{"headline-xl-mobile":["26px",{lineHeight:"34px",letterSpacing:"-0.015em",fontWeight:"600"}],"label-md":["14px",{lineHeight:"20px",fontWeight:"500"}],"headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}],"headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],"body-lg":["16px",{lineHeight:"26px",fontWeight:"400"}],"headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],"body-md":["14px",{lineHeight:"22px",fontWeight:"400"}],"label-sm":["12px",{lineHeight:"16px",letterSpacing:"0.01em",fontWeight:"500"}],"headline-xl":["32px",{lineHeight:"40px",letterSpacing:"-0.02em",fontWeight:"600"}],"body-sm":["13px",{lineHeight:"20px",fontWeight:"400"}],caption:["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"500"}]}}}};</script></head><body class="bg-background font-body-md text-text-primary antialiased selection:bg-primary-fixed selection:text-on-primary-fixed"><aside class="fixed left-0 top-0 h-full w-64 bg-sidebar-surface z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col"><div class="h-16 px-gutter flex items-center gap-space-sm"><div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[20px]">deployed_code</span></div><span class="font-headline-sm text-headline-sm text-text-primary tracking-tight font-semibold">Atlas Workforce</span></div><nav class="flex flex-col gap-1 px-space-sm pt-space-xs" data-active-classes="bg-primary-container text-on-primary font-label-md text-label-md rounded-lg shadow-sm"><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container-high hover:text-on-surface font-label-md text-label-md transition-colors" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span>Dashboard</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container-high hover:text-on-surface font-label-md text-label-md transition-colors" data-path="production" href="#"><span class="material-symbols-outlined text-[20px]">factory</span>Production</a><a aria-current="page" class="flex items-center gap-space-sm px-space-md py-space-sm transition-colors bg-primary-container text-on-primary font-label-md text-label-md rounded-lg shadow-sm" data-path="staff-management" href="#"><span class="material-symbols-outlined text-[20px]">groups</span>Workforce</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container-high hover:text-on-surface font-label-md text-label-md transition-colors" data-path="sales" href="#"><span class="material-symbols-outlined text-[20px]">point_of_sale</span>Sales</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container-high hover:text-on-surface font-label-md text-label-md transition-colors" data-path="purchases-and-expenses" href="#"><span class="material-symbols-outlined text-[20px]">receipt_long</span>Purchases &amp; Expenses</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container-high hover:text-on-surface font-label-md text-label-md transition-colors" data-path="cash-book" href="#"><span class="material-symbols-outlined text-[20px]">menu_book</span>Cash Book</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container-high hover:text-on-surface font-label-md text-label-md transition-colors" data-path="reports" href="#"><span class="material-symbols-outlined text-[20px]">bar_chart</span>Reports</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container-high hover:text-on-surface font-label-md text-label-md transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span>Settings</a></nav></div><div class="p-space-md m-space-sm bg-surface-container-lowest rounded-xl flex items-center justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-space-sm"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="flex flex-col"><span class="font-label-sm text-label-sm text-text-primary leading-tight font-medium">Marcus Vance</span><span class="font-caption text-caption text-text-tertiary leading-tight">Operations Lead</span></div></div><button class="text-text-secondary hover:text-on-surface flex items-center justify-center p-1 rounded hover:bg-surface-container-high transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">unfold_more</span></button></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-16 bg-surface/80 backdrop-blur-xl z-40 shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex items-center justify-between px-gutter"><div class="flex items-center gap-space-sm font-label-sm text-label-sm"><span class="text-text-tertiary uppercase tracking-wider font-semibold">Workforce</span><span class="material-symbols-outlined text-text-tertiary text-[14px]">chevron_right</span><span class="text-text-primary uppercase tracking-wider font-semibold">Staff</span></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs text-text-secondary"><button class="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-surface-container-high hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">search</span></button><button class="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-surface-container-high hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span></button></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-16 w-full px-gutter min-h-screen bg-background"><div class="flex flex-col w-full relative">
+<!-- BACKGROUND MAIN SCREEN (Workforce / Staff Workspace) -->
+<div class="w-full pb-16 opacity-40 pointer-events-none select-none transition-opacity duration-300">
+<!-- Top Action and Overview Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-lg mb-space-lg">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-space-sm">
+<h1 class="font-headline-xl text-headline-xl text-text-primary tracking-tight">Staff</h1>
+<button class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-surface-container text-text-secondary font-label-sm text-label-sm" type="button">
+<span class="">This Month</span>
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+</div>
+<p class="font-body-md text-text-secondary">
+          12 active staff <span class="mx-1 text-text-tertiary">·</span> ₹84,500 paid this month <span class="mx-1 text-text-tertiary">·</span> 2 archived
+        </p>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="h-9 px-space-md rounded-lg bg-surface-container-lowest text-text-primary font-label-md text-label-md shadow-sm flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[18px] text-text-secondary">category</span>
+<span class="">Manage categories</span>
+</button>
+<button class="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md flex items-center gap-1.5 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">add</span>
+<span class="">Add staff</span>
+</button>
+</div>
+</div>
+<!-- Filter & Search Toolbar -->
+<div class="bg-surface-container-lowest p-space-sm rounded-xl mb-space-md flex flex-col sm:flex-row items-center justify-between gap-space-sm shadow-sm">
+<div class="flex items-center gap-1">
+<button class="px-space-md py-1.5 rounded-lg font-label-sm text-label-sm text-text-secondary bg-surface-container" type="button">All 14</button>
+<button class="px-space-md py-1.5 rounded-lg font-label-sm text-label-sm text-primary font-semibold bg-primary-fixed/40" type="button">Active 12</button>
+<button class="px-space-md py-1.5 rounded-lg font-label-sm text-label-sm text-text-secondary" type="button">Archived 2</button>
+</div>
+<div class="w-full sm:w-72 relative">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-text-tertiary text-[18px]">search</span>
+<input class="w-full h-9 pl-9 pr-3 rounded-lg bg-surface font-body-sm text-body-sm text-text-primary placeholder:text-text-tertiary outline-none" placeholder="Search staff..." type="text" value="">
+</div>
+</div>
+<!-- Main Staff Data Table Container -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left font-body-sm text-body-sm">
+<thead>
+<tr class="bg-surface-container-low text-text-secondary font-label-sm text-label-sm">
+<th class="py-3 px-space-lg font-medium">Staff Member</th>
+<th class="py-3 px-space-md font-medium">Category</th>
+<th class="py-3 px-space-md font-medium">Reference Salary</th>
+<th class="py-3 px-space-md font-medium">Paid This Month</th>
+<th class="py-3 px-space-md font-medium text-right">Status</th>
+<th class="py-3 px-space-lg font-medium text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="text-text-primary">
+<!-- Row 1: Rajesh Sharma (Selected / Highlighted State) -->
+<tr class="bg-primary-fixed/20 relative">
+<td class="py-3.5 px-space-lg flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center font-label-sm font-semibold text-primary">RS</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-semibold text-text-primary">Rajesh Sharma</span>
+<span class="font-caption text-caption text-text-tertiary">STF-0104</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary">Plant Supervisor</td>
+<td class="py-3.5 px-space-md font-medium">₹22,000 <span class="font-caption text-caption text-text-tertiary">/ mo</span></td>
+<td class="py-3.5 px-space-md font-medium text-primary">₹22,000</td>
+<td class="py-3.5 px-space-md text-right">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-state-success font-label-sm text-[11px] font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>Active
+                </span>
+</td>
+<td class="py-3.5 px-space-lg text-right">
+<span class="font-label-sm text-label-sm text-primary font-semibold underline underline-offset-2">Manage</span>
+</td>
+</tr>
+<!-- Row 2: Amit Kumar Verma -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-3.5 px-space-lg flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-label-sm font-semibold text-text-secondary">AV</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-medium text-text-primary">Amit Kumar Verma</span>
+<span class="font-caption text-caption text-text-tertiary">STF-0109</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary">Accountant</td>
+<td class="py-3.5 px-space-md font-medium">₹26,000 <span class="font-caption text-caption text-text-tertiary">/ mo</span></td>
+<td class="py-3.5 px-space-md font-medium text-primary">₹26,000</td>
+<td class="py-3.5 px-space-md text-right">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-state-success font-label-sm text-[11px] font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>Active
+                </span>
+</td>
+<td class="py-3.5 px-space-lg text-right text-text-secondary">Manage</td>
+</tr>
+<!-- Row 3: Pooja Mondal -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-3.5 px-space-lg flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-label-sm font-semibold text-text-secondary">PM</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-medium text-text-primary">Pooja Mondal</span>
+<span class="font-caption text-caption text-text-tertiary">STF-0112</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary">Office Assistant</td>
+<td class="py-3.5 px-space-md font-medium">₹14,000 <span class="font-caption text-caption text-text-tertiary">/ mo</span></td>
+<td class="py-3.5 px-space-md font-medium text-primary">₹14,000</td>
+<td class="py-3.5 px-space-md text-right">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-state-success font-label-sm text-[11px] font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>Active
+                </span>
+</td>
+<td class="py-3.5 px-space-lg text-right text-text-secondary">Manage</td>
+</tr>
+<!-- Row 4: Bikash Chandra Roy -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-3.5 px-space-lg flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-label-sm font-semibold text-text-secondary">BR</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-medium text-text-primary">Bikash Chandra Roy</span>
+<span class="font-caption text-caption text-text-tertiary">STF-0082</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary">Kiln Operator</td>
+<td class="py-3.5 px-space-md font-medium">₹12,500 <span class="font-caption text-caption text-text-tertiary">/ mo</span></td>
+<td class="py-3.5 px-space-md font-medium text-primary">₹12,500</td>
+<td class="py-3.5 px-space-md text-right">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-state-success font-label-sm text-[11px] font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>Active
+                </span>
+</td>
+<td class="py-3.5 px-space-lg text-right text-text-secondary">Manage</td>
+</tr>
+<!-- Row 5: Sanjay Soren -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-3.5 px-space-lg flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-label-sm font-semibold text-text-secondary">SS</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-medium text-text-primary">Sanjay Soren</span>
+<span class="font-caption text-caption text-text-tertiary">STF-0091</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary">Material Handler</td>
+<td class="py-3.5 px-space-md font-medium">₹10,000 <span class="font-caption text-caption text-text-tertiary">/ mo</span></td>
+<td class="py-3.5 px-space-md font-medium text-primary">₹10,000</td>
+<td class="py-3.5 px-space-md text-right">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-state-success font-label-sm text-[11px] font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>Active
+                </span>
+</td>
+<td class="py-3.5 px-space-lg text-right text-text-secondary">Manage</td>
+</tr>
+<!-- Row 6: Deepak Mahato -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-3.5 px-space-lg flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-label-sm font-semibold text-text-secondary">DM</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-medium text-text-primary">Deepak Mahato</span>
+<span class="font-caption text-caption text-text-tertiary">STF-0094</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary">Moulding Technician</td>
+<td class="py-3.5 px-space-md font-medium">₹11,000 <span class="font-caption text-caption text-text-tertiary">/ mo</span></td>
+<td class="py-3.5 px-space-md font-medium text-text-secondary">—</td>
+<td class="py-3.5 px-space-md text-right">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-state-success font-label-sm text-[11px] font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>Active
+                </span>
+</td>
+<td class="py-3.5 px-space-lg text-right text-text-secondary">Manage</td>
+</tr>
+<!-- Row 7: Sunil Murmu -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-3.5 px-space-lg flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-label-sm font-semibold text-text-secondary">SM</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-medium text-text-primary">Sunil Murmu</span>
+<span class="font-caption text-caption text-text-tertiary">STF-0098</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary">Loading Crew</td>
+<td class="py-3.5 px-space-md font-medium">₹9,500 <span class="font-caption text-caption text-text-tertiary">/ mo</span></td>
+<td class="py-3.5 px-space-md font-medium text-text-secondary">—</td>
+<td class="py-3.5 px-space-md text-right">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-state-success font-label-sm text-[11px] font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>Active
+                </span>
+</td>
+<td class="py-3.5 px-space-lg text-right text-text-secondary">Manage</td>
+</tr>
+<!-- Row 8: Tarun Biswas -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-3.5 px-space-lg flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-label-sm font-semibold text-text-secondary">TB</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-medium text-text-primary">Tarun Biswas</span>
+<span class="font-caption text-caption text-text-tertiary">STF-0101</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary">Quality Checker</td>
+<td class="py-3.5 px-space-md font-medium">₹13,000 <span class="font-caption text-caption text-text-tertiary">/ mo</span></td>
+<td class="py-3.5 px-space-md font-medium text-text-secondary">—</td>
+<td class="py-3.5 px-space-md text-right">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-state-success font-label-sm text-[11px] font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>Active
+                </span>
+</td>
+<td class="py-3.5 px-space-lg text-right text-text-secondary">Manage</td>
+</tr>
+<!-- Row 9: Subhas Ghosh -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-3.5 px-space-lg flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-label-sm font-semibold text-text-secondary">SG</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-medium text-text-primary">Subhas Ghosh</span>
+<span class="font-caption text-caption text-text-tertiary">STF-0103</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-text-secondary">Dispatch Officer</td>
+<td class="py-3.5 px-space-md font-medium">₹15,000 <span class="font-caption text-caption text-text-tertiary">/ mo</span></td>
+<td class="py-3.5 px-space-md font-medium text-text-secondary">—</td>
+<td class="py-3.5 px-space-md text-right">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-state-success font-label-sm text-[11px] font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>Active
+                </span>
+</td>
+<td class="py-3.5 px-space-lg text-right text-text-secondary">Manage</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Footnote inside workspace base -->
+<div class="py-3 px-space-lg bg-surface-container-low flex items-center gap-2">
+<span class="material-symbols-outlined text-text-tertiary text-[16px]">info</span>
+<p class="font-caption text-caption text-text-tertiary">
+          Reference salary is informational only and does not represent an automatic payable or accrued debt.
+        </p>
+</div>
+</div>
+</div>
+<!-- BACKDROP OVERLAY -->
+<div aria-hidden="true" class="fixed inset-0 bg-black/20 z-40 backdrop-blur-[0.5px] transition-opacity"></div>
+<!-- TRUE FULL-HEIGHT RIGHT-SIDE DRAWER (460px Wide) -->
+<aside aria-labelledby="drawer-staff-title" aria-modal="true" class="fixed top-0 bottom-0 right-0 w-[460px] bg-card-surface z-50 flex flex-col shadow-2xl overflow-hidden" role="dialog">
+<!-- 1. DRAWER HEADER -->
+<div class="p-space-lg bg-card-surface flex flex-col gap-space-md">
+<!-- Top Identity Row -->
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-3">
+<div class="w-11 h-11 rounded-full bg-primary-fixed flex items-center justify-center font-headline-sm text-headline-sm font-semibold text-primary">
+            RS
+          </div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<h2 class="font-headline-md text-headline-md text-text-primary tracking-tight font-semibold" id="drawer-staff-title">Rajesh Sharma</h2>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-state-success font-label-sm text-label-sm font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>Active
+              </span>
+</div>
+<span class="font-label-md text-label-md text-text-secondary">Plant Supervisor</span>
+</div>
+</div>
+<!-- Clean Close Button -->
+<button aria-label="Close drawer" class="w-8 h-8 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Reference Salary Context Banner -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col gap-1.5">
+<div class="flex items-baseline justify-between">
+<span class="font-label-sm text-label-sm text-text-secondary">Reference Salary</span>
+<span class="font-headline-sm text-headline-sm font-semibold text-text-primary">₹22,000 <span class="font-body-sm text-body-sm font-normal text-text-secondary">/ month</span></span>
+</div>
+<div class="flex items-start gap-1.5 pt-1">
+<span class="material-symbols-outlined text-text-tertiary text-[14px] mt-0.5 shrink-0">info</span>
+<p class="font-caption text-caption text-text-tertiary leading-relaxed">
+            Reference salary is informational only and does not represent an automatic payable or accrued debt.
+          </p>
+</div>
+</div>
+</div>
+<!-- 2. DRAWER BODY - STAFF DETAILS (Scrollable Settings Rows) -->
+<div class="flex-1 overflow-y-auto px-space-lg py-space-md flex flex-col gap-space-lg">
+<!-- Section: Staff Details -->
+<div class="flex flex-col">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-caption text-caption uppercase tracking-wider text-text-secondary font-semibold">Staff Details</span>
+
+</div>
+<div class="rounded-xl bg-surface-container-low p-1 flex flex-col gap-1">
+<!-- Row 1: Name -->
+<div class="p-space-md rounded-lg bg-card-surface flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-caption text-caption text-text-tertiary">Name</span>
+<span class="font-body-md text-body-md text-text-primary font-medium">Rajesh Sharma</span>
+</div>
+<button class="px-space-sm py-1 rounded-md text-text-secondary hover:text-text-primary hover:bg-surface-container font-label-sm text-label-sm transition-colors" type="button">
+              Edit
+            </button>
+</div>
+<!-- Row 2: Category -->
+<div class="p-space-md rounded-lg bg-card-surface flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-caption text-caption text-text-tertiary">Category</span>
+<span class="font-body-md text-body-md text-text-primary font-medium">Plant Supervisor</span>
+</div>
+<button class="px-space-sm py-1 rounded-md text-text-secondary hover:text-text-primary hover:bg-surface-container font-label-sm text-label-sm transition-colors" type="button">
+              Change
+            </button>
+</div>
+<!-- Row 3: Reference Salary (Expanded Inline State) -->
+<div class="p-space-md rounded-lg bg-card-surface flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-caption text-caption text-text-tertiary">Reference Salary</span>
+<span class="font-body-md text-body-md text-text-primary font-semibold">₹22,000 / month</span>
+</div>
+<span class="font-label-sm text-label-sm text-primary font-medium">Editing</span>
+</div>
+<!-- Inline expansion box for updating reference salary -->
+<div class="mt-1 p-space-md rounded-xl bg-surface-container flex flex-col gap-space-sm">
+<div class="flex flex-col gap-0.5">
+<label class="font-label-sm text-label-sm font-semibold text-text-primary" for="new-salary-input">Change Reference Salary</label>
+<p class="font-caption text-caption text-text-secondary">Reference salary is informational only.</p>
+</div>
+<!-- Currency Input -->
+<div class="relative flex items-center">
+<div class="absolute left-3 pointer-events-none flex items-center text-text-secondary font-semibold font-body-md text-body-md">
+                  ₹
+                </div>
+<input class="w-full h-10 pl-7 pr-3 rounded-lg bg-card-surface font-body-md text-body-md font-semibold text-text-primary shadow-sm outline-none focus:bg-card-surface" id="new-salary-input" type="text" value="22,000">
+</div>
+<!-- Inline Action Triggers -->
+<div class="flex items-center justify-end gap-space-sm pt-1">
+<button class="px-3 py-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-container-high font-label-sm text-label-sm transition-colors" type="button">
+                  Cancel
+                </button>
+<button class="px-space-md py-1.5 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-medium shadow-sm hover:bg-primary transition-colors" type="button">
+                  Save
+                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Informational Activity Note (Quiet context) -->
+
+</div>
+<!-- 3. DRAWER STATUS SECTION (Fixed Bottom Panel) -->
+<div class="p-space-lg bg-card-surface flex flex-col gap-space-md shadow-lg">
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-caption text-caption uppercase tracking-wider text-text-secondary font-semibold">Staff Status</span>
+<span class="inline-flex items-center gap-1.5 font-label-sm text-label-sm text-state-success font-medium"><span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>Active</span>
+</div>
+<p class="font-caption text-caption text-text-tertiary leading-relaxed">
+          Archiving removes this staff member from active lists while preserving their complete payment history.
+        </p>
+</div>
+<!-- Action button: Quiet bordered secondary style -->
+<div class="flex items-center justify-between gap-space-sm pt-1">
+<button class="w-full h-10 px-space-md rounded-lg bg-surface-container-low text-text-secondary hover:text-error hover:bg-error-container/20 font-label-md text-label-md font-medium transition-colors flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined text-[18px]">archive</span>
+<span class="">Archive staff</span>
+</button>
+</div>
+</div>
+</aside>
+</div></main></div>
+
+</body></html>
