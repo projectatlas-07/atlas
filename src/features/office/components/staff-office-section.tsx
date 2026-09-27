@@ -1,539 +1,466 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { EmptyState, Feedback as OverviewFeedback } from "@/components/ui/feedback";
+import { Input, Select } from "@/components/ui/form-controls";
+import { StatusPill } from "@/components/ui/status-pill";
 import {
-  buildStaffCategoryCreateInput,
-  buildStaffCategoryUpdateInput,
-  buildStaffPaymentInput,
-  buildStaffReferenceSalaryInput,
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableContainer,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/ui/table";
+import { AddStaffDrawer, type AddStaffInput } from "@/features/office/components/add-staff-drawer";
+import { StaffAccountPaymentDrawer } from "@/features/office/components/staff-account-payment-drawer";
+import { StaffCategoriesDrawer } from "@/features/office/components/staff-categories-drawer";
+import { StaffManagementDrawer } from "@/features/office/components/staff-management-drawer";
+import {
   buildStaffWorkerCreateInput,
-  formatStaffMoney,
-  formatStaffPaymentDate,
-  formatStaffReferenceSalary,
-  insertStaffPaymentNewestFirst,
-  splitStaffWorkers,
+  filterStaffOverviewWorkers,
+  formatStaffLastPaid,
+  getStaffInitials,
+  latestStaffPayment,
   STAFF_SECTION_HEADING,
   staffOfficeErrorMessage,
+  sumStaffPaymentsInRange,
+  type StaffWorkerLifecycleFilter,
 } from "@/features/office/staff-office-model";
 import {
-  getStaffPaymentSummary,
-  listStaffPayments,
-  recordStaffPayment,
-} from "@/features/staff/services/staff-payment-service";
+  staffCategoriesQueryKey,
+  staffPaymentHistoryQueryKey,
+  staffWorkersQueryKey,
+} from "@/features/office/staff-office-query-keys";
+import { listStaffPayments } from "@/features/staff/services/staff-payment-service";
 import {
-  archiveStaffWorker,
-  createStaffCategory,
   createStaffWorker,
-  deleteStaffCategory,
-  deleteStaffWorker,
   listStaffCategories,
   listStaffWorkers,
-  restoreStaffWorker,
-  updateStaffCategory,
-  updateStaffReferenceSalary,
 } from "@/features/staff/services/staff-worker-service";
 import type {
   StaffCategory,
-  StaffPayment,
-  StaffPaymentSummary,
   StaffWorker,
 } from "@/features/staff/types";
+import {
+  resolveWageEarningsDateRange,
+  type WageEarningsDatePreset,
+} from "@/features/wages/wage-earnings-date-range";
+import { formatDateOnly, formatIndianCurrency, formatIndianNumber } from "@/lib/formatting";
 import { getLocalDate } from "@/lib/local-date";
+import {
+  resolveBooleanStatusPresentation,
+  STAFF_WORKER_LIFECYCLE_STATUS,
+} from "@/lib/statuses";
+import { ATLAS_UI_STRINGS } from "@/lib/strings";
 
-const categoriesKey = (factoryId: string) => ["office-staff-categories", factoryId] as const;
-const workersKey = (factoryId: string) => ["office-staff-workers", factoryId] as const;
-const paymentSummaryKey = (factoryId: string, staffWorkerId: string) =>
-  ["office-staff-payment-summary", factoryId, staffWorkerId] as const;
-const paymentHistoryKey = (factoryId: string, staffWorkerId: string) =>
-  ["office-staff-payment-history", factoryId, staffWorkerId] as const;
-const inputClass = "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950";
-const primaryButton = "h-10 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50";
-const secondaryButton = "h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
+const STAFF_RANGE_PRESETS: ReadonlyArray<{
+  value: WageEarningsDatePreset;
+  label: string;
+}> = [
+  { value: "this_week", label: "This week" },
+  { value: "last_week", label: "Last week" },
+  { value: "this_month", label: "This month" },
+  { value: "custom", label: "Custom" },
+];
 
 export function StaffOfficeSection({ factoryId }: Readonly<{ factoryId: string }>) {
+  const queryClient = useQueryClient();
   const categoriesQuery = useQuery({
-    queryKey: categoriesKey(factoryId),
+    queryKey: staffCategoriesQueryKey(factoryId),
     queryFn: () => listStaffCategories(factoryId),
   });
   const workersQuery = useQuery({
-    queryKey: workersKey(factoryId),
+    queryKey: staffWorkersQueryKey(factoryId),
     queryFn: () => listStaffWorkers(factoryId),
   });
+  const [openSetup, setOpenSetup] = useState<"categories" | "add" | "">("");
+  const [accountWorkerId, setAccountWorkerId] = useState<string | null>(null);
+  const [managementWorkerId, setManagementWorkerId] = useState<string | null>(null);
+  const workers = workersQuery.data ?? [];
+  const categories = categoriesQuery.data ?? [];
+  const accountWorker = workers.find((worker) => worker.id === accountWorkerId);
+  const managementWorker = workers.find((worker) => worker.id === managementWorkerId);
+
+  function toggleSetup(value: "categories" | "add") {
+    setAccountWorkerId(null);
+    setManagementWorkerId(null);
+    setOpenSetup((current) => current === value ? "" : value);
+  }
+
+  function openAccount(workerId: string) {
+    setOpenSetup("");
+    setManagementWorkerId(null);
+    setAccountWorkerId(workerId);
+  }
+
+  function openManagement(workerId: string) {
+    setOpenSetup("");
+    setAccountWorkerId(null);
+    setManagementWorkerId(workerId);
+  }
+
+  async function createStaff(input: AddStaffInput): Promise<string | null> {
+    const createInput = buildStaffWorkerCreateInput({ factoryId, ...input });
+    if (!createInput) return "Enter a name, category, and positive reference salary.";
+
+    try {
+      const createdWorker = await createStaffWorker(createInput);
+      queryClient.setQueryData<StaffWorker[]>(
+        staffWorkersQueryKey(factoryId),
+        (current = []) => [...current.filter((worker) => worker.id !== createdWorker.id), createdWorker]
+          .sort((left, right) => left.name.localeCompare(right.name, "en-IN") || left.id.localeCompare(right.id)),
+      );
+      await queryClient.invalidateQueries({ queryKey: staffWorkersQueryKey(factoryId) });
+      return null;
+    } catch (failure) {
+      return staffOfficeErrorMessage(failure, "Could not add the Staff member.");
+    }
+  }
 
   return (
-    <section aria-labelledby="staff-office-heading" className="mt-10 border-t-4 border-indigo-200 pt-8">
-      <div className="mb-6">
-        <p className="text-sm font-semibold uppercase tracking-wider text-indigo-700">{STAFF_SECTION_HEADING}</p>
-        <h2 id="staff-office-heading" className="mt-1 text-2xl font-bold">Staff and payments</h2>
-        <p className="mt-2 max-w-3xl text-sm text-slate-600">
-          Keep an individual reference salary for context, then record the actual amount paid whenever payment occurs.
-        </p>
-      </div>
+    <section aria-labelledby="staff-office-heading">
+      <StaffOverview
+        factoryId={factoryId}
+        workers={workers}
+        categories={categories}
+        workersLoading={workersQuery.isLoading}
+        workersError={workersQuery.error}
+        categoriesError={categoriesQuery.error}
+        selectedWorkerId={accountWorkerId ?? managementWorkerId}
+        onManageCategories={() => toggleSetup("categories")}
+        onAddStaff={() => toggleSetup("add")}
+        onOpenAccount={openAccount}
+        onManageWorker={openManagement}
+      />
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <CategoryManagement
+      {openSetup === "categories" && (
+        <StaffCategoriesDrawer
           factoryId={factoryId}
-          categories={categoriesQuery.data ?? []}
+          categories={categories}
+          workers={workers}
           isLoading={categoriesQuery.isLoading}
           loadError={categoriesQuery.error}
+          workersLoading={workersQuery.isLoading}
+          workersError={workersQuery.error}
+          onClose={() => setOpenSetup("")}
         />
-        <WorkerCreate
+      )}
+      {openSetup === "add" && (
+        <AddStaffDrawer
+          categories={categories}
+          categoriesLoading={categoriesQuery.isLoading}
+          categoriesError={categoriesQuery.error}
+          onCreate={createStaff}
+          onClose={() => setOpenSetup("")}
+        />
+      )}
+      {managementWorker && (
+        <StaffManagementDrawer
           factoryId={factoryId}
-          categories={categoriesQuery.data ?? []}
-          categoriesUnavailable={categoriesQuery.isLoading || Boolean(categoriesQuery.error)}
+          worker={managementWorker}
+          category={categories.find((category) => category.id === managementWorker.staffCategoryId) ?? null}
+          onClose={() => setManagementWorkerId(null)}
         />
-      </div>
-
-      <WorkerManagement
-        factoryId={factoryId}
-        workers={workersQuery.data ?? []}
-        categories={categoriesQuery.data ?? []}
-        isLoading={workersQuery.isLoading}
-        loadError={workersQuery.error}
-      />
+      )}
+      {accountWorker && (
+        <StaffAccountPaymentDrawer
+          factoryId={factoryId}
+          worker={accountWorker}
+          categoryName={categories.find((category) => category.id === accountWorker.staffCategoryId)?.name ?? null}
+          onClose={() => setAccountWorkerId(null)}
+        />
+      )}
     </section>
   );
 }
 
-function CategoryManagement({ factoryId, categories, isLoading, loadError }: Readonly<{
-  factoryId: string;
-  categories: readonly StaffCategory[];
-  isLoading: boolean;
-  loadError: Error | null;
-}>) {
-  const queryClient = useQueryClient();
-  const [name, setName] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [editingCategoryId, setEditingCategoryId] = useState("");
-  const [editName, setEditName] = useState("");
-  const [confirmingDeleteId, setConfirmingDeleteId] = useState("");
-  const [categoryAction, setCategoryAction] = useState<"edit" | "delete" | "">("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const input = buildStaffCategoryCreateInput(factoryId, name);
-    if (!input) return setError("Category name is required.");
-    setIsSaving(true); setError(""); setSuccess("");
-    try {
-      await createStaffCategory(input);
-      setName(""); setSuccess("Staff category added.");
-      await queryClient.invalidateQueries({ queryKey: categoriesKey(factoryId) });
-    } catch (failure) {
-      setError(staffOfficeErrorMessage(failure, "Could not add Staff category."));
-    } finally { setIsSaving(false); }
-  }
-
-  function startEdit(category: StaffCategory) {
-    setEditingCategoryId(category.id);
-    setEditName(category.name);
-    setConfirmingDeleteId("");
-    setError(""); setSuccess("");
-  }
-
-  async function saveEdit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const input = buildStaffCategoryUpdateInput(
-      factoryId,
-      editingCategoryId,
-      editName,
-    );
-    if (!input) return setError("Category name is required.");
-    setCategoryAction("edit"); setError(""); setSuccess("");
-    try {
-      const updatedCategory = await updateStaffCategory(input);
-      queryClient.setQueryData<StaffCategory[]>(
-        categoriesKey(factoryId),
-        (current = []) => current.map((category) =>
-          category.id === updatedCategory.id ? updatedCategory : category),
-      );
-      setEditingCategoryId(""); setEditName("");
-      setSuccess("Staff category renamed.");
-    } catch (failure) {
-      setError(staffOfficeErrorMessage(failure, "Could not rename the Staff category."));
-    } finally { setCategoryAction(""); }
-  }
-
-  async function removeCategory(category: StaffCategory) {
-    setCategoryAction("delete"); setError(""); setSuccess("");
-    try {
-      await deleteStaffCategory({
-        factoryId,
-        staffCategoryId: category.id,
-      });
-      queryClient.setQueryData<StaffCategory[]>(
-        categoriesKey(factoryId),
-        (current = []) => current.filter((item) => item.id !== category.id),
-      );
-      setConfirmingDeleteId("");
-      setSuccess("Staff category deleted.");
-    } catch (failure) {
-      setError(staffOfficeErrorMessage(failure, "Could not delete the Staff category."));
-      setConfirmingDeleteId("");
-    } finally { setCategoryAction(""); }
-  }
-
-  return (
-    <section aria-labelledby="staff-categories-heading" className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 id="staff-categories-heading" className="text-lg font-bold">Staff categories</h3>
-      <p className="mt-1 text-sm text-slate-600">Categories organize Staff by role. They do not set or calculate salary.</p>
-      <form onSubmit={submit} className="mt-5 flex gap-2">
-        <label className="min-w-0 flex-1 text-sm font-medium text-slate-700">
-          <span className="sr-only">Category name</span>
-          <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Category name" className={inputClass} />
-        </label>
-        <button disabled={isSaving || Boolean(categoryAction)} className={primaryButton}>{isSaving ? "Adding..." : "Add category"}</button>
-      </form>
-      <Feedback error={error} success={success} />
-      {isLoading && <p className="mt-5 text-sm text-slate-500">Loading Staff categories...</p>}
-      {loadError && <p role="alert" className="mt-5 text-sm font-medium text-red-700">{staffOfficeErrorMessage(loadError, "Could not load Staff categories.")}</p>}
-      {!isLoading && !loadError && categories.length === 0 && <p className="mt-5 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">No Staff categories yet. Add the first one above.</p>}
-      <ul className="mt-5 divide-y divide-slate-100 rounded-lg border border-slate-200">
-        {categories.map((category) => (
-          <li key={category.id} className="px-4 py-3">
-            {editingCategoryId === category.id ? (
-              <form onSubmit={saveEdit} className="flex items-end gap-2">
-                <Field label="Category name" compact>
-                  <input autoFocus value={editName} onChange={(event) => setEditName(event.target.value)} className={inputClass} />
-                </Field>
-                <button disabled={isSaving || Boolean(categoryAction)} className={secondaryButton}>{categoryAction === "edit" ? "Saving..." : "Save"}</button>
-                <button type="button" onClick={() => { setEditingCategoryId(""); setEditName(""); }} disabled={isSaving || Boolean(categoryAction)} className={secondaryButton}>Cancel</button>
-              </form>
-            ) : (
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{category.name}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => startEdit(category)} disabled={isSaving || Boolean(categoryAction)} className={secondaryButton}>Edit</button>
-                  {confirmingDeleteId === category.id ? (
-                    <>
-                      <button type="button" onClick={() => setConfirmingDeleteId("")} disabled={isSaving || Boolean(categoryAction)} className={secondaryButton}>Cancel</button>
-                      <button type="button" onClick={() => removeCategory(category)} disabled={isSaving || Boolean(categoryAction)} className="h-9 rounded-lg bg-red-700 px-3 text-sm font-semibold text-white disabled:opacity-50">{categoryAction === "delete" ? "Deleting..." : "Confirm delete"}</button>
-                    </>
-                  ) : (
-                    <button type="button" onClick={() => { setConfirmingDeleteId(category.id); setEditingCategoryId(""); setError(""); setSuccess(""); }} disabled={isSaving || Boolean(categoryAction)} className="h-9 rounded-lg border border-red-300 bg-white px-3 text-sm font-semibold text-red-700 disabled:opacity-50">Delete</button>
-                  )}
-                </div>
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-function WorkerCreate({ factoryId, categories, categoriesUnavailable }: Readonly<{
-  factoryId: string;
-  categories: readonly StaffCategory[];
-  categoriesUnavailable: boolean;
-}>) {
-  const queryClient = useQueryClient();
-  const [name, setName] = useState("");
-  const [staffCategoryId, setStaffCategoryId] = useState("");
-  const [referenceSalary, setReferenceSalary] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const input = buildStaffWorkerCreateInput({
-      factoryId, name, staffCategoryId, referenceSalary,
-    });
-    if (!input) return setError("Enter a name, category, and positive reference salary.");
-    setIsSaving(true); setError(""); setSuccess("");
-    try {
-      await createStaffWorker(input);
-      setName(""); setStaffCategoryId(""); setReferenceSalary("");
-      setSuccess("Staff member added.");
-      await queryClient.invalidateQueries({ queryKey: workersKey(factoryId) });
-    } catch (failure) {
-      setError(staffOfficeErrorMessage(failure, "Could not add the Staff member."));
-    } finally { setIsSaving(false); }
-  }
-
-  return (
-    <section aria-labelledby="add-staff-heading" className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 id="add-staff-heading" className="text-lg font-bold">Add Staff member</h3>
-      <p className="mt-1 text-sm text-slate-600">Reference salary is informational only and never limits payments.</p>
-      <form onSubmit={submit} className="mt-5 grid gap-4 sm:grid-cols-2">
-        <Field label="Name"><input value={name} onChange={(event) => setName(event.target.value)} className={inputClass} /></Field>
-        <Field label="Category">
-          <select value={staffCategoryId} onChange={(event) => setStaffCategoryId(event.target.value)} disabled={categoriesUnavailable || categories.length === 0} className={inputClass}>
-            <option value="">Select category</option>
-            {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-          </select>
-        </Field>
-        <Field label="Reference salary">
-          <input type="number" min="0.01" step="0.01" value={referenceSalary} onChange={(event) => setReferenceSalary(event.target.value)} className={inputClass} />
-        </Field>
-        <div className="flex items-end"><button disabled={isSaving || categories.length === 0} className={primaryButton}>{isSaving ? "Adding..." : "Add Staff member"}</button></div>
-      </form>
-      {!categoriesUnavailable && categories.length === 0 && <p className="mt-4 text-sm text-amber-700">Add a Staff category first.</p>}
-      <Feedback error={error} success={success} />
-    </section>
-  );
-}
-
-function WorkerManagement({ factoryId, workers, categories, isLoading, loadError }: Readonly<{
+function StaffOverview({
+  factoryId,
+  workers,
+  categories,
+  workersLoading,
+  workersError,
+  categoriesError,
+  selectedWorkerId,
+  onManageCategories,
+  onAddStaff,
+  onOpenAccount,
+  onManageWorker,
+}: Readonly<{
   factoryId: string;
   workers: readonly StaffWorker[];
   categories: readonly StaffCategory[];
-  isLoading: boolean;
-  loadError: Error | null;
+  workersLoading: boolean;
+  workersError: Error | null;
+  categoriesError: Error | null;
+  selectedWorkerId: string | null;
+  onManageCategories: () => void;
+  onAddStaff: () => void;
+  onOpenAccount: (workerId: string) => void;
+  onManageWorker: (workerId: string) => void;
 }>) {
-  const { active, archived } = splitStaffWorkers(workers);
+  const [localToday] = useState(getLocalDate);
+  const [rangePreset, setRangePreset] = useState<WageEarningsDatePreset>("this_month");
+  const [customFrom, setCustomFrom] = useState(localToday);
+  const [customTo, setCustomTo] = useState(localToday);
+  const [lifecycleFilter, setLifecycleFilter] = useState<StaffWorkerLifecycleFilter>("all");
+  const [search, setSearch] = useState("");
+  const paymentRange = resolveWageEarningsDateRange(
+    rangePreset,
+    localToday,
+    customFrom,
+    customTo,
+  );
+  const paymentQueries = useQueries({
+    queries: workers.map((worker) => ({
+      queryKey: staffPaymentHistoryQueryKey(factoryId, worker.id),
+      queryFn: () => listStaffPayments({ factoryId, staffWorkerId: worker.id }),
+      enabled: !workersLoading && !workersError,
+      refetchInterval: 30_000,
+    })),
+  });
+  const categoryNames = new Map(categories.map((category) => [category.id, category.name]));
+  const paymentStateByWorker = new Map(
+    workers.map((worker, index) => [worker.id, paymentQueries[index]]),
+  );
+  const visibleWorkers = filterStaffOverviewWorkers({
+    workers,
+    categoryNames,
+    lifecycle: lifecycleFilter,
+    search,
+  });
+  const activeCount = workers.filter((worker) => worker.isActive).length;
+  const archivedCount = workers.length - activeCount;
+  const paymentsLoading = paymentQueries.some((query) => query.isLoading);
+  const paymentsError = paymentQueries.some((query) => Boolean(query.error));
+  const periodTotal = paymentRange && !paymentsLoading && !paymentsError
+    ? paymentQueries.reduce(
+      (total, query) => total + sumStaffPaymentsInRange(query.data ?? [], paymentRange),
+      0,
+    )
+    : null;
+  const periodLabel = STAFF_RANGE_PRESETS.find((option) => option.value === rangePreset)?.label
+    ?? "Selected period";
+
+  function paymentLabel(workerId: string): string {
+    const query = paymentStateByWorker.get(workerId);
+    if (!query || query.isLoading) return ATLAS_UI_STRINGS.feedback.loading;
+    if (query.error || !paymentRange) return ATLAS_UI_STRINGS.feedback.unavailable;
+    return formatIndianCurrency(sumStaffPaymentsInRange(query.data ?? [], paymentRange));
+  }
+
+  function lastPaidLabel(workerId: string): string {
+    const query = paymentStateByWorker.get(workerId);
+    if (!query || query.isLoading) return ATLAS_UI_STRINGS.feedback.loading;
+    if (query.error) return ATLAS_UI_STRINGS.feedback.unavailable;
+    return formatStaffLastPaid(latestStaffPayment(query.data ?? [])?.paymentDate ?? null, localToday);
+  }
 
   return (
-    <>
-      <section aria-labelledby="active-staff-heading" className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 id="active-staff-heading" className="text-lg font-bold">Active Staff</h3>
-        <p className="mt-1 text-sm text-slate-600">Record payments or archive people who are no longer active.</p>
-        {isLoading && <p className="mt-5 text-sm text-slate-500">Loading Staff members...</p>}
-        {loadError && <p role="alert" className="mt-5 text-sm font-medium text-red-700">{staffOfficeErrorMessage(loadError, "Could not load Staff members.")}</p>}
-        {!isLoading && !loadError && workers.length === 0 && <p className="mt-5 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">No Staff members yet. Use the form above to add one.</p>}
-        {!isLoading && !loadError && workers.length > 0 && active.length === 0 && <p className="mt-5 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">No active Staff members.</p>}
-        <div className="mt-5 grid gap-4">
-          {active.map((worker) => (
-            <WorkerCard key={worker.id} factoryId={factoryId} worker={worker}
-              category={categories.find((category) => category.id === worker.staffCategoryId)} />
-          ))}
-        </div>
-      </section>
-
-      <section aria-labelledby="archived-staff-heading" className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-6">
-        <h3 id="archived-staff-heading" className="text-lg font-bold">Archived Staff</h3>
-        <p className="mt-1 text-sm text-slate-600">Past Staff remain available with their complete read-only payment history.</p>
-        {!isLoading && !loadError && archived.length === 0 && <p className="mt-5 text-sm text-slate-500">No archived Staff members.</p>}
-        <div className="mt-5 grid gap-4">
-          {archived.map((worker) => (
-            <WorkerCard key={worker.id} factoryId={factoryId} worker={worker}
-              category={categories.find((category) => category.id === worker.staffCategoryId)} />
-          ))}
-        </div>
-      </section>
-    </>
-  );
-}
-
-function WorkerCard({ factoryId, worker, category }: Readonly<{
-  factoryId: string;
-  worker: StaffWorker;
-  category: StaffCategory | undefined;
-}>) {
-  const queryClient = useQueryClient();
-  const summaryKey = paymentSummaryKey(factoryId, worker.id);
-  const historyKey = paymentHistoryKey(factoryId, worker.id);
-  const summaryQuery = useQuery({
-    queryKey: summaryKey,
-    queryFn: () => getStaffPaymentSummary({ factoryId, staffWorkerId: worker.id }),
-  });
-  const historyQuery = useQuery({
-    queryKey: historyKey,
-    queryFn: () => listStaffPayments({ factoryId, staffWorkerId: worker.id }),
-  });
-  const [referenceSalary, setReferenceSalary] = useState(
-    worker.referenceSalary.toString(),
-  );
-  const [paymentDate, setPaymentDate] = useState(getLocalDate);
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentNote, setPaymentNote] = useState("");
-  const [savingAction, setSavingAction] = useState<"reference" | "payment" | "archive" | "restore" | "delete" | "">("");
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  async function saveReferenceSalary(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const input = buildStaffReferenceSalaryInput({
-      factoryId,
-      staffWorkerId: worker.id,
-      referenceSalary,
-    });
-    if (!input) return setError("Enter a positive reference salary.");
-    setSavingAction("reference"); setError(""); setSuccess("");
-    try {
-      const updatedWorker = await updateStaffReferenceSalary(input);
-      queryClient.setQueryData<StaffWorker[]>(workersKey(factoryId), (current = []) =>
-        current.map((item) => item.id === updatedWorker.id ? updatedWorker : item));
-      setReferenceSalary(updatedWorker.referenceSalary.toString());
-      setSuccess("Reference salary updated.");
-    } catch (failure) {
-      setError(staffOfficeErrorMessage(failure, "Could not update the reference salary."));
-    } finally { setSavingAction(""); }
-  }
-
-  async function submitPayment(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const input = buildStaffPaymentInput({
-      factoryId,
-      staffWorkerId: worker.id,
-      paymentDate,
-      amount: paymentAmount,
-      note: paymentNote,
-    });
-    if (!input) return setError("Enter a positive amount and valid payment date.");
-    setSavingAction("payment"); setError(""); setSuccess("");
-    try {
-      const recorded = await recordStaffPayment(input);
-      queryClient.setQueryData<StaffPaymentSummary>(summaryKey, {
-        totalPaid: recorded.totalPaid,
-      });
-      queryClient.setQueryData<StaffPayment[]>(historyKey, (current = []) =>
-        insertStaffPaymentNewestFirst(current, recorded));
-      setPaymentAmount(""); setPaymentNote("");
-      setSuccess("Payment recorded.");
-    } catch (failure) {
-      setError(staffOfficeErrorMessage(failure, "Could not record the payment."));
-    } finally { setSavingAction(""); }
-  }
-
-  function cacheWorker(updatedWorker: StaffWorker) {
-    queryClient.setQueryData<StaffWorker[]>(workersKey(factoryId), (current = []) =>
-      current.map((item) => item.id === updatedWorker.id ? updatedWorker : item));
-  }
-
-  async function archiveWorker() {
-    setSavingAction("archive"); setError(""); setSuccess(""); setConfirmingDelete(false);
-    try {
-      cacheWorker(await archiveStaffWorker({ factoryId, staffWorkerId: worker.id }));
-    } catch (failure) {
-      setError(staffOfficeErrorMessage(failure, "Could not archive the Staff member."));
-    } finally { setSavingAction(""); }
-  }
-
-  async function restoreWorker() {
-    setSavingAction("restore"); setError(""); setSuccess("");
-    try {
-      cacheWorker(await restoreStaffWorker({ factoryId, staffWorkerId: worker.id }));
-    } catch (failure) {
-      setError(staffOfficeErrorMessage(failure, "Could not restore the Staff member."));
-    } finally { setSavingAction(""); }
-  }
-
-  async function deleteWorker() {
-    setSavingAction("delete"); setError(""); setSuccess("");
-    try {
-      await deleteStaffWorker({ factoryId, staffWorkerId: worker.id });
-      queryClient.setQueryData<StaffWorker[]>(workersKey(factoryId), (current = []) =>
-        current.filter((item) => item.id !== worker.id));
-    } catch (failure) {
-      setError(staffOfficeErrorMessage(failure, "Could not delete the Staff member."));
-      setConfirmingDelete(false);
-    } finally { setSavingAction(""); }
-  }
-
-  const hasPaymentHistory = (summaryQuery.data?.totalPaid ?? 0) > 0;
-  const deleteUnavailable = summaryQuery.isLoading || Boolean(summaryQuery.error) || hasPaymentHistory;
-
-  return (
-    <article className="rounded-lg border border-slate-200 p-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h4 className="font-semibold">{worker.name}</h4>
-            {!worker.isActive && <Status active={false} />}
-          </div>
-          <p className="mt-1 text-sm text-slate-600">{category?.name ?? "Unknown category"}</p>
-        </div>
-        <div className="flex flex-col items-stretch gap-3 sm:items-end">
-          <div className="grid grid-cols-2 gap-4 sm:min-w-80">
-            <SummaryValue label="Reference salary" value={formatStaffReferenceSalary(worker.referenceSalary)} />
-            <SummaryValue
-              label="Total paid"
-              value={summaryQuery.isLoading ? "Loading..." : summaryQuery.data ? formatStaffMoney(summaryQuery.data.totalPaid) : "Unavailable"}
-            />
-          </div>
-          {worker.isActive ? (
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <button type="button" onClick={archiveWorker} disabled={Boolean(savingAction)} className={secondaryButton}>{savingAction === "archive" ? "Archiving..." : "Archive"}</button>
-              {!confirmingDelete ? (
-                <button type="button" onClick={() => setConfirmingDelete(true)} disabled={Boolean(savingAction) || deleteUnavailable} className="h-9 rounded-lg border border-red-300 bg-white px-3 text-sm font-semibold text-red-700 disabled:cursor-not-allowed disabled:opacity-50">Delete</button>
-              ) : (
-                <>
-                  <button type="button" onClick={() => setConfirmingDelete(false)} disabled={Boolean(savingAction)} className={secondaryButton}>Cancel</button>
-                  <button type="button" onClick={deleteWorker} disabled={Boolean(savingAction)} className="h-9 rounded-lg bg-red-700 px-3 text-sm font-semibold text-white disabled:opacity-50">{savingAction === "delete" ? "Deleting..." : "Confirm delete"}</button>
-                </>
-              )}
-              {hasPaymentHistory && <span className="w-full text-right text-xs text-slate-500">Payment history exists; archive instead.</span>}
+    <section aria-labelledby="staff-office-heading">
+      <header className="border-b border-atlas-border pb-atlas-5">
+        <div className="flex flex-col gap-atlas-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-atlas-xs font-atlas-semibold uppercase tracking-atlas-wide text-atlas-text-muted">
+              Workforce / Staff
+            </p>
+            <div className="mt-atlas-1 flex flex-col gap-atlas-2 sm:flex-row sm:items-center">
+              <h2 id="staff-office-heading" className="text-atlas-2xl font-atlas-semibold text-atlas-text">
+                {STAFF_SECTION_HEADING}
+              </h2>
+              <div className="w-full sm:w-44">
+                <Select
+                  aria-label="Payment period"
+                  value={rangePreset}
+                  onChange={(event) => setRangePreset(event.target.value as WageEarningsDatePreset)}
+                >
+                  {STAFF_RANGE_PRESETS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </Select>
+              </div>
             </div>
-          ) : (
-            <button type="button" onClick={restoreWorker} disabled={Boolean(savingAction)} className={secondaryButton}>{savingAction === "restore" ? "Restoring..." : "Restore"}</button>
-          )}
+            <p className="mt-atlas-2 text-atlas-sm text-atlas-text-muted">
+              {formatIndianNumber(activeCount)} active staff · {paymentsLoading
+                ? ATLAS_UI_STRINGS.feedback.loading
+                : paymentsError || periodTotal === null
+                  ? ATLAS_UI_STRINGS.feedback.unavailable
+                  : formatIndianCurrency(periodTotal)} paid {periodLabel.toLocaleLowerCase("en-IN")} · {formatIndianNumber(archivedCount)} archived
+            </p>
+          </div>
+          <div className="flex flex-col gap-atlas-2 sm:flex-row">
+            <Button variant="secondary" onClick={onManageCategories}>Manage categories</Button>
+            <Button variant="secondary" onClick={onAddStaff}>Add staff</Button>
+          </div>
+        </div>
+
+        {rangePreset === "custom" && (
+          <div className="mt-atlas-4 grid max-w-xl gap-atlas-3 sm:grid-cols-2">
+            <label className="text-atlas-sm font-atlas-medium text-atlas-text-muted">
+              <span className="mb-atlas-1 block">From</span>
+              <Input type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} />
+            </label>
+            <label className="text-atlas-sm font-atlas-medium text-atlas-text-muted">
+              <span className="mb-atlas-1 block">To</span>
+              <Input type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} />
+            </label>
+          </div>
+        )}
+        {rangePreset === "custom" && !paymentRange && (
+          <div className="mt-atlas-3"><OverviewFeedback role="alert" tone="danger">Choose a valid inclusive date range.</OverviewFeedback></div>
+        )}
+        {paymentRange && (
+          <p className="mt-atlas-3 text-atlas-xs text-atlas-text-subtle">
+            {formatDateOnly(paymentRange.fromDate)} — {formatDateOnly(paymentRange.toDate)}, inclusive. Paid values use recorded Staff payment ledger entries only.
+          </p>
+        )}
+      </header>
+
+      <div className="mt-atlas-5 flex flex-col gap-atlas-3 sm:flex-row sm:items-center sm:justify-between">
+        <div aria-label="Filter Staff members" className="flex gap-atlas-2 overflow-x-auto pb-atlas-1">
+          {([
+            ["all", `All ${formatIndianNumber(workers.length)}`],
+            ["active", `Active ${formatIndianNumber(activeCount)}`],
+            ["archived", `Archived ${formatIndianNumber(archivedCount)}`],
+          ] as const).map(([value, label]) => (
+            <Button
+              key={value}
+              variant={lifecycleFilter === value ? "primary" : "ghost"}
+              aria-pressed={lifecycleFilter === value}
+              onClick={() => setLifecycleFilter(value)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+        <div className="w-full sm:max-w-xs">
+          <Input
+            type="search"
+            aria-label="Search staff"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search staff or category"
+            autoComplete="off"
+          />
         </div>
       </div>
-      {summaryQuery.error && <p role="alert" className="mt-3 text-sm font-medium text-red-700">{staffOfficeErrorMessage(summaryQuery.error, "Could not load Total Paid.")}</p>}
 
-      <details className="mt-4 rounded-lg border border-slate-200 px-4 py-3">
-        <summary className="cursor-pointer text-sm font-semibold">Payments</summary>
-        <div className={`mt-4 grid gap-5 ${worker.isActive ? "lg:grid-cols-2" : ""}`}>
-          {worker.isActive && <div className="space-y-5">
-            <form onSubmit={saveReferenceSalary} className="rounded-lg bg-slate-50 p-4">
-              <h5 className="font-semibold">Edit reference salary</h5>
-              <p className="mt-1 text-xs text-slate-600">Informational only. Changing it does not affect Total Paid.</p>
-              <div className="mt-3 flex items-end gap-2">
-                <Field label="Reference salary" compact>
-                  <input type="number" min="0.01" step="0.01" value={referenceSalary} onChange={(event) => setReferenceSalary(event.target.value)} className={inputClass} />
-                </Field>
-                <button disabled={Boolean(savingAction)} className={secondaryButton}>{savingAction === "reference" ? "Saving..." : "Save"}</button>
+      <div className="mt-atlas-4 space-y-atlas-3">
+        {workersError && <OverviewFeedback role="alert" tone="danger">Could not load Staff members.</OverviewFeedback>}
+        {categoriesError && <OverviewFeedback role="alert" tone="danger">Could not load Staff categories.</OverviewFeedback>}
+        {paymentsError && <OverviewFeedback role="alert" tone="danger">Could not load one or more Staff payment histories.</OverviewFeedback>}
+      </div>
+
+      {workersLoading ? (
+        <div className="mt-atlas-4"><OverviewFeedback role="status" tone="neutral">Loading Staff members...</OverviewFeedback></div>
+      ) : workersError ? null : visibleWorkers.length === 0 ? (
+        <EmptyState
+          title={workers.length === 0 ? "No Staff members yet" : "No Staff members match these filters"}
+          description={workers.length === 0 ? "Use Add staff to create the first Staff member." : "Clear the search or choose another lifecycle filter."}
+        />
+      ) : (
+        <>
+          <div className="mt-atlas-4 hidden md:block">
+            <TableContainer>
+              <Table wide>
+                <TableCaption visuallyHidden>Staff overview for {periodLabel}</TableCaption>
+                <TableHeader>
+                  <TableRow>
+                    <TableHeaderCell>Staff member</TableHeaderCell>
+                    <TableHeaderCell>Category</TableHeaderCell>
+                    <TableHeaderCell numeric>Reference salary</TableHeaderCell>
+                    <TableHeaderCell numeric>Paid ({periodLabel})</TableHeaderCell>
+                    <TableHeaderCell>Last paid</TableHeaderCell>
+                    <TableHeaderCell>Action</TableHeaderCell>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visibleWorkers.map((worker) => {
+                    const status = resolveBooleanStatusPresentation(STAFF_WORKER_LIFECYCLE_STATUS, worker.isActive);
+                    return (
+                      <TableRow key={worker.id} hoverable selected={selectedWorkerId === worker.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-atlas-2">
+                            <span className="flex h-atlas-8 w-atlas-8 shrink-0 items-center justify-center rounded-atlas-pill bg-atlas-primary-surface text-atlas-xs font-atlas-semibold text-atlas-primary">
+                              {getStaffInitials(worker.name)}
+                            </span>
+                            <div className="flex flex-wrap items-center gap-atlas-2">
+                              <span className="font-atlas-semibold text-atlas-text">{worker.name}</span>
+                              {!worker.isActive && <StatusPill label={status.label} tone={status.tone} />}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell><span className="text-atlas-text-muted">{categoryNames.get(worker.staffCategoryId) ?? "Unknown category"}</span></TableCell>
+                        <TableCell numeric>
+                          <span className="font-atlas-medium text-atlas-text-muted">{formatIndianCurrency(worker.referenceSalary)}</span>
+                          <span className="ml-atlas-1 text-atlas-xs text-atlas-text-subtle">informational</span>
+                        </TableCell>
+                        <TableCell numeric><span className="font-atlas-semibold text-atlas-text">{paymentLabel(worker.id)}</span></TableCell>
+                        <TableCell><span className="text-atlas-sm text-atlas-text-muted">{lastPaidLabel(worker.id)}</span></TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-atlas-2">
+                            <Button onClick={() => onOpenAccount(worker.id)}>Account &amp; payment</Button>
+                            <Button variant="ghost" onClick={() => onManageWorker(worker.id)}>Manage</Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              <div className="flex flex-col gap-atlas-1 border-t border-atlas-border bg-atlas-surface-muted px-atlas-3 py-atlas-3 text-atlas-xs text-atlas-text-subtle sm:flex-row sm:items-center sm:justify-between">
+                <p>Showing {formatIndianNumber(visibleWorkers.length)} of {formatIndianNumber(workers.length)} Staff members</p>
+                <p>Reference salary is informational only; it does not create accrued salary or payable debt.</p>
               </div>
-            </form>
+            </TableContainer>
+          </div>
 
-            <form onSubmit={submitPayment} className="rounded-lg bg-indigo-50 p-4">
-              <h5 className="font-semibold text-indigo-950">Record payment</h5>
-              <p className="mt-1 text-xs text-indigo-800">Record the actual amount received. Reference salary does not limit it.</p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <Field label="Payment date"><input type="date" max={getLocalDate()} value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} className={inputClass} /></Field>
-                <Field label="Amount received"><input type="number" min="0.01" step="0.01" value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} className={inputClass} /></Field>
-                <div className="sm:col-span-2"><Field label="Note (optional)"><input value={paymentNote} onChange={(event) => setPaymentNote(event.target.value)} className={inputClass} /></Field></div>
-                <div className="sm:col-span-2"><button disabled={Boolean(savingAction)} className={primaryButton}>{savingAction === "payment" ? "Recording..." : "Record payment"}</button></div>
-              </div>
-            </form>
-          </div>}
-
-          <section aria-label={`${worker.name} payment history`} className="min-w-0 rounded-lg border border-slate-200 p-4">
-            <div className="flex items-baseline justify-between gap-3">
-              <h5 className="font-semibold">Payment history</h5>
-              {summaryQuery.data && <span className="text-sm font-semibold text-indigo-800">Total Paid: {formatStaffMoney(summaryQuery.data.totalPaid)}</span>}
-            </div>
-            {historyQuery.isLoading && <p className="mt-3 text-sm text-slate-500">Loading payment history...</p>}
-            {historyQuery.error && <p role="alert" className="mt-3 text-sm font-medium text-red-700">{staffOfficeErrorMessage(historyQuery.error, "Could not load payment history.")}</p>}
-            {!historyQuery.isLoading && !historyQuery.error && (historyQuery.data?.length ?? 0) === 0 && <p className="mt-3 text-sm text-slate-500">No payments recorded yet.</p>}
-            <ul className="mt-2 divide-y divide-slate-100">
-              {(historyQuery.data ?? []).map((payment) => (
-                <li key={payment.id} className="py-3 text-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <span>{formatStaffPaymentDate(payment.paymentDate)}</span>
-                    <span className="font-semibold">{formatStaffMoney(payment.amount)}</span>
+          <div className="mt-atlas-4 divide-y divide-atlas-border border-y border-atlas-border md:hidden">
+            {visibleWorkers.map((worker) => {
+              const status = resolveBooleanStatusPresentation(STAFF_WORKER_LIFECYCLE_STATUS, worker.isActive);
+              return (
+                <article key={worker.id} className={selectedWorkerId === worker.id ? "bg-atlas-primary-surface py-atlas-4" : "py-atlas-4"}>
+                  <div className="flex items-start justify-between gap-atlas-3">
+                    <div className="flex min-w-0 items-center gap-atlas-2">
+                      <span className="flex h-atlas-8 w-atlas-8 shrink-0 items-center justify-center rounded-atlas-pill bg-atlas-primary-surface text-atlas-xs font-atlas-semibold text-atlas-primary">
+                        {getStaffInitials(worker.name)}
+                      </span>
+                      <div className="min-w-0">
+                        <h3 className="truncate text-atlas-base font-atlas-semibold text-atlas-text">{worker.name}</h3>
+                        <p className="mt-atlas-1 text-atlas-xs text-atlas-text-subtle">{categoryNames.get(worker.staffCategoryId) ?? "Unknown category"}</p>
+                      </div>
+                    </div>
+                    {!worker.isActive && <StatusPill label={status.label} tone={status.tone} />}
                   </div>
-                  {payment.note && <p className="mt-1 text-xs text-slate-600">{payment.note}</p>}
-                </li>
-              ))}
-            </ul>
-          </section>
-        </div>
-      </details>
-      <Feedback error={error} success={success} />
-    </article>
+                  <dl className="mt-atlas-3 grid grid-cols-2 gap-atlas-3 text-atlas-sm">
+                    <div>
+                      <dt className="text-atlas-xs text-atlas-text-subtle">Reference salary</dt>
+                      <dd className="mt-atlas-1 font-atlas-medium tabular-nums text-atlas-text-muted">{formatIndianCurrency(worker.referenceSalary)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-right text-atlas-xs text-atlas-text-subtle">Paid · {periodLabel}</dt>
+                      <dd className="mt-atlas-1 text-right font-atlas-semibold tabular-nums text-atlas-text">{paymentLabel(worker.id)}</dd>
+                    </div>
+                  </dl>
+                  <p className="mt-atlas-3 text-atlas-xs text-atlas-text-muted">{lastPaidLabel(worker.id)}</p>
+                  <div className="mt-atlas-3 flex flex-col gap-atlas-2 sm:flex-row">
+                    <Button onClick={() => onOpenAccount(worker.id)}>Account &amp; payment</Button>
+                    <Button variant="ghost" onClick={() => onManageWorker(worker.id)}>Manage</Button>
+                  </div>
+                </article>
+              );
+            })}
+            <p className="py-atlas-3 text-atlas-xs text-atlas-text-subtle">
+              Reference salary is informational only; it does not create accrued salary or payable debt.
+            </p>
+          </div>
+        </>
+      )}
+    </section>
   );
-}
-
-function SummaryValue({ label, value }: Readonly<{ label: string; value: string }>) {
-  return <div><p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p><p className="mt-1 text-sm font-semibold text-slate-950">{value}</p></div>;
-}
-
-function Field({ label, compact = false, children }: Readonly<{ label: string; compact?: boolean; children: React.ReactNode }>) {
-  return <label className={`${compact ? "min-w-48 flex-1" : ""} text-sm font-medium text-slate-700`}><span className="mb-1 block">{label}</span>{children}</label>;
-}
-
-function Status({ active }: Readonly<{ active: boolean }>) {
-  return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${active ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700"}`}>{active ? "Active" : "Archived"}</span>;
-}
-
-function Feedback({ error, success }: Readonly<{ error: string; success: string }>) {
-  return <>{error && <p role="alert" className="mt-3 text-sm font-medium text-red-700">{error}</p>}{success && <p role="status" className="mt-3 text-sm font-medium text-emerald-700">{success}</p>}</>;
 }

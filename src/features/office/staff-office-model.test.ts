@@ -8,17 +8,34 @@ import {
   buildStaffPaymentInput,
   buildStaffReferenceSalaryInput,
   buildStaffWorkerCreateInput,
+  filterStaffOverviewWorkers,
+  formatStaffLastPaid,
   formatStaffMoney,
   formatStaffPaymentDate,
   formatStaffReferenceSalary,
+  getStaffInitials,
   insertStaffPaymentNewestFirst,
+  latestStaffPayment,
   splitStaffWorkers,
   STAFF_SECTION_HEADING,
   staffOfficeErrorMessage,
+  sumStaffPaymentsInRange,
 } from "./staff-office-model.ts";
 
 const sectionSource = readFileSync(
   new URL("./components/staff-office-section.tsx", import.meta.url),
+  "utf8",
+);
+const managementDrawerSource = readFileSync(
+  new URL("./components/staff-management-drawer.tsx", import.meta.url),
+  "utf8",
+);
+const accountDrawerSource = readFileSync(
+  new URL("./components/staff-account-payment-drawer.tsx", import.meta.url),
+  "utf8",
+);
+const categoriesDrawerSource = readFileSync(
+  new URL("./components/staff-categories-drawer.tsx", import.meta.url),
   "utf8",
 );
 
@@ -40,16 +57,17 @@ function payment(
   };
 }
 
-test("S4 Staff section remains integrated with focused active and archived empty states", () => {
+test("Staff overview remains integrated with focused filter and empty states", () => {
   const dashboardSource = readFileSync(
     new URL("./components/office-dashboard.tsx", import.meta.url),
     "utf8",
   );
   assert.equal(STAFF_SECTION_HEADING, "Staff");
   assert.match(dashboardSource, /<StaffOfficeSection factoryId=\{factoryId!\}/);
-  assert.match(sectionSource, /No Staff categories yet/);
+  assert.match(categoriesDrawerSource, /No Staff categories yet/);
   assert.match(sectionSource, /No Staff members yet/);
-  assert.match(sectionSource, /No archived Staff members/);
+  assert.match(sectionSource, /No Staff members match these filters/);
+  assert.match(sectionSource, /Filter Staff members/);
 });
 
 test("categories remain organizational and category creation trims names", () => {
@@ -70,30 +88,31 @@ test("categories remain organizational and category creation trims names", () =>
     buildStaffCategoryUpdateInput("factory-a", "category-a", "   "),
     null,
   );
-  assert.match(sectionSource, /Categories organize Staff by role/);
-  assert.doesNotMatch(sectionSource, /category monthly salary|category default|Set salary|Effective month/i);
-  assert.doesNotMatch(sectionSource, /category\.isActive|activeCategories|Archive Category|Reactivate Category/i);
+  assert.match(categoriesDrawerSource, /Categories organize Staff members by role/);
+  assert.doesNotMatch(categoriesDrawerSource, /category monthly salary|category default|Set salary|Effective month/i);
+  assert.doesNotMatch(categoriesDrawerSource, /category\.isActive|activeCategories|Archive Category|Reactivate Category/i);
 });
 
 test("category rename and delete update the shared Office category cache immediately", () => {
-  assert.match(sectionSource, /await updateStaffCategory\(input\)/);
+  assert.match(categoriesDrawerSource, /await updateStaffCategory\(input\)/);
   assert.match(
-    sectionSource,
+    categoriesDrawerSource,
     /setQueryData<StaffCategory\[]>[\s\S]*category\.id === updatedCategory\.id \? updatedCategory : category/,
   );
-  assert.match(sectionSource, /await deleteStaffCategory\(\{/);
+  assert.match(categoriesDrawerSource, /await deleteStaffCategory\(\{/);
   assert.match(
-    sectionSource,
+    categoriesDrawerSource,
     /setQueryData<StaffCategory\[]>[\s\S]*current\.filter\(\(item\) => item\.id !== category\.id\)/,
   );
-  assert.match(sectionSource, /setEditName\(category\.name\)/);
-  assert.match(sectionSource, /Confirm delete/);
+  assert.match(categoriesDrawerSource, /setEditName\(category\.name\)/);
+  assert.match(categoriesDrawerSource, /Confirm delete/);
   assert.match(
     sectionSource,
-    /category=\{categories\.find\(\(category\) => category\.id === worker\.staffCategoryId\)\}/,
+    /category=\{categories\.find\(\(category\) => category\.id === managementWorker\.staffCategoryId\) \?\? null\}/,
   );
-  assert.ok((sectionSource.match(/categories=\{categoriesQuery\.data \?\? \[\]\}/g) ?? []).length >= 2);
-  assert.doesNotMatch(sectionSource, /Archive Category|reassign/i);
+  assert.match(sectionSource, /<StaffCategoriesDrawer[\s\S]*categories=\{categories\}[\s\S]*workers=\{workers\}/);
+  assert.match(sectionSource, /<AddStaffDrawer[\s\S]*categories=\{categories\}/);
+  assert.doesNotMatch(categoriesDrawerSource, /Archive Category|reassign/i);
 });
 
 test("Office Staff creation uses name, category, and individual reference salary only", () => {
@@ -121,7 +140,7 @@ test("Office Staff creation uses name, category, and individual reference salary
     referenceSalary: "120000",
   }), null);
 
-  assert.match(sectionSource, /await createStaffWorker\(input\)/);
+  assert.match(sectionSource, /await createStaffWorker\(createInput\)/);
   assert.doesNotMatch(sectionSource, /salaryStartMonth|firstMonthCustomSalary|Salary start month|First-month salary/i);
 });
 
@@ -141,8 +160,8 @@ test("required reference salary displays directly", () => {
     staffWorkerId: "staff-a",
     referenceSalary: "-1",
   }), null);
-  assert.match(sectionSource, /await updateStaffReferenceSalary\(input\)/);
-  assert.match(sectionSource, /setQueryData<StaffWorker\[]>\(workersKey\(factoryId\)/);
+  assert.match(managementDrawerSource, /await updateStaffReferenceSalary\(input\)/);
+  assert.match(managementDrawerSource, /staffWorkersQueryKey\(factoryId\)/);
 });
 
 test("payment input accepts arbitrary positive amounts and normalizes optional notes", () => {
@@ -173,8 +192,8 @@ test("payment input accepts arbitrary positive amounts and normalizes optional n
     amount: "1",
     note: "",
   }), null);
-  assert.match(sectionSource, /await recordStaffPayment\(input\)/);
-  assert.match(sectionSource, /Reference salary does not limit it/);
+  assert.match(accountDrawerSource, /await recordStaffPayment\(input\)/);
+  assert.match(accountDrawerSource, /Reference salary is informational only/);
 });
 
 test("payment cache insertion remains complete, deduplicated, and newest first", () => {
@@ -197,6 +216,70 @@ test("payment cache insertion remains complete, deduplicated, and newest first",
   );
   assert.equal(formatStaffPaymentDate("2026-08-23"), "23 Aug 2026");
   assert.equal(formatStaffMoney(37500), "₹37,500");
+});
+
+test("Staff overview filters by lifecycle, name, and category without changing worker records", () => {
+  const base: StaffWorker = {
+    id: "staff-a",
+    factoryId: "factory-a",
+    name: "Asha Roy",
+    staffCategoryId: "category-a",
+    referenceSalary: 12000,
+    isActive: true,
+    createdAt: "2026-08-01T10:00:00Z",
+    updatedAt: "2026-08-01T10:00:00Z",
+  };
+  const archived = {
+    ...base,
+    id: "staff-b",
+    name: "Bimal Sen",
+    staffCategoryId: "category-b",
+    isActive: false,
+  };
+  const categoryNames = new Map([
+    ["category-a", "Office Assistant"],
+    ["category-b", "Plant Supervisor"],
+  ]);
+
+  assert.deepEqual(filterStaffOverviewWorkers({
+    workers: [base, archived],
+    categoryNames,
+    lifecycle: "active",
+    search: "office",
+  }).map((worker) => worker.id), ["staff-a"]);
+  assert.deepEqual(filterStaffOverviewWorkers({
+    workers: [base, archived],
+    categoryNames,
+    lifecycle: "archived",
+    search: "bimal",
+  }).map((worker) => worker.id), ["staff-b"]);
+  assert.equal(getStaffInitials("Asha Roy"), "AR");
+});
+
+test("Staff overview period totals and Last paid use immutable payment ledger rows", () => {
+  const payments = [
+    payment("payment-a", "2026-08-31", 3000, "2026-08-31T10:00:00Z"),
+    payment("payment-b", "2026-09-01", 2500, "2026-09-01T10:00:00Z"),
+    payment("payment-c", "2026-09-15", 4000, "2026-09-15T10:00:00Z"),
+    payment("payment-d", "2026-10-01", 1000, "2026-10-01T10:00:00Z"),
+  ];
+
+  assert.equal(sumStaffPaymentsInRange(payments, {
+    fromDate: "2026-09-01",
+    toDate: "2026-09-30",
+  }), 6500);
+  assert.equal(latestStaffPayment(payments)?.id, "payment-d");
+  assert.equal(formatStaffLastPaid("2026-09-24", "2026-09-27"), "Last paid 3 days ago");
+  assert.equal(formatStaffLastPaid("2026-09-20", "2026-09-27"), "Last paid 1 week ago");
+  assert.equal(formatStaffLastPaid(null, "2026-09-27"), "No payments yet");
+});
+
+test("Staff V2 overview shows ledger-paid values and keeps reference salary informational", () => {
+  assert.match(sectionSource, /Paid \(\{periodLabel\}\)/);
+  assert.match(sectionSource, /sumStaffPaymentsInRange/);
+  assert.match(sectionSource, /listStaffPayments/);
+  assert.match(sectionSource, /Reference salary is informational only; it does not create accrued salary or payable debt/);
+  assert.doesNotMatch(sectionSource, /amount due|salary accrual|unpaid salary|payroll period/i);
 });
 
 test("S6 release flow preserves Staff identity while salary, category, lifecycle, and payments change", () => {
@@ -249,23 +332,25 @@ test("S6 release flow preserves Staff identity while salary, category, lifecycle
   assert.equal(history.reduce((total, item) => total + item.amount, 0), 9500);
 });
 
-test("Office reads authoritative Total Paid and payment history and refreshes both immediately", () => {
-  assert.match(sectionSource, /getStaffPaymentSummary\(\{ factoryId, staffWorkerId: worker\.id \}\)/);
-  assert.match(sectionSource, /listStaffPayments\(\{ factoryId, staffWorkerId: worker\.id \}\)/);
-  assert.match(sectionSource, /setQueryData<StaffPaymentSummary>[\s\S]*totalPaid: recorded\.totalPaid/);
-  assert.match(sectionSource, /setQueryData<StaffPayment\[]>[\s\S]*insertStaffPaymentNewestFirst\(current, recorded\)/);
-  assert.match(sectionSource, /Payment history/);
-  assert.match(sectionSource, /\{payment\.note &&/);
-  assert.match(sectionSource, /Total Paid:/);
+test("Office reads authoritative payment history and refreshes payment caches immediately", () => {
+  assert.match(accountDrawerSource, /listStaffPayments\(\{ factoryId, staffWorkerId: worker\.id \}\)/);
+  assert.match(accountDrawerSource, /recordStaffPayment\(input\)/);
+  assert.match(accountDrawerSource, /setQueryData<StaffPaymentSummary>[\s\S]*totalPaid: recorded\.totalPaid/);
+  assert.match(accountDrawerSource, /setQueryData<StaffPayment\[]>[\s\S]*insertStaffPaymentNewestFirst\(current, recorded\)/);
+  assert.match(accountDrawerSource, /Payment history/);
+  assert.match(accountDrawerSource, /payment\.note \?\?/);
+  assert.match(accountDrawerSource, /Paid in period/);
 });
 
 test("Office uses only the authoritative Staff worker and payment services", () => {
   assert.match(sectionSource, /services\/staff-worker-service/);
   assert.match(sectionSource, /services\/staff-payment-service/);
+  assert.match(managementDrawerSource, /services\/staff-worker-service/);
+  assert.match(accountDrawerSource, /services\/staff-payment-service/);
   assert.doesNotMatch(sectionSource, /available balance|monthly earning/i);
 });
 
-test("S4 separates Active and Archived Staff and uses only the new lifecycle controls", () => {
+test("Staff overview separates Active and Archived Staff and preserves lifecycle controls", () => {
   const base: StaffWorker = {
     id: "staff-a",
     factoryId: "factory-a",
@@ -280,17 +365,17 @@ test("S4 separates Active and Archived Staff and uses only the new lifecycle con
   assert.deepEqual(split.active.map((worker) => worker.id), ["staff-a"]);
   assert.deepEqual(split.archived.map((worker) => worker.id), ["staff-b"]);
 
-  assert.match(sectionSource, /Active Staff/);
-  assert.match(sectionSource, /Archived Staff/);
-  assert.match(sectionSource, /await archiveStaffWorker\(\{ factoryId, staffWorkerId: worker\.id \}\)/);
-  assert.match(sectionSource, /await restoreStaffWorker\(\{ factoryId, staffWorkerId: worker\.id \}\)/);
-  assert.match(sectionSource, /await deleteStaffWorker\(\{ factoryId, staffWorkerId: worker\.id \}\)/);
-  assert.match(sectionSource, /worker\.isActive && <div className="space-y-5">/);
-  assert.match(sectionSource, /Confirm delete/);
-  assert.match(sectionSource, /Payment history exists; archive instead/);
-  assert.doesNotMatch(sectionSource, /Recycle Bin|Trash/i);
-  assert.doesNotMatch(sectionSource, /edit payment|delete payment/i);
-  assert.match(sectionSource, /complete read-only payment history/i);
+  assert.match(sectionSource, /`Active \$\{formatIndianNumber\(activeCount\)\}`/);
+  assert.match(sectionSource, /`Archived \$\{formatIndianNumber\(archivedCount\)\}`/);
+  assert.match(managementDrawerSource, /await archiveStaffWorker\(\{ factoryId, staffWorkerId: worker\.id \}\)/);
+  assert.match(managementDrawerSource, /await restoreStaffWorker\(\{ factoryId, staffWorkerId: worker\.id \}\)/);
+  assert.match(managementDrawerSource, /await deleteStaffWorker\(\{ factoryId, staffWorkerId: worker\.id \}\)/);
+  assert.match(managementDrawerSource, /worker\.isActive &&/);
+  assert.match(managementDrawerSource, /Confirm permanent delete/);
+  assert.match(managementDrawerSource, /Payment history exists,[\s\S]*cannot be permanently deleted/);
+  assert.doesNotMatch(managementDrawerSource, /Recycle Bin|Trash/i);
+  assert.doesNotMatch(managementDrawerSource, /edit payment|delete payment/i);
+  assert.doesNotMatch(managementDrawerSource, /Payment history<|Record payment/);
 });
 
 test("Staff request failures remain concise", () => {
