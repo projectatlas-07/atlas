@@ -82,7 +82,7 @@ test("Office groups operational work, workforce accounts, and master data withou
   assert.match(office, /id="production"[\s\S]*<ProductionOfficeWorkspace factoryId=\{factoryId!\} \/>/);
   assert.match(office, /id="workforce"[\s\S]*WorkforceOfficeWorkspace[\s\S]*LabourerManagement[\s\S]*MudGroupManagement[\s\S]*TransportOfficeSection[\s\S]*SoilOfficeSection[\s\S]*StaffOfficeSection/);
   assert.equal((office.match(/<AddProductionLabourerDrawer\b/g) ?? []).length, 1);
-  assert.match(sales, /hidden=\{!showVehicleWages\}[\s\S]*VehicleWageAccountsSection/);
+  assert.match(sales, /hidden=\{!showVehicleWages\}[\s\S]*VehicleDeliveryWageOverview/);
   assert.match(sales, /id="settings"[\s\S]*FactoryProfileEditor[\s\S]*VehicleManagementSection/);
   assert.match(expenses, /<SupplierManagementSection[\s\S]*hidden=\{activeArea !== "settings"\}/);
   assert.doesNotMatch(salesArea, /VehicleManagementSection|VehicleWageAccountsSection/);

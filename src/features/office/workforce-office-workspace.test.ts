@@ -45,7 +45,7 @@ test("Production and Mud use focused V2 presentations while remaining modules st
   assert.match(office, /hidden=\{workforceArea !== "soil-workers"\}><SoilOfficeSection/);
   assert.match(office, /hidden=\{workforceArea !== "staff"\}><StaffOfficeSection/);
   assert.match(office, /showVehicleWages=\{activeArea === "workforce" && workforceArea === "vehicle-delivery-wages"\}/);
-  assert.match(sales, /hidden=\{!showVehicleWages\}[\s\S]*<VehicleWageAccountsSection/);
+  assert.match(sales, /hidden=\{!showVehicleWages\}[\s\S]*<VehicleDeliveryWageOverview/);
 
   for (const component of [
     "LabourerManagement",

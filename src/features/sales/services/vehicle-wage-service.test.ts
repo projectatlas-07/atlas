@@ -43,7 +43,11 @@ const fakeSupabase = {
       },
       order(column: string, options: { ascending: boolean }) {
         calls.push(["order", column, options]);
-        return column === "id" ? Promise.resolve(response) : builder;
+        return builder;
+      },
+      limit(value: number) {
+        calls.push(["limit", value]);
+        return Promise.resolve(response);
       },
     };
     return builder;
@@ -54,7 +58,7 @@ await mock.module("../../../lib/supabase/client.ts", {
   namedExports: { supabase: fakeSupabase },
 });
 
-const { VehicleWageServiceError, listVehicleWageTrips } = await import(
+const { VehicleWageServiceError, listAllVehicleWageTrips, listVehicleWageTrips } = await import(
   "./vehicle-wage-service.ts"
 );
 
@@ -129,6 +133,18 @@ test("financial filters exclude void, no-Vehicle, and no-wage sources before agg
   ]) assert.deepEqual(calls.find((call) => JSON.stringify(call) === JSON.stringify(expected)), expected);
   assert.deepEqual(calls.find((call) => call[0] === "eq" && call[1] === "status"), [
     "eq", "status", "active",
+  ]);
+});
+
+test("All Time uses the same Challan wage filters without inventing date boundaries", async () => {
+  reset();
+  response.data = [activeTrip];
+  const trips = await listAllVehicleWageTrips("factory-a");
+  assert.equal(trips.length, 1);
+  assert.equal(trips[0]?.tripLabourWage, 750);
+  assert.equal(calls.some((call) => call[0] === "gte" || call[0] === "lte"), false);
+  assert.deepEqual(calls.find((call) => call[0] === "eq" && call[1] === "factory_id"), [
+    "eq", "factory_id", "factory-a",
   ]);
 });
 

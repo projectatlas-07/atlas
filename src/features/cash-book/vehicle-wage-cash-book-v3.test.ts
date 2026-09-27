@@ -17,7 +17,7 @@ const cashBookUi = readFileSync(
   "utf8",
 );
 const vehicleWageUi = readFileSync(
-  new URL("../office/components/vehicle-wage-accounts-section.tsx", import.meta.url),
+  new URL("../office/components/vehicle-wage-account-drawer.tsx", import.meta.url),
   "utf8",
 );
 const paymentMigration = readFileSync(

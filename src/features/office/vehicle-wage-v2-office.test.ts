@@ -7,7 +7,7 @@ const migration = readFileSync(
   "utf8",
 );
 const component = readFileSync(
-  new URL("./components/vehicle-wage-accounts-section.tsx", import.meta.url),
+  new URL("./components/vehicle-wage-account-drawer.tsx", import.meta.url),
   "utf8",
 );
 const service = readFileSync(
@@ -89,13 +89,14 @@ test("RPC-only writes enforce factory access, exact money, available balance, an
 
 test("UI separates range reporting from lifetime solvency and refreshes after payment", () => {
   for (const label of [
-    "Period Earned", "Total Earned", "Paid",
-    "Available", "Record Payment", "Payment History", "Trip History",
+    "Earnings view", "Wage trips", "Earnings",
+    "Available to pay", "Record payment", "ATLAS_UI_STRINGS.payment.history",
   ]) assert.match(component, new RegExp(label));
-  assert.match(component, /lifetimeQuery\.data\.availableBalance <= 0/);
+  assert.match(component, /availableBalance <= 0/);
   assert.match(component, /setQueryData<VehicleWageLifetimeAccount>/);
   assert.match(component, /setQueryData<VehicleWagePayment\[\]>/);
-  assert.match(component, /Archived[\s\S]*Tracking[\s\S]*Settlement remains available/);
+  assert.match(component, /StatusPill label="Archived"/);
+  assert.doesNotMatch(component, /paymentUnavailable[^;]*vehicle\.isActive/);
   assert.doesNotMatch(component, /Edit Payment|Delete Payment|Adjustment|Add Wage/);
 });
 

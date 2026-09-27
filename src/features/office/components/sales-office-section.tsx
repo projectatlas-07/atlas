@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { SalesRegisterSection } from "@/features/office/components/sales-register-section";
 import { CustomerPaymentsSection } from "@/features/office/components/customer-payments-section";
-import { VehicleWageAccountsSection } from "@/features/office/components/vehicle-wage-accounts-section";
+import { VehicleDeliveryWageOverview } from "@/features/office/components/vehicle-delivery-wage-overview";
 import type { OfficeAreaId } from "@/features/office/office-navigation";
 import { applyPaymentLocks } from "@/features/office/customer-payment-office-model";
 import {
@@ -519,7 +519,11 @@ export function SalesOfficeSection({
       </section>
 
       <section aria-label="Vehicle Delivery Wages" hidden={!showVehicleWages}>
-        <VehicleWageAccountsSection factoryId={factoryId} vehicles={vehicles} />
+        <VehicleDeliveryWageOverview
+          factoryId={factoryId}
+          vehicles={vehicles}
+          onVehicleSaved={cacheSavedVehicle}
+        />
       </section>
 
       <section id="settings" aria-label="Sales configuration" hidden={activeArea !== "settings"}>

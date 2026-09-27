@@ -145,23 +145,45 @@ export async function listVehicleWageTrips(
     throw new Error("Vehicle wage dates must be a valid inclusive range.");
   }
 
-  const { data, error } = await supabase
-    .from("challans")
-    .select(VEHICLE_WAGE_TRIP_COLUMNS)
-    .eq("factory_id", factoryId)
-    .eq("status", "active")
-    .eq("delivery_wage_applicable_snapshot", true)
-    .not("vehicle_id", "is", null)
-    .not("vehicle_number_snapshot", "is", null)
-    .not("trip_labour_wage", "is", null)
-    .gt("trip_labour_wage", 0)
-    .gte("challan_date", range.fromDate)
-    .lte("challan_date", range.toDate)
-    .order("challan_date", { ascending: false })
-    .order("id", { ascending: false });
+  return listVehicleWageTripsForRange(factoryId, range);
+}
 
-  if (error) throw new VehicleWageServiceError(error);
-  const snapshots = ((data ?? []) as VehicleWageTripRow[]).map(mapSnapshot);
+export async function listAllVehicleWageTrips(
+  factoryId: string,
+): Promise<VehicleWageTrip[]> {
+  if (!factoryId.trim()) throw new Error("factoryId is required.");
+  return listVehicleWageTripsForRange(factoryId, null);
+}
+
+async function listVehicleWageTripsForRange(
+  factoryId: string,
+  range: VehicleWageDateRange | null,
+): Promise<VehicleWageTrip[]> {
+  const rows = await readAllKeysetPages(async (afterId, pageSize) => {
+    let query = supabase
+      .from("challans")
+      .select(VEHICLE_WAGE_TRIP_COLUMNS)
+      .eq("factory_id", factoryId)
+      .eq("status", "active")
+      .eq("delivery_wage_applicable_snapshot", true)
+      .not("vehicle_id", "is", null)
+      .not("vehicle_number_snapshot", "is", null)
+      .not("trip_labour_wage", "is", null)
+      .gt("trip_labour_wage", 0);
+    if (range) {
+      query = query
+        .gte("challan_date", range.fromDate)
+        .lte("challan_date", range.toDate);
+    }
+    if (afterId) query = query.gt("id", afterId);
+    const { data, error } = await query
+      .order("id", { ascending: true })
+      .limit(pageSize);
+    if (error) throw new VehicleWageServiceError(error);
+    return (data ?? []) as VehicleWageTripRow[];
+  });
+
+  const snapshots = rows.map(mapSnapshot);
   return getEligibleVehicleWageTrips(snapshots);
 }
 

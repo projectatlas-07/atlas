@@ -17,7 +17,7 @@ const concurrencyVerifier = readFileSync(
 const service = readFileSync(new URL("./services/vehicle-wage-service.ts", import.meta.url), "utf8");
 const model = readFileSync(new URL("./vehicle-wage-model.ts", import.meta.url), "utf8");
 const vehicleUi = readFileSync(
-  new URL("../office/components/vehicle-wage-accounts-section.tsx", import.meta.url),
+  new URL("../office/components/vehicle-wage-account-drawer.tsx", import.meta.url),
   "utf8",
 );
 const cashBookUi = readFileSync(
@@ -97,8 +97,8 @@ test("service and minimal UI expose immutable reversal status and authoritative 
   assert.match(service, /\.rpc\("reverse_vehicle_wage_payment"/);
   assert.match(service, /\.from\("vehicle_wage_payment_reversals"\)/);
   assert.match(service, /already been reversed/);
-  assert.match(vehicleUi, /Reverse Payment/);
-  assert.match(vehicleUi, /Confirm Reversal/);
+  assert.match(vehicleUi, /Reverse payment/);
+  assert.match(vehicleUi, /Confirm reversal/);
   assert.match(vehicleUi, /Reversed on/);
   assert.match(vehicleUi, /payment\.reversal/);
   assert.match(vehicleUi, /setQueryData<VehicleWageLifetimeAccount>/);

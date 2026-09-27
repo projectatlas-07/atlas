@@ -2,10 +2,15 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-const component = readFileSync(
-  new URL("./components/vehicle-wage-accounts-section.tsx", import.meta.url),
+const overview = readFileSync(
+  new URL("./components/vehicle-delivery-wage-overview.tsx", import.meta.url),
   "utf8",
 );
+const drawer = readFileSync(
+  new URL("./components/vehicle-wage-account-drawer.tsx", import.meta.url),
+  "utf8",
+);
+const component = `${overview}\n${drawer}`;
 const salesOffice = readFileSync(
   new URL("./components/sales-office-section.tsx", import.meta.url),
   "utf8",
@@ -32,14 +37,13 @@ const sharedWageRange = readFileSync(
 );
 
 test("Vehicle Wages remains one focused account under Workforce while Vehicle management is in Settings", () => {
-  assert.match(salesOffice, /hidden=\{!showVehicleWages\}[\s\S]*<VehicleWageAccountsSection/);
+  assert.match(salesOffice, /hidden=\{!showVehicleWages\}[\s\S]*<VehicleDeliveryWageOverview/);
   assert.match(salesOffice, /id="settings"[\s\S]*<VehicleManagementSection/);
-  assert.match(component, /Vehicle Wages/);
-  assert.match(component, /Delivery Labour Wage accounts/);
-  assert.match(component, /Vehicle accounts/);
-  assert.match(component, /Trip History/);
-  assert.match(component, /recorded \{recordedTripCount === 1 \? "trip" : "trips"\}/);
-  assert.match(component, /Open Challan/);
+  assert.match(overview, /Vehicle Delivery Wages/);
+  assert.match(drawer, /Vehicle wage account/);
+  assert.match(overview, /Challan trip breakdown/);
+  assert.match(overview, /formatChallanLabel\(trip\.challanNumber\)/);
+  assert.doesNotMatch(drawer, /Recent Trips|Challan trip breakdown/);
 });
 
 test("earnings-period UI defaults fresh mounts to the shared This Week range", () => {
@@ -48,23 +52,24 @@ test("earnings-period UI defaults fresh mounts to the shared This Week range", (
   }
   assert.doesNotMatch(component, /label: "Today"|label: "Yesterday"/);
   assert.match(sharedWageRange, /DEFAULT_WAGE_EARNINGS_DATE_PRESET = "this_week"/);
-  assert.match(component, /useState<VehicleWageDatePreset>\(\s*DEFAULT_WAGE_EARNINGS_DATE_PRESET/);
+  assert.match(overview, /useState<VehicleWageOverviewPreset>\("this_week"\)/);
+  assert.match(drawer, /useState<VehicleWageDrawerPreset>\("this_week"\)/);
   assert.doesNotMatch(component, /localStorage|sessionStorage/);
-  assert.match(component, /From date/);
-  assert.match(component, /To date/);
+  assert.match(component, /label="From"/);
+  assert.match(component, /label="To"/);
   assert.match(component, /inclusive/);
-  assert.match(component, /range\?\.fromDate, range\?\.toDate/);
-  assert.match(component, /enabled: range !== null/);
-  assert.match(component, /Period Earned/);
-  assert.match(component, /range \? formatSalesMoney\(rangeSummary\.earnedAmount\) : "—"/);
+  assert.match(overview, /range\?\.fromDate,[\s\S]*range\?\.toDate/);
+  assert.match(drawer, /enabled: rangeIsValid/);
+  assert.match(drawer, /Earnings view/);
+  assert.match(drawer, /periodAccount\.earnedAmount/);
 });
 
 test("archived and Tracking-OFF Vehicles remain visible as current context only", () => {
-  assert.match(component, /account\.isActive \? "Active" : "Archived"/);
-  assert.match(component, /Tracking \{account\.deliveryWageTrackingEnabled \? "ON" : "OFF"\} now/);
+  assert.match(overview, /!account\.isActive && <StatusPill label="Archived"/);
+  assert.match(overview, /Wage \{enabled \? "ON" : "OFF"\}/);
   assert.doesNotMatch(component, /filter\([^)]*isActive|filter\([^)]*deliveryWageTrackingEnabled/);
-  assert.match(component, /listVehicleTrips\(factoryId\)/);
-  assert.match(component, /No Vehicle wage/);
+  assert.match(overview, /listVehicleTrips\(factoryId\)/);
+  assert.match(overview, /No Vehicles/);
 });
 
 test("V1 trip earnings remain Challan-derived after V2 adds a separate payment boundary", () => {
@@ -73,24 +78,22 @@ test("V1 trip earnings remain Challan-derived after V2 adds a separate payment b
   assert.doesNotMatch(service, /vehicle_wage_earnings|challan_total|customer_payment_allocations/);
 });
 
-test("operational Trip History is all-time and separate from selected-range wage earnings", () => {
-  assert.match(component, /Wage-earning Trips/);
-  assert.match(component, /All active Challans recorded with this Vehicle/);
-  assert.match(component, /Wage filters above do not limit this list/);
-  assert.match(component, /customerNameSnapshot/);
-  assert.match(component, /Destination: \{trip\.destinationSnapshot\}/);
-  assert.match(component, /trip\.challanNumber &&/);
+test("operational trip evidence stays in the overview and out of the account drawer", () => {
+  assert.match(overview, /Challan trip breakdown/);
+  assert.match(overview, /customerNameSnapshot/);
+  assert.match(overview, /destinationSnapshot/);
+  assert.match(overview, /trip\.challanNumber/);
   assert.doesNotMatch(component, /N\/A|UUID/);
-  assert.match(component, /queryKey: \["office-vehicle-trips", factoryId\]/);
-  assert.doesNotMatch(component, /\["office-vehicle-trips", factoryId, range/);
+  assert.match(overview, /queryKey: \["office-vehicle-trips", factoryId\]/);
+  assert.doesNotMatch(drawer, /Recent Trips|TripEvidence|formatChallanLabel/);
 });
 
 test("range changes affect only period earnings, not cumulative accounts or payment history", () => {
-  assert.match(component, /queryKey: \["office-vehicle-wages", factoryId, "trips", range\?\.fromDate, range\?\.toDate\]/);
-  assert.match(component, /queryKey: accountKey\(factoryId, activeVehicleId\)/);
-  assert.match(component, /queryKey: paymentHistoryKey\(factoryId, activeVehicleId\)/);
-  assert.doesNotMatch(component, /accountKey\([^\n]*range|paymentHistoryKey\([^\n]*range/);
-  for (const label of ["Total Earned", "Paid", "Available", "Payment History"]) {
+  assert.match(drawer, /"drawer-trips"[\s\S]*rangePreset[\s\S]*earningsRange\?\.fromDate/);
+  assert.match(drawer, /vehicleWageAccountQueryKey\(factoryId, vehicle\.id\)/);
+  assert.match(drawer, /vehicleWagePaymentsQueryKey\(factoryId, vehicle\.id\)/);
+  assert.doesNotMatch(drawer, /vehicleWageAccountQueryKey\([^\n]*range|vehicleWagePaymentsQueryKey\([^\n]*range/);
+  for (const label of ["Earnings", "Available", "ATLAS_UI_STRINGS.payment.history"]) {
     assert.match(component, new RegExp(label));
   }
 });
