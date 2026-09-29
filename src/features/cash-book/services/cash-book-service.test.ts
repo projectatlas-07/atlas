@@ -8,10 +8,37 @@ type Call = [string, string, Row];
 
 const calls: Call[] = [];
 const responses = new Map<string, Response>();
+let customerPaymentMethodRows: Row[] = [];
+const tableCalls: Array<[string, unknown?, unknown?]> = [];
 const fakeSupabase = {
   rpc(functionName: string, args: Row) {
     calls.push(["rpc", functionName, args]);
     return Promise.resolve(responses.get(functionName) ?? { data: null, error: null });
+  },
+  from(table: string) {
+    tableCalls.push(["from", table]);
+    const builder = {
+      select(columns: string) {
+        tableCalls.push(["select", columns]);
+        return builder;
+      },
+      eq(column: string, value: string) {
+        tableCalls.push(["eq", column, value]);
+        return builder;
+      },
+      in(column: string, values: string[]) {
+        tableCalls.push(["in", column, values]);
+        return builder;
+      },
+      order(column: string, options: { ascending: boolean }) {
+        tableCalls.push(["order", column, options]);
+        return builder;
+      },
+      then(resolve: (value: Response) => unknown) {
+        return Promise.resolve(resolve({ data: customerPaymentMethodRows, error: null }));
+      },
+    };
+    return builder;
   },
 };
 
@@ -54,6 +81,8 @@ const manualRow = {
 function reset(): void {
   calls.length = 0;
   responses.clear();
+  customerPaymentMethodRows = [];
+  tableCalls.length = 0;
 }
 
 test("initializes one factory Cash Book through the controlled RPC", async () => {
@@ -141,6 +170,13 @@ test("voids a manual entry only through the controlled lifecycle RPC", async () 
 
 test("reads a derived day with customer, manual, and Vehicle wage source rows", async () => {
   reset();
+  customerPaymentMethodRows = [{
+    factory_id: "factory-a", payment_id: "payment-a", mode: "cheque",
+    split_amount: null, created_at: "2026-08-27T10:00:00Z",
+  }, {
+    factory_id: "factory-a", payment_id: "payment-a", mode: "upi",
+    split_amount: null, created_at: "2026-08-27T10:00:00Z",
+  }];
   responses.set("get_cash_book_day_summary", {
     data: [{
       business_date: "2026-08-27", opening_balance: "20000",
@@ -151,7 +187,7 @@ test("reads a derived day with customer, manual, and Vehicle wage source rows", 
   responses.set("list_cash_book_day_entries", {
     data: [{
       source_type: "customer_payment", source_id: "payment-a", business_date: "2026-08-27",
-      direction: "in", amount: "30000", payment_mode: "upi", counterparty: "Customer A",
+      direction: "in", amount: "30000", payment_mode: "multiple", counterparty: "Customer A",
       description: "Challans #12, #15", note: "Reference", source_status: "active",
       created_at: "2026-08-27T10:00:00Z",
     }, {
@@ -186,22 +222,103 @@ test("reads a derived day with customer, manual, and Vehicle wage source rows", 
   assert.equal(day.moneyOut.length, 2);
   assert.deepEqual(day.moneyIn[0], {
     sourceType: "customer_payment", sourceId: "payment-a", businessDate: "2026-08-27",
-    direction: "in", amount: 30_000, paymentMode: "upi", counterparty: "Customer A",
+    direction: "in", amount: 30_000, paymentMode: "multiple", counterparty: "Customer A",
+    paymentMethods: [
+      { mode: "cheque", splitAmount: null },
+      { mode: "upi", splitAmount: null },
+    ],
     description: "Challans #12, #15", note: "Reference", sourceStatus: "active",
     createdAt: "2026-08-27T10:00:00Z",
   });
   assert.deepEqual(day.moneyOut[1], {
     sourceType: "vehicle_wage_payment", sourceId: "wage-payment-a", businessDate: "2026-08-27",
     direction: "out", amount: 1_200, paymentMode: "unspecified", counterparty: "WB12AB1234",
+    paymentMethods: [],
     description: "Vehicle Wage Payment", note: "Weekly settlement", sourceStatus: "active",
     createdAt: "2026-08-27T10:03:00Z",
   });
   assert.deepEqual(day.moneyIn[1], {
     sourceType: "vehicle_wage_payment_reversal", sourceId: "wage-reversal-a", businessDate: "2026-08-27",
     direction: "in", amount: 1_200, paymentMode: "unspecified", counterparty: "WB12AB1234",
+    paymentMethods: [],
     description: "Vehicle Wage Payment Reversal", note: "Wrong amount", sourceStatus: "active",
     createdAt: "2026-08-27T10:00:30Z",
   });
+  assert.deepEqual(tableCalls.filter(([method]) => method === "from"), [
+    ["from", "customer_payment_methods"],
+  ]);
+  assert.ok(tableCalls.some(([method, column, value]) => (
+    method === "eq" && column === "factory_id" && value === "factory-a"
+  )));
+  assert.ok(tableCalls.some(([method, column, value]) => (
+    method === "in" && column === "payment_id"
+      && Array.isArray(value) && value.length === 1 && value[0] === "payment-a"
+  )));
+});
+
+test("explicit method splits enrich one parent movement without changing its amount", async () => {
+  reset();
+  customerPaymentMethodRows = [{
+    factory_id: "factory-a", payment_id: "payment-split", mode: "cheque",
+    split_amount: "90000", created_at: "2026-08-27T10:00:00Z",
+  }, {
+    factory_id: "factory-a", payment_id: "payment-split", mode: "upi",
+    split_amount: "10000", created_at: "2026-08-27T10:00:00Z",
+  }];
+  responses.set("get_cash_book_day_summary", {
+    data: [{
+      business_date: "2026-08-27", opening_balance: "0",
+      total_money_in: "100000", total_money_out: "0", closing_balance: "100000",
+    }],
+    error: null,
+  });
+  responses.set("list_cash_book_day_entries", {
+    data: [{
+      source_type: "customer_payment", source_id: "payment-split", business_date: "2026-08-27",
+      direction: "in", amount: "100000", payment_mode: "multiple", counterparty: "Customer A",
+      description: "Challan #12", note: null, source_status: "active",
+      created_at: "2026-08-27T10:00:00Z",
+    }],
+    error: null,
+  });
+
+  const day = await getCashBookDay("factory-a", "2026-08-27");
+  assert.equal(day.moneyIn.length, 1);
+  assert.equal(day.moneyIn[0]?.sourceId, "payment-split");
+  assert.equal(day.moneyIn[0]?.amount, 100_000);
+  assert.deepEqual(day.moneyIn[0]?.paymentMethods, [
+    { mode: "cheque", splitAmount: 90_000 },
+    { mode: "upi", splitAmount: 10_000 },
+  ]);
+  assert.deepEqual(day.summary, {
+    businessDate: "2026-08-27", openingBalance: 0,
+    totalMoneyIn: 100_000, totalMoneyOut: 0, closingBalance: 100_000,
+  });
+});
+
+test("legacy customer payment without method rows keeps one safe scalar fallback", async () => {
+  reset();
+  responses.set("get_cash_book_day_summary", {
+    data: [{
+      business_date: "2026-08-27", opening_balance: "0",
+      total_money_in: "30000", total_money_out: "0", closing_balance: "30000",
+    }],
+    error: null,
+  });
+  responses.set("list_cash_book_day_entries", {
+    data: [{
+      source_type: "customer_payment", source_id: "payment-legacy", business_date: "2026-08-27",
+      direction: "in", amount: "30000", payment_mode: "upi", counterparty: "Customer A",
+      description: "Challan #12", note: null, source_status: "active",
+      created_at: "2026-08-27T10:00:00Z",
+    }],
+    error: null,
+  });
+
+  const day = await getCashBookDay("factory-a", "2026-08-27");
+  assert.equal(day.moneyIn.length, 1);
+  assert.deepEqual(day.moneyIn[0]?.paymentMethods, []);
+  assert.equal(day.moneyIn[0]?.paymentMode, "upi");
 });
 
 test("invalid local dates, non-positive amounts, and factory errors remain explicit", async () => {

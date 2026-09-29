@@ -317,6 +317,7 @@ begin
 
   foreach routine_oid in array array[
     'public.create_customer_payment(uuid,uuid,date,numeric,text,text,jsonb)'::regprocedure::oid,
+    'public.create_customer_payment_with_methods(uuid,uuid,date,numeric,jsonb,text,jsonb)'::regprocedure::oid,
     'public.initialize_cash_book(uuid,date,numeric)'::regprocedure::oid,
     'public.create_cash_book_manual_entry(uuid,uuid,date,text,numeric,text,text,text)'::regprocedure::oid,
     'public.void_cash_book_manual_entry(uuid,uuid)'::regprocedure::oid,
@@ -341,7 +342,7 @@ begin
   end if;
 
   payment_definition := pg_get_functiondef(
-    'public.create_customer_payment(uuid,uuid,date,numeric,text,text,jsonb)'::regprocedure
+    'public.create_customer_payment_with_methods(uuid,uuid,date,numeric,jsonb,text,jsonb)'::regprocedure
   );
   if payment_definition !~ 'order by target.id'
     or payment_definition !~ 'for update'

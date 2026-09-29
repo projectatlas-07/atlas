@@ -1,4 +1,5 @@
 import type {
+  CustomerPaymentMethod,
   CustomerPaymentMode,
   NewCustomerPaymentMode,
 } from "@/features/sales/types";
@@ -51,6 +52,8 @@ export type CashBookMovement = {
   direction: CashBookDirection;
   amount: number;
   paymentMode: CustomerPaymentMode;
+  /** Populated only for customer-payment movements; empty means use the scalar fallback. */
+  paymentMethods: CustomerPaymentMethod[];
   counterparty: string;
   description: string;
   note: string | null;

@@ -18,9 +18,12 @@ import {
   emptyChallanLine,
   factoryProfileFormFromSaved,
   filterChallansByNumber,
+  filterChallansForExpandedView,
+  getCompactChallanHistory,
   getChallanEligibility,
   getChallanFormError,
   getSavedCustomerSnapshot,
+  isChallanHistoryRowSelected,
   isFactoryPrintableProfileComplete,
   moveChallanFlexibleLine,
   removeChallanFlexibleLine,
@@ -620,8 +623,249 @@ test("Challan-number search returns every duplicate with its separate internal i
     ["challan-duplicate-a", "challan-duplicate-b"],
   );
   assert.match(sectionSource, /Search Challan No\./);
-  assert.match(sectionSource, /visibleChallans\.map/);
+  assert.match(sectionSource, /compactChallans\.map/);
   assert.match(sectionSource, /openChallan\(challan\.id\)/);
+});
+
+test("compact history keeps every Challan when the filtered history has at most 10", () => {
+  const histories = [
+    [],
+    [savedChallan],
+    Array.from({ length: 10 }, (_, index) => ({
+      ...savedChallan,
+      id: `challan-${10 - index}`,
+    })),
+  ];
+
+  for (const history of histories) {
+    assert.deepEqual(getCompactChallanHistory(history), history);
+  }
+});
+
+test("compact history keeps only the first 10 entries in authoritative newest-first order", () => {
+  const newestFirst = Array.from({ length: 12 }, (_, index) => ({
+    ...savedChallan,
+    id: `challan-${12 - index}`,
+  }));
+
+  assert.deepEqual(
+    getCompactChallanHistory(newestFirst).map((challan) => challan.id),
+    newestFirst.slice(0, 10).map((challan) => challan.id),
+  );
+});
+
+test("compact history keeps UUID selection and duplicate visible numbers safe within its 10 rows", () => {
+  const newestFirst = Array.from({ length: 12 }, (_, index) => ({
+    ...savedChallan,
+    id: `challan-${12 - index}`,
+    challanNumber: index === 7 || index === 8 ? "11" : `ref-${12 - index}`,
+  }));
+  const compact = getCompactChallanHistory(newestFirst);
+
+  assert.deepEqual(
+    compact
+      .filter((challan) => isChallanHistoryRowSelected("challan-4", challan.id))
+      .map((challan) => challan.id),
+    ["challan-4"],
+  );
+  assert.deepEqual(
+    compact.filter((challan) => challan.challanNumber === "11").map((challan) => challan.id),
+    ["challan-5", "challan-4"],
+  );
+});
+
+test("compact history selects the first row by internal Challan UUID", () => {
+  assert.equal(isChallanHistoryRowSelected("challan-a", "challan-a"), true);
+  assert.equal(isChallanHistoryRowSelected("challan-a", "challan-b"), false);
+});
+
+test("compact history selects a non-first row by internal Challan UUID", () => {
+  const rowIds = ["challan-a", "challan-b", "challan-c"];
+  assert.deepEqual(
+    rowIds.filter((challanId) => isChallanHistoryRowSelected("challan-c", challanId)),
+    ["challan-c"],
+  );
+});
+
+test("compact history moves selection off the previously opened row", () => {
+  const rowIds = ["challan-a", "challan-b"];
+  const selectedBefore = rowIds.filter((challanId) =>
+    isChallanHistoryRowSelected("challan-a", challanId));
+  const selectedAfter = rowIds.filter((challanId) =>
+    isChallanHistoryRowSelected("challan-b", challanId));
+
+  assert.deepEqual(selectedBefore, ["challan-a"]);
+  assert.deepEqual(selectedAfter, ["challan-b"]);
+});
+
+test("compact history keeps duplicate visible Challan numbers UUID-safe", () => {
+  const duplicateRows = [
+    { id: "challan-duplicate-a", challanNumber: "11" },
+    { id: "challan-duplicate-b", challanNumber: "11" },
+  ];
+
+  assert.deepEqual(
+    duplicateRows
+      .filter((challan) => isChallanHistoryRowSelected("challan-duplicate-b", challan.id))
+      .map((challan) => challan.id),
+    ["challan-duplicate-b"],
+  );
+});
+
+test("expanded Challan search keeps duplicates and preserves authoritative newest-first order", () => {
+  const duplicateA = {
+    ...savedChallan,
+    id: "challan-duplicate-a",
+    challanNumber: "11",
+    challanDate: "2026-09-28",
+    customerAddressSnapshot: "Goa",
+  };
+  const duplicateB = {
+    ...savedChallan,
+    id: "challan-duplicate-b",
+    challanNumber: "11",
+    challanDate: "2026-09-27",
+    customerNameSnapshot: "Customer B",
+    vehicleNumberSnapshot: "WB65C8804",
+  };
+  const other = { ...savedChallan, id: "challan-other", challanNumber: "12" };
+  const baseFilters = {
+    period: "all" as const,
+    lifecycle: "all" as const,
+    financialLock: "all" as const,
+    localToday: "2026-09-28",
+    customFrom: "",
+    customTo: "",
+  };
+
+  assert.deepEqual(
+    filterChallansForExpandedView(
+      [duplicateA, duplicateB, other],
+      { ...baseFilters, searchText: "Challan 11" },
+    ).challans.map((challan) => challan.id),
+    ["challan-duplicate-a", "challan-duplicate-b"],
+  );
+  assert.deepEqual(
+    filterChallansForExpandedView(
+      [duplicateA, duplicateB, other],
+      { ...baseFilters, searchText: "wb65c" },
+    ).challans.map((challan) => challan.id),
+    ["challan-duplicate-b"],
+  );
+  assert.deepEqual(
+    filterChallansForExpandedView(
+      [duplicateA, duplicateB, other],
+      { ...baseFilters, searchText: "goa" },
+    ).challans.map((challan) => challan.id),
+    ["challan-duplicate-a"],
+  );
+  assert.deepEqual(
+    filterChallansForExpandedView(
+      [duplicateA, duplicateB, other],
+      { ...baseFilters, searchText: "Customer B" },
+    ).challans.map((challan) => challan.id),
+    ["challan-duplicate-b"],
+  );
+});
+
+test("expanded Challan search matches authoritative totals with or without Indian grouping", () => {
+  const rows = [
+    { ...savedChallan, id: "amount-newer", challanDate: "2026-09-28", challanTotal: 12000 },
+    { ...savedChallan, id: "amount-older", challanDate: "2026-09-27", challanTotal: 12000 },
+    { ...savedChallan, id: "different-amount", challanDate: "2026-09-26", challanTotal: 3500 },
+  ];
+  const baseFilters = {
+    period: "all" as const,
+    lifecycle: "all" as const,
+    financialLock: "all" as const,
+    localToday: "2026-09-28",
+    customFrom: "",
+    customTo: "",
+  };
+
+  for (const searchText of ["12000", "12,000"]) {
+    assert.deepEqual(
+      filterChallansForExpandedView(rows, { ...baseFilters, searchText })
+        .challans.map((challan) => challan.id),
+      ["amount-newer", "amount-older"],
+    );
+  }
+});
+
+test("expanded lifecycle and financial-lock filters stay independent", () => {
+  const activeLocked = { ...savedChallan, id: "active-locked", status: "active" as const, isLocked: true };
+  const activeUnlocked = { ...savedChallan, id: "active-unlocked", status: "active" as const, isLocked: false };
+  const voidLocked = { ...savedChallan, id: "void-locked", status: "void" as const, isLocked: true };
+  const baseFilters = {
+    searchText: "",
+    period: "all" as const,
+    localToday: "2026-09-28",
+    customFrom: "",
+    customTo: "",
+  };
+
+  assert.deepEqual(
+    filterChallansForExpandedView(
+      [activeLocked, activeUnlocked, voidLocked],
+      { ...baseFilters, lifecycle: "active", financialLock: "locked" },
+    ).challans.map((challan) => challan.id),
+    ["active-locked"],
+  );
+  assert.deepEqual(
+    filterChallansForExpandedView(
+      [activeLocked, activeUnlocked, voidLocked],
+      { ...baseFilters, lifecycle: "all", financialLock: "unlocked" },
+    ).challans.map((challan) => challan.id),
+    ["active-unlocked"],
+  );
+});
+
+test("expanded period filters use inclusive local date boundaries without pagination", () => {
+  const rows = [
+    { ...savedChallan, id: "today", challanDate: "2026-09-27" },
+    { ...savedChallan, id: "week", challanDate: "2026-09-21" },
+    { ...savedChallan, id: "month", challanDate: "2026-09-01" },
+    { ...savedChallan, id: "older", challanDate: "2026-08-31" },
+  ];
+  const baseFilters = {
+    searchText: "",
+    lifecycle: "all" as const,
+    financialLock: "all" as const,
+    localToday: "2026-09-27",
+    customFrom: "",
+    customTo: "",
+  };
+
+  assert.deepEqual(
+    filterChallansForExpandedView(rows, { ...baseFilters, period: "today" }).challans.map((row) => row.id),
+    ["today"],
+  );
+  assert.deepEqual(
+    filterChallansForExpandedView(rows, { ...baseFilters, period: "week" }).challans.map((row) => row.id),
+    ["today", "week"],
+  );
+  assert.deepEqual(
+    filterChallansForExpandedView(rows, { ...baseFilters, period: "month" }).challans.map((row) => row.id),
+    ["today", "week", "month"],
+  );
+  assert.deepEqual(
+    filterChallansForExpandedView(rows, {
+      ...baseFilters,
+      period: "custom",
+      customFrom: "2026-09-01",
+      customTo: "2026-09-21",
+    }).challans.map((row) => row.id),
+    ["week", "month"],
+  );
+  assert.equal(
+    filterChallansForExpandedView(rows, {
+      ...baseFilters,
+      period: "custom",
+      customFrom: "2026-09-29",
+      customTo: "2026-09-28",
+    }).error,
+    "From date cannot be after To date.",
+  );
 });
 
 test("saved data populates edit form while detail display keeps historical snapshots", () => {
@@ -739,7 +983,8 @@ test("edit and void eligibility respect void and locked lifecycle states", () =>
   });
   assert.match(sectionSource, /await updateChallan\(input\)/);
   assert.match(sectionSource, /await voidChallan\(factoryId, challan\.id\)/);
-  assert.match(sectionSource, /Confirm void/);
+  assert.match(sectionSource, /ChallanVoidConfirmation/);
+  assert.match(sectionSource, /Challan stays in history but won’t count as an active sale\./);
   assert.doesNotMatch(sectionSource, /deleteChallan|Delete Challan|Delete numbered/i);
 });
 

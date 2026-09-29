@@ -534,8 +534,16 @@ type CustomerPaymentRow = {
   company_mobile_snapshot: string;
   payment_date: string;
   amount: number;
-  payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other" | "unspecified";
+  payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other" | "unspecified" | "multiple";
   note: string | null;
+  created_at: string;
+};
+
+type CustomerPaymentMethodRow = {
+  factory_id: string;
+  payment_id: string;
+  mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other" | "unspecified";
+  split_amount: number | null;
   created_at: string;
 };
 
@@ -934,7 +942,7 @@ export type Database = {
           company_mobile_snapshot?: string;
           payment_date: string;
           amount: number;
-          payment_mode?: "cash" | "upi" | "bank_transfer" | "cheque" | "other" | "unspecified";
+          payment_mode?: "cash" | "upi" | "bank_transfer" | "cheque" | "other" | "unspecified" | "multiple";
           note?: string | null;
           created_at?: string;
         };
@@ -942,6 +950,21 @@ export type Database = {
         Relationships: [
           { foreignKeyName: "customer_payments_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
           { foreignKeyName: "customer_payments_customer_factory_fkey"; columns: ["customer_id", "factory_id"]; isOneToOne: false; referencedRelation: "customers"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
+      customer_payment_methods: {
+        Row: CustomerPaymentMethodRow;
+        Insert: {
+          factory_id: string;
+          payment_id: string;
+          mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other" | "unspecified";
+          split_amount?: number | null;
+          created_at?: string;
+        };
+        Update: Partial<CustomerPaymentMethodRow>;
+        Relationships: [
+          { foreignKeyName: "customer_payment_methods_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "customer_payment_methods_payment_factory_fkey"; columns: ["payment_id", "factory_id"]; isOneToOne: false; referencedRelation: "customer_payments"; referencedColumns: ["id", "factory_id"] }
         ];
       };
       customer_payment_allocations: {
@@ -1594,6 +1617,18 @@ export type Database = {
         };
         Returns: CustomerPaymentRow;
       };
+      create_customer_payment_with_methods: {
+        Args: {
+          p_factory_id: string;
+          p_customer_id: string;
+          p_payment_date: string;
+          p_amount: number;
+          p_payment_methods: Json;
+          p_note: string | null;
+          p_allocations: Json;
+        };
+        Returns: CustomerPaymentRow;
+      };
       get_challan_payment_state: {
         Args: { p_factory_id: string; p_challan_id: string };
         Returns: {
@@ -1653,7 +1688,7 @@ export type Database = {
           business_date: string;
           direction: "in" | "out";
           amount: number;
-          payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other" | "unspecified";
+          payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other" | "unspecified" | "multiple";
           counterparty: string;
           description: string;
           note: string | null;

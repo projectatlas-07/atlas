@@ -15,9 +15,11 @@ test("S5B stays bounded to Office payment workflow, history, receipt, and paymen
   assert.match(parent, /<CustomerPaymentsSection/);
 });
 
-test("Office payment save uses only verified S5A services and explicitly selected allocations", () => {
-  assert.match(office, /createCustomerPayment\(input\)/);
-  assert.match(service, /supabase\.rpc\("create_customer_payment"/);
+test("Office payment save uses the final multi-mode service and explicitly selected allocations", () => {
+  assert.match(office, /createCustomerPaymentWithMethods\(input\)/);
+  assert.match(service, /supabase\.rpc\("create_customer_payment_with_methods"/);
+  assert.match(service, /p_payment_methods: input\.methods\.map/);
+  assert.match(service, /amount: method\.splitAmount \?\? null/);
   assert.doesNotMatch(office, /auto.?allocate|allocateOldest|oldestAllocation/i);
   assert.match(office, /Nothing is selected automatically/);
   assert.match(office, /status\.canSubmit/);

@@ -50,6 +50,26 @@ test("correction keeps existing authority, payload, and Direct Amount contracts"
   assert.match(editor, /Brick rows plus extra charges\. Notes add ₹0/);
 });
 
+test("create and correction share one sticky authoritative total and save footer", () => {
+  assert.equal((editor.match(/sticky bottom-atlas-0 z-20/g) ?? []).length, 1);
+  assert.match(
+    editor,
+    /className="sticky bottom-atlas-0 z-20 flex flex-col gap-atlas-4 border-t border-atlas-border-strong bg-atlas-background py-atlas-4 sm:flex-row sm:items-end sm:justify-between"/,
+  );
+  assert.match(editor, /const totalPreview = calculateChallanTotalPreview\(form\.lines, form\.flexibleLines\)/);
+  assert.match(editor, /formatIndianCurrency\(totalPreview\)/);
+  assert.equal((editor.match(/Corrected total preview · derived/g) ?? []).length, 1);
+  assert.equal((editor.match(/Save corrections/g) ?? []).length, 1);
+  assert.match(
+    editor,
+    /type="submit"[\s\S]*loading=\{isSaving\}[\s\S]*disabled=\{isSaving \|\| \(form\.lines\.length > 0/,
+  );
+  assert.doesNotMatch(
+    editor,
+    /className=\{challan \? "flex flex-col gap-atlas-4 border-t border-atlas-border-strong pt-atlas-5/,
+  );
+});
+
 test("correction preserves its existing native focus and Enter behavior", () => {
   assert.match(editor, /if \(challan \|\| event\.key !== "Enter"/);
   assert.match(editor, /if \(challan\) return;[\s\S]*focusAfterVehicle/);

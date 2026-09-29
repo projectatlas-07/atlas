@@ -21,6 +21,12 @@ import {
 } from "@/components/ui/table";
 import { SalesRegisterSection } from "@/features/office/components/sales-register-section";
 import { CustomerPaymentsSection } from "@/features/office/components/customer-payments-section";
+import {
+  SalesOfficeWorkspace,
+  type SalesWorkspaceArea,
+} from "@/features/office/components/sales-office-workspace";
+import { AllChallansExpandedView } from "@/features/office/components/all-challans-expanded-view";
+import { AllCustomerPaymentsExpandedView } from "@/features/office/components/all-customer-payments-expanded-view";
 import { VehicleDeliveryWageOverview } from "@/features/office/components/vehicle-delivery-wage-overview";
 import type { OfficeAreaId } from "@/features/office/office-navigation";
 import { applyPaymentLocks } from "@/features/office/customer-payment-office-model";
@@ -44,19 +50,19 @@ import {
   factoryProfileFormFromSaved,
   filterActiveVehiclesForChallan,
   filterChallansByNumber,
-  formatChallanDate,
   formatSalesMoney,
   getChallanEligibility,
   getChallanFormError,
   getChallanReceivedPaymentError,
+  getCompactChallanHistory,
   getSavedChallanFlexibleLineViews,
   getSavedChallanPaymentHistoryEntries,
   getSavedChallanVehicleDetails,
+  isChallanHistoryRowSelected,
   isFactoryPrintableProfileComplete,
   moveChallanFlexibleLine,
   removeChallanFlexibleLine,
   removeChallanLine,
-  SALES_SECTION_HEADING,
   salesOfficeErrorMessage,
   selectCustomer,
   selectVehicleForChallan,
@@ -103,6 +109,7 @@ import type {
 } from "@/features/sales/types";
 import {
   formatChallanLabel,
+  formatCustomerPaymentMethods,
   formatCustomerPaymentMode,
   NEW_CUSTOMER_PAYMENT_MODES,
 } from "@/features/sales/types";
@@ -123,6 +130,8 @@ import { ATLAS_UI_STRINGS } from "@/lib/strings";
 
 type SalesBrickType = { id: string; name: string; isActive: boolean };
 type WorkspaceMode = "create" | "detail" | "edit";
+type ChallansWorkspaceView = "main" | "all";
+type CustomerPaymentsWorkspaceView = "main" | "all";
 
 const customersKey = (factoryId: string) => ["office-sales-customers", factoryId] as const;
 const factoryProfileKey = (factoryId: string) => ["office-sales-factory-profile", factoryId] as const;
@@ -243,9 +252,15 @@ export function SalesOfficeSection({
   const [isConfirmingVoid, setIsConfirmingVoid] = useState(false);
   const [isVoiding, setIsVoiding] = useState(false);
   const [challanNumberSearch, setChallanNumberSearch] = useState("");
+  const [salesArea, setSalesArea] = useState<SalesWorkspaceArea>("challans");
+  const [challansView, setChallansView] = useState<ChallansWorkspaceView>("main");
+  const [customerPaymentsView, setCustomerPaymentsView] =
+    useState<CustomerPaymentsWorkspaceView>("main");
 
   useEffect(() => {
     if (activeArea !== "sales" || navigationTarget !== "new-challan") return;
+    setSalesArea("challans");
+    setChallansView("main");
     setMode("create");
     setSelectedChallanId("");
     setIsConfirmingVoid(false);
@@ -328,6 +343,7 @@ export function SalesOfficeSection({
       });
     }
     void queryClient.invalidateQueries({ queryKey: challansKey(factoryId) });
+    void queryClient.invalidateQueries({ queryKey: ["office-factory-customer-payments", factoryId] });
     void queryClient.invalidateQueries({ queryKey: ["office-sales-register", factoryId] });
     void queryClient.invalidateQueries({ queryKey: ["office-cash-book-day", factoryId] });
   }
@@ -355,6 +371,7 @@ export function SalesOfficeSection({
       void queryClient.invalidateQueries({
         queryKey: ["office-customer-payment-history", factoryId, saved.customerId],
       });
+      void queryClient.invalidateQueries({ queryKey: ["office-factory-customer-payments", factoryId] });
       void queryClient.invalidateQueries({ queryKey: ["office-cash-book-day", factoryId] });
     }
     setSelectedChallanId(saved.id);
@@ -387,7 +404,11 @@ export function SalesOfficeSection({
   const customers = customersQuery.data ?? [];
   const challans = challansQuery.data ?? [];
   const visibleChallans = filterChallansByNumber(challans, challanNumberSearch);
+  const compactChallans = getCompactChallanHistory(visibleChallans);
   const selectedChallan = selectedChallanQuery.data;
+  const selectedChallanEligibility = selectedChallan
+    ? getChallanEligibility(selectedChallan)
+    : null;
   const factoryProfile = factoryProfileQuery.data;
   const vehicles = vehiclesQuery.data ?? [];
   const profileComplete = isFactoryPrintableProfileComplete(factoryProfile);
@@ -395,26 +416,55 @@ export function SalesOfficeSection({
   return (
     <>
       {(activeArea === "sales" || activeArea === "settings") && <>
-        {success && <p role="status" className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{success}</p>}
-        {actionError && <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">{actionError}</p>}
+        {success && <div className="mb-atlas-4"><Feedback tone="success" role="status">{success}</Feedback></div>}
+        {actionError && <div className="mb-atlas-4"><Feedback tone="danger" role="alert">{actionError}</Feedback></div>}
       </>}
-      <section id="sales" aria-labelledby="sales-office-heading" hidden={activeArea !== "sales"} className="border-t-4 border-cyan-300 pt-8">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-wider text-cyan-800">{SALES_SECTION_HEADING}</p>
-          <h2 id="sales-office-heading" className="mt-1 text-2xl font-bold">Create and manage Challans</h2>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600">
-            Add the paper Challan number when available, or leave it blank. The database calculates the total.
-          </p>
+      <section id="sales" aria-label="Sales workspace" hidden={activeArea !== "sales"}>
+      <SalesOfficeWorkspace activeArea={salesArea} onAreaChange={setSalesArea}>
+      <div hidden={salesArea !== "challans"}>
+      <div hidden={challansView !== "main"}>
+      {factoryProfileQuery.isLoading && (
+        <div className="mb-atlas-4">
+          <Feedback tone="neutral" role="status">Loading Factory / Challan Profile...</Feedback>
         </div>
-        <button type="button" onClick={openCreate} className={primaryButton}>New Challan</button>
-      </div>
+      )}
+      {factoryProfileQuery.error && (
+        <div className="mb-atlas-4">
+          <Feedback tone="danger" role="alert">
+            <div className="flex flex-col gap-atlas-3 sm:flex-row sm:items-center sm:justify-between">
+              <span>{salesOfficeErrorMessage(factoryProfileQuery.error, "Could not load the Factory / Challan Profile.")}</span>
+              <Button variant="secondary" onClick={() => { void factoryProfileQuery.refetch(); }}>{ATLAS_UI_STRINGS.actions.retry}</Button>
+            </div>
+          </Feedback>
+        </div>
+      )}
 
-      {factoryProfileQuery.isLoading && <LoadingCard label="Loading Factory / Challan Profile..." />}
-      {factoryProfileQuery.error && <ErrorCard message={salesOfficeErrorMessage(factoryProfileQuery.error, "Could not load the Factory / Challan Profile.")} />}
-
-      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(22rem,0.8fr)] xl:items-start">
-        <div>
+      <div className="grid gap-atlas-6 xl:grid-cols-3 xl:items-start">
+        <div className="xl:col-span-2">
+          <div className="mb-atlas-3 flex flex-wrap items-center justify-end gap-atlas-2" aria-label="Challan actions">
+            {mode === "detail" && selectedChallan && selectedChallanEligibility && (
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() => { setMode("edit"); setSuccess(""); setActionError(""); }}
+                  disabled={!selectedChallanEligibility.canEdit}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={() => { setIsConfirmingVoid(true); setSuccess(""); setActionError(""); }}
+                  disabled={!selectedChallanEligibility.canVoid}
+                >
+                  Void
+                </Button>
+              </>
+            )}
+            <Button variant="primary" onClick={openCreate} aria-label="Create Challan" title="Create Challan">
+              <span aria-hidden="true" className="text-atlas-xl leading-none">+</span>
+            </Button>
+          </div>
+          <Card as="section" aria-label="Challan work area">
           {mode === "create" && <ChallanEditor
             key="create-challan"
             factoryId={factoryId}
@@ -467,55 +517,137 @@ export function SalesOfficeSection({
             challan={selectedChallan}
             isConfirmingVoid={isConfirmingVoid}
             isVoiding={isVoiding}
-            onEdit={() => { setMode("edit"); setSuccess(""); setActionError(""); }}
-            onStartVoid={() => { setIsConfirmingVoid(true); setSuccess(""); setActionError(""); }}
             onCancelVoid={() => setIsConfirmingVoid(false)}
             onConfirmVoid={() => void confirmVoid(selectedChallan)}
           />}
+          </Card>
         </div>
 
-        <section aria-labelledby="challan-history-heading" className="rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h3 id="challan-history-heading" className="text-lg font-bold">Challan history</h3>
-            <p className="mt-1 text-sm text-slate-500">Operational history, newest first.</p>
-            <label className="mt-3 block text-xs font-medium text-slate-600">Search Challan No.
-              <input type="search" value={challanNumberSearch} onChange={(event) => setChallanNumberSearch(event.target.value)} placeholder="11" className={inputClass} />
-            </label>
-          </div>
-          {challansQuery.isLoading && <p className="px-5 py-8 text-sm text-slate-500">Loading Challans...</p>}
-          {challansQuery.error && <p role="alert" className="px-5 py-8 text-sm font-medium text-red-700">{salesOfficeErrorMessage(challansQuery.error, "Could not load Challans.")}</p>}
-          {!challansQuery.isLoading && !challansQuery.error && challans.length === 0 && <p className="px-5 py-8 text-sm text-slate-500">No Challans yet. Create the first one.</p>}
-          {!challansQuery.isLoading && !challansQuery.error && challans.length > 0 && visibleChallans.length === 0 && <p className="px-5 py-8 text-sm text-slate-500">No Challans match this number.</p>}
-          {!challansQuery.isLoading && !challansQuery.error && visibleChallans.length > 0 && <ul className="max-h-[46rem] divide-y divide-slate-100 overflow-y-auto">
-            {visibleChallans.map((challan) => <li key={challan.id} className={selectedChallanId === challan.id ? "bg-cyan-50" : "bg-white"}>
-              <button type="button" onClick={() => openChallan(challan.id)} className="w-full px-5 py-4 text-left hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-cyan-600">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-bold">{formatChallanLabel(challan.challanNumber)}</p>
-                    <p className="mt-1 text-sm text-slate-700">{challan.customerNameSnapshot}</p>
+        <div className="xl:sticky xl:top-atlas-8">
+          <Card as="section" aria-labelledby="challan-history-heading">
+            <div className="flex items-start justify-between gap-atlas-3">
+              <div>
+                <h3 id="challan-history-heading" className="text-atlas-lg font-atlas-semibold text-atlas-text">Challan history</h3>
+                <p className="mt-atlas-1 text-atlas-sm text-atlas-text-muted">Operational history, newest first.</p>
+              </div>
+              <Button variant="ghost" onClick={() => setChallansView("all")}>View all Challans</Button>
+            </div>
+            <div className="mt-atlas-4">
+              <FormField label="Search Challan No.">
+                <Input
+                  type="search"
+                  value={challanNumberSearch}
+                  onChange={(event) => setChallanNumberSearch(event.target.value)}
+                  placeholder="Search Challan No."
+                />
+              </FormField>
+            </div>
+
+            <div className="mt-atlas-4 border-t border-atlas-border pt-atlas-2">
+              {challansQuery.isLoading && <Feedback tone="neutral" role="status">Loading Challans...</Feedback>}
+              {challansQuery.error && (
+                <Feedback tone="danger" role="alert">
+                  <div className="flex flex-col gap-atlas-3">
+                    <span>{salesOfficeErrorMessage(challansQuery.error, "Could not load Challans.")}</span>
+                    <div><Button variant="secondary" onClick={() => { void challansQuery.refetch(); }}>{ATLAS_UI_STRINGS.actions.retry}</Button></div>
                   </div>
-                  <StatusBadge status={challan.status} isLocked={challan.isLocked} />
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-600">
-                  <span>{formatChallanDate(challan.challanDate)}</span>
-                  <span className="text-right font-semibold tabular-nums text-slate-900">{formatSalesMoney(challan.challanTotal)}</span>
-                  <span className="truncate">{challan.vehicleNumberSnapshot || challan.vehicleNumber
-                    ? `Vehicle ${challan.vehicleNumberSnapshot || challan.vehicleNumber}`
-                    : "No vehicle"}</span>
-                  <span className="text-right font-semibold text-cyan-800">Open</span>
-                </div>
-              </button>
-            </li>)}
-          </ul>}
-        </section>
+                </Feedback>
+              )}
+              {!challansQuery.isLoading && !challansQuery.error && challans.length === 0 && (
+                <EmptyState title="No Challans yet" description="Create the first Challan to start the operational history." />
+              )}
+              {!challansQuery.isLoading && !challansQuery.error && challans.length > 0 && visibleChallans.length === 0 && (
+                <EmptyState title="No matching Challans" description="Try another Challan number." />
+              )}
+              {!challansQuery.isLoading && !challansQuery.error && visibleChallans.length > 0 && (
+                <ul className="max-h-screen divide-y divide-atlas-border overflow-y-auto">
+                  {compactChallans.map((challan) => {
+                    const isSelected = isChallanHistoryRowSelected(
+                      selectedChallanId,
+                      challan.id,
+                    );
+
+                    return (
+                      <li
+                        key={challan.id}
+                        className={isSelected
+                          ? "bg-atlas-primary-surface"
+                          : "bg-atlas-surface hover:bg-atlas-surface-hover"}
+                      >
+                        {/* ui-exception: This composite history row needs a full-width multi-line button layout that the shared Button does not support. */}
+                        <button className={`block min-h-atlas-12 w-full border-l-4 p-atlas-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-atlas-focus focus-visible:ring-inset ${isSelected ? "border-l-atlas-primary" : "border-l-transparent"}`}
+                          type="button"
+                          onClick={() => openChallan(challan.id)}
+                          aria-pressed={isSelected}
+                        >
+                          <div className="flex flex-col gap-atlas-2 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <p className="font-atlas-semibold text-atlas-text">{formatChallanLabel(challan.challanNumber)}</p>
+                              <p className="mt-atlas-1 truncate text-atlas-sm text-atlas-text-muted">{challan.customerNameSnapshot}</p>
+                              {challan.customerAddressSnapshot && (
+                                <p className="mt-atlas-1 truncate text-atlas-xs text-atlas-text-subtle">{challan.customerAddressSnapshot}</p>
+                              )}
+                            </div>
+                            <StatusBadge status={challan.status} isLocked={challan.isLocked} />
+                          </div>
+                          <div className="mt-atlas-3 grid grid-cols-2 gap-x-atlas-3 gap-y-atlas-1 text-atlas-xs text-atlas-text-muted">
+                            <span>{formatDateOnly(challan.challanDate)}</span>
+                            <span className="text-right font-atlas-semibold tabular-nums text-atlas-text">{formatIndianCurrency(challan.challanTotal)}</span>
+                            <span className="truncate">{challan.vehicleNumberSnapshot || challan.vehicleNumber
+                              ? `Vehicle ${challan.vehicleNumberSnapshot || challan.vehicleNumber}`
+                              : "No vehicle"}</span>
+                            <span className="text-right font-atlas-semibold text-atlas-primary">Open</span>
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </Card>
+        </div>
       </div>
 
+      </div>
+      <div hidden={challansView !== "all"}>
+        <AllChallansExpandedView
+          challans={challans}
+          isLoading={challansQuery.isLoading}
+          errorMessage={challansQuery.error
+            ? salesOfficeErrorMessage(challansQuery.error, "Could not load Challans.")
+            : ""}
+          selectedChallanId={selectedChallanId}
+          onBack={() => setChallansView("main")}
+          onOpen={(challanId) => {
+            openChallan(challanId);
+            setChallansView("main");
+          }}
+          onRetry={() => { void challansQuery.refetch(); }}
+        />
+      </div>
+      </div>
+      <div hidden={salesArea !== "customer-payments"}>
+      <div hidden={customerPaymentsView !== "main"}>
       <CustomerPaymentsSection
         factoryId={factoryId}
         customers={customers}
         onPaymentSaved={cacheSavedPayment}
+        onViewAll={() => setCustomerPaymentsView("all")}
       />
+      </div>
+      <div hidden={customerPaymentsView !== "all"}>
+        <AllCustomerPaymentsExpandedView
+          factoryId={factoryId}
+          isActive={salesArea === "customer-payments" && customerPaymentsView === "all"}
+          onBack={() => setCustomerPaymentsView("main")}
+        />
+      </div>
+      </div>
+      <div hidden={salesArea !== "sales-register"}>
       <SalesRegisterSection factoryId={factoryId} />
+      </div>
+      </SalesOfficeWorkspace>
       </section>
 
       <section aria-label="Vehicle Delivery Wages" hidden={!showVehicleWages}>
@@ -1426,7 +1558,7 @@ function ChallanEditor({
         </fieldset>}
 
         {error && <Feedback role="alert" tone="danger">{error}</Feedback>}
-        <div className={challan ? "flex flex-col gap-atlas-4 border-t border-atlas-border-strong pt-atlas-5 sm:flex-row sm:items-end sm:justify-between" : "sticky bottom-atlas-0 z-20 flex flex-col gap-atlas-4 border-t border-atlas-border-strong bg-atlas-background py-atlas-4 sm:flex-row sm:items-end sm:justify-between"}>
+        <div className="sticky bottom-atlas-0 z-20 flex flex-col gap-atlas-4 border-t border-atlas-border-strong bg-atlas-background py-atlas-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-atlas-sm text-atlas-text-muted">{challan ? "Corrected total preview · derived" : "Final Challan total"}</p>
             <p className="mt-atlas-1 text-atlas-2xl font-atlas-semibold tabular-nums text-atlas-text">{formatIndianCurrency(totalPreview)}</p>
@@ -1801,16 +1933,12 @@ function ChallanDetail({
   challan,
   isConfirmingVoid,
   isVoiding,
-  onEdit,
-  onStartVoid,
   onCancelVoid,
   onConfirmVoid,
 }: Readonly<{
   challan: Challan;
   isConfirmingVoid: boolean;
   isVoiding: boolean;
-  onEdit: () => void;
-  onStartVoid: () => void;
   onCancelVoid: () => void;
   onConfirmVoid: () => void;
 }>) {
@@ -1882,15 +2010,21 @@ function ChallanDetail({
             </Link>
           </div>
         </div>
+        {eligibility.reason === "void" && (
+          <p className="mt-atlas-3 text-atlas-sm text-atlas-text-muted">Correction and void are unavailable for a Void Challan.</p>
+        )}
+
       </header>
 
-      {challan.isLocked && (
-        <div className="mt-atlas-4">
-          <Feedback tone="info" role="status">
-            Payment history financially locks this Challan. Its saved values remain visible, but correction and void are unavailable.
-          </Feedback>
-        </div>
+      {isConfirmingVoid && eligibility.canVoid && (
+        <ChallanVoidConfirmation
+          challanNumber={challan.challanNumber}
+          isVoiding={isVoiding}
+          onCancel={onCancelVoid}
+          onConfirm={onConfirmVoid}
+        />
       )}
+
       {challan.status === "void" && (
         <div className="mt-atlas-4">
           <Feedback tone="neutral" role="status">
@@ -2114,7 +2248,7 @@ function ChallanDetail({
                         {paymentHistory.map((entry) => (
                           <TableRow key={entry.key}>
                             <TableCell>{formatDateOnly(entry.paymentDate)}</TableCell>
-                            <TableCell>{formatCustomerPaymentMode(entry.paymentMode)}</TableCell>
+                            <TableCell>{formatCustomerPaymentMethods(entry.methods, entry.paymentMode)}</TableCell>
                             <TableCell><Link className="font-atlas-semibold text-atlas-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-atlas-focus" href={`/office/payments/${entry.paymentId}`} target="_blank" rel="noreferrer">Open receipt</Link></TableCell>
                             <TableCell>{entry.note || "—"}</TableCell>
                             <TableCell numeric><span className="font-atlas-semibold">{formatIndianCurrency(entry.allocatedAmount, MONEY_WITH_PAISE)}</span></TableCell>
@@ -2130,7 +2264,7 @@ function ChallanDetail({
                       <div className="flex items-start justify-between gap-atlas-3">
                         <div>
                           <p className="font-atlas-semibold text-atlas-text">{formatDateOnly(entry.paymentDate)}</p>
-                          <p className="mt-atlas-1 text-atlas-sm text-atlas-text-muted">{formatCustomerPaymentMode(entry.paymentMode)}{entry.note ? ` · ${entry.note}` : ""}</p>
+                          <p className="mt-atlas-1 text-atlas-sm text-atlas-text-muted">{formatCustomerPaymentMethods(entry.methods, entry.paymentMode)}{entry.note ? ` · ${entry.note}` : ""}</p>
                         </div>
                         <p className="font-atlas-semibold tabular-nums text-atlas-text">{formatIndianCurrency(entry.allocatedAmount, MONEY_WITH_PAISE)}</p>
                       </div>
@@ -2144,46 +2278,119 @@ function ChallanDetail({
         </details>
       </section>
 
-      <section aria-labelledby="saved-challan-actions-heading" className="mt-atlas-7 border-t border-atlas-border pt-atlas-5">
-        <h4 id="saved-challan-actions-heading" className="text-atlas-lg font-atlas-semibold">Secondary actions</h4>
-        <p className="mt-atlas-1 text-atlas-sm text-atlas-text-muted">
-          Correction and void preserve the original record and follow existing financial locks.
-        </p>
-        <div className="mt-atlas-3 flex flex-wrap gap-atlas-2">
-          <Button variant="secondary" onClick={onEdit} disabled={!eligibility.canEdit}>Correct Challan</Button>
-          <Button variant="danger" onClick={onStartVoid} disabled={!eligibility.canVoid}>Void Challan</Button>
-        </div>
-        {eligibility.reason === "locked" && (
-          <p className="mt-atlas-3 text-atlas-sm text-atlas-text-muted">Correction and void are unavailable because this Challan is financially locked.</p>
-        )}
-        {eligibility.reason === "void" && (
-          <p className="mt-atlas-3 text-atlas-sm text-atlas-text-muted">Correction and void are unavailable for a Void Challan.</p>
-        )}
-
-        {isConfirmingVoid && eligibility.canVoid && (
-          <div className="mt-atlas-4">
-            <Feedback tone="danger" role="alert">
-              <p className="font-atlas-semibold">Void {formatChallanLabel(challan.challanNumber)}?</p>
-              <p className="mt-atlas-1">The Challan remains permanently visible in history.</p>
-              <div className="mt-atlas-3 flex flex-wrap gap-atlas-2">
-                <Button variant="danger" onClick={onConfirmVoid} loading={isVoiding} loadingLabel="Voiding..." disabled={isVoiding}>Confirm void</Button>
-                <Button variant="secondary" onClick={onCancelVoid} disabled={isVoiding}>{ATLAS_UI_STRINGS.actions.cancel}</Button>
-              </div>
-            </Feedback>
-          </div>
-        )}
-      </section>
     </article>
   );
 }
 
+function ChallanVoidConfirmation({
+  challanNumber,
+  isVoiding,
+  onCancel,
+  onConfirm,
+}: Readonly<{
+  challanNumber: Challan["challanNumber"];
+  isVoiding: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}>) {
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef(onCancel);
+  const voidingRef = useRef(isVoiding);
+  cancelRef.current = onCancel;
+  voidingRef.current = isVoiding;
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    confirmButtonRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && !voidingRef.current) {
+        event.preventDefault();
+        cancelRef.current();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const dialog = confirmButtonRef.current?.closest('[role="dialog"]');
+      const focusable = dialog?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus();
+    };
+  }, []);
+
+  const title = challanNumber
+    ? `Void Challan ${challanNumber}?`
+    : "Void this Challan?";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-atlas-4">
+      {/* ui-exception: A centered confirmation requires a full-screen dismissal target behind it. */}
+      <button type="button" aria-label="Cancel Challan void" disabled={isVoiding} className="absolute inset-0 bg-atlas-text/25 backdrop-blur-sm" onClick={onCancel} />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="challan-void-confirmation-title"
+        aria-describedby="challan-void-confirmation-description"
+        className="relative w-full max-w-md rounded-atlas-dialog border border-atlas-border-strong bg-atlas-surface p-atlas-5 shadow-atlas-high"
+      >
+        <div className="flex items-start justify-between gap-atlas-3">
+          <div className="min-w-0">
+            <h2 id="challan-void-confirmation-title" className="text-atlas-lg font-atlas-semibold text-atlas-text">{title}</h2>
+            <p id="challan-void-confirmation-description" className="mt-atlas-2 text-atlas-sm text-atlas-text-muted">
+              Challan stays in history but won’t count as an active sale.
+            </p>
+          </div>
+          <Button variant="ghost" aria-label="Close confirmation" disabled={isVoiding} onClick={onCancel}><span aria-hidden="true">×</span></Button>
+        </div>
+        <div className="mt-atlas-5 flex flex-col gap-atlas-2 sm:flex-row sm:justify-end">
+          <Button variant="secondary" disabled={isVoiding} onClick={onCancel}>{ATLAS_UI_STRINGS.actions.cancel}</Button>
+          <Button
+            ref={confirmButtonRef}
+            variant="danger"
+            loading={isVoiding}
+            loadingLabel="Voiding..."
+            onClick={onConfirm}
+          >
+            Void
+          </Button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function StatusBadge({ status, isLocked }: Readonly<{ status: ChallanHeader["status"]; isLocked: boolean }>) {
-  return <span className="flex flex-wrap justify-end gap-1">
-    {status === "void"
-      ? <span className="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700">Void</span>
-      : <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">Active</span>}
-    {isLocked && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">Locked</span>}
-  </span>;
+  const lifecycleStatus = resolveStatusPresentation(CHALLAN_STATUS, status);
+  const financialLockStatus = isLocked
+    ? resolveBooleanStatusPresentation(CHALLAN_FINANCIAL_LOCK_STATUS, true)
+    : null;
+
+  return (
+    <span className="flex flex-wrap gap-atlas-1 sm:justify-end">
+      <StatusPill label={lifecycleStatus.label} tone={lifecycleStatus.tone} />
+      {financialLockStatus && <StatusPill label={financialLockStatus.label} tone={financialLockStatus.tone} />}
+    </span>
+  );
 }
 
 function Field({ label, children }: Readonly<{ label: string; children: React.ReactNode }>) {
@@ -2220,5 +2427,12 @@ function ErrorCard({ message }: Readonly<{ message: string }>) {
 }
 
 function EmptyWorkspace({ onCreate }: Readonly<{ onCreate: () => void }>) {
-  return <div className="rounded-xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm"><p className="text-sm text-slate-500">Select a Challan from history or create a new one.</p><button type="button" onClick={onCreate} className={`${primaryButton} mt-4`}>Create Challan</button></div>;
+  return (
+    <EmptyState
+      title="No Challan selected"
+      description="Select a Challan from history or create a new one."
+    >
+      <Button onClick={onCreate}>Create Challan</Button>
+    </EmptyState>
+  );
 }

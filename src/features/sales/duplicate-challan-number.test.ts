@@ -91,9 +91,9 @@ test("duplicate visible numbers remain separate Vehicle Delivery Wage sources", 
 });
 
 test("lists, payment references, and search results expose compact disambiguating context", () => {
-  assert.match(office, /visibleChallans\.map/);
+  assert.match(office, /compactChallans\.map/);
   assert.match(office, /challan\.customerNameSnapshot/);
-  assert.match(office, /formatChallanDate\(challan\.challanDate\)/);
+  assert.match(office, /formatDateOnly\(challan\.challanDate\)/);
   assert.match(office, /challan\.vehicleNumberSnapshot/);
   assert.match(customerPayments, /allocation\.challanDate/);
   assert.match(register, /entry\.challanDate/);

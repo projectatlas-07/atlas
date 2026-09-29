@@ -735,23 +735,25 @@ function LabourerManagement({ factoryId, labourers, isLoading, error, updatingLa
   }
 
   return (
-    <section aria-labelledby="production-workers-heading">
-      <header className="flex flex-col gap-atlas-3 border-b border-atlas-border pb-atlas-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-atlas-xs font-atlas-semibold uppercase tracking-atlas-wide text-atlas-text-muted">
-            Today · {formatDateOnly(asOfDate)}
-          </p>
-          <h3 id="production-workers-heading" className="mt-atlas-1 text-atlas-2xl font-atlas-semibold text-atlas-text">
-            Production workers
-          </h3>
-          <p className="mt-atlas-1 text-atlas-sm text-atlas-text-muted">
-            {formatIndianNumber(activeCount)} active · {formatIndianNumber(archivedCount)} archived
-          </p>
-        </div>
-        <div className="flex max-w-xl flex-col items-start gap-atlas-3 sm:items-end">
-          <p className="text-atlas-sm text-atlas-text-muted sm:text-right">
-            Work and earnings shown here use today&apos;s saved Production entries and each worker&apos;s direct effective-dated rate.
-          </p>
+    <section aria-label="Production workers">
+      <div className="flex flex-col gap-atlas-2 lg:flex-row lg:items-end lg:justify-between">
+        {!isBulkRateOpen && <div aria-label="Filter Production workers by lifecycle" className="flex gap-atlas-2 overflow-x-auto pb-atlas-1">
+          {([
+            ["all", `All ${formatIndianNumber(labourers.length)}`],
+            ["active", `Active ${formatIndianNumber(activeCount)}`],
+            ["archived", `Archived ${formatIndianNumber(archivedCount)}`],
+          ] as const).map(([value, label]) => (
+            <Button
+              key={value}
+              variant={lifecycleFilter === value ? "primary" : "ghost"}
+              aria-pressed={lifecycleFilter === value}
+              onClick={() => setLifecycleFilter(value)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>}
+        <div className="flex w-full flex-col gap-atlas-2 sm:flex-row sm:items-end lg:flex-1 lg:justify-end">
           <div className="flex flex-wrap gap-atlas-2">
             <Button
               variant="secondary"
@@ -768,45 +770,26 @@ function LabourerManagement({ factoryId, labourers, isLoading, error, updatingLa
               + Add labourer
             </Button>
           </div>
+          {!isBulkRateOpen && <div className="w-full lg:max-w-sm">
+            <FormField label="Search Production workers">
+              <Input
+                type="search"
+                value={workerSearch}
+                onChange={(event) => setWorkerSearch(event.target.value)}
+                placeholder="Search worker or origin"
+                autoComplete="off"
+              />
+            </FormField>
+          </div>}
         </div>
-      </header>
+      </div>
 
-      {!isBulkRateOpen && <div className="mt-atlas-4 flex flex-col gap-atlas-3 lg:flex-row lg:items-end lg:justify-between">
-        <div aria-label="Filter Production workers by lifecycle" className="flex gap-atlas-2 overflow-x-auto pb-atlas-1">
-          {([
-            ["all", `All ${formatIndianNumber(labourers.length)}`],
-            ["active", `Active ${formatIndianNumber(activeCount)}`],
-            ["archived", `Archived ${formatIndianNumber(archivedCount)}`],
-          ] as const).map(([value, label]) => (
-            <Button
-              key={value}
-              variant={lifecycleFilter === value ? "primary" : "ghost"}
-              aria-pressed={lifecycleFilter === value}
-              onClick={() => setLifecycleFilter(value)}
-            >
-              {label}
-            </Button>
-          ))}
-        </div>
-        <div className="w-full lg:max-w-sm">
-          <FormField label="Search Production workers">
-            <Input
-              type="search"
-              value={workerSearch}
-              onChange={(event) => setWorkerSearch(event.target.value)}
-              placeholder="Search worker or origin"
-              autoComplete="off"
-            />
-          </FormField>
-        </div>
-      </div>}
-
-      <div className="mt-atlas-4 space-y-atlas-3">
+      {(error || productionWageRatesError || productionTodayQuery.error || latestWithdrawalsQuery.error) && <div className="mt-atlas-3 space-y-atlas-3">
         {error && <Feedback role="alert" tone="danger">Could not load Production workers: {error}</Feedback>}
         {productionWageRatesError && <Feedback role="alert" tone="danger">Could not load Production wage rates: {productionWageRatesErrorMessage}</Feedback>}
         {productionTodayQuery.error && <Feedback role="alert" tone="danger">Could not load today&apos;s Production work: {productionTodayErrorMessage}</Feedback>}
         {latestWithdrawalsQuery.error && <Feedback role="alert" tone="danger">Could not load latest Production worker payments.</Feedback>}
-      </div>
+      </div>}
 
       {isBulkRateOpen ? (
         <ProductionBulkRateSetting
@@ -815,7 +798,7 @@ function LabourerManagement({ factoryId, labourers, isLoading, error, updatingLa
           onClose={() => setIsBulkRateOpen(false)}
         />
       ) : isLoading ? (
-        <div className="mt-atlas-4"><Feedback role="status" tone="neutral">Loading Production workers...</Feedback></div>
+        <div className="mt-atlas-3"><Feedback role="status" tone="neutral">Loading Production workers...</Feedback></div>
       ) : visibleLabourers.length === 0 ? (
         <EmptyState
           title={labourers.length === 0 ? "No Production workers yet" : "No workers match these filters"}
@@ -823,7 +806,7 @@ function LabourerManagement({ factoryId, labourers, isLoading, error, updatingLa
         />
       ) : (
         <>
-          <div className="mt-atlas-4 hidden md:block">
+          <div className="mt-atlas-3 hidden md:block">
             <TableContainer>
               <Table wide>
                 <TableCaption visuallyHidden>Production worker overview for {formatDateOnly(asOfDate)}</TableCaption>
@@ -907,7 +890,7 @@ function LabourerManagement({ factoryId, labourers, isLoading, error, updatingLa
             </TableContainer>
           </div>
 
-          <div className="mt-atlas-4 divide-y divide-atlas-border border-y border-atlas-border md:hidden">
+          <div className="mt-atlas-3 divide-y divide-atlas-border border-y border-atlas-border md:hidden">
             {visibleLabourers.map((labourer) => {
               const overview = getWorkerOverview(labourer);
               return (

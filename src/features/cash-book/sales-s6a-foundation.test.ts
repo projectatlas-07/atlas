@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 const migration = readFileSync(new URL("../../../supabase/migrations/20260827000023_create_cash_book_foundation.sql", import.meta.url), "utf8");
+const methodStorageMigration = readFileSync(new URL("../../../supabase/migrations/20260929000067_create_customer_payment_method_storage.sql", import.meta.url), "utf8");
 const verifier = readFileSync(new URL("../../../supabase/verify_sales_s6a.sql", import.meta.url), "utf8");
 const service = readFileSync(new URL("./services/cash-book-service.ts", import.meta.url), "utf8");
 const paymentService = readFileSync(new URL("../sales/services/customer-payment-service.ts", import.meta.url), "utf8");
@@ -66,8 +67,10 @@ test("opening and closing are derived and carry forward active source movements"
   assert.match(verifier, /no-transaction next day opens and closes at 70,000/);
 });
 
-test("Cash Book writes are RPC-only and reads remain factory-authorized", () => {
-  assert.doesNotMatch(service, /\.from\(|\.insert\(|\.update\(|\.delete\(/);
+test("Cash Book writes are RPC-only and its method enrichment remains factory-authorized", () => {
+  assert.doesNotMatch(service, /\.insert\(|\.update\(|\.delete\(/);
+  assert.equal((service.match(/\.from\(/g) ?? []).length, 1);
+  assert.match(service, /\.from\("customer_payment_methods"\)[\s\S]*\.eq\("factory_id", factoryId\)[\s\S]*\.in\("payment_id", batchPaymentIds\)/);
   for (const rpc of [
     "initialize_cash_book",
     "create_cash_book_manual_entry",
@@ -78,5 +81,7 @@ test("Cash Book writes are RPC-only and reads remain factory-authorized", () => 
   assert.match(migration, /enable row level security/g);
   assert.match(migration, /security definer/g);
   assert.match(migration, /set search_path = pg_catalog, public/g);
+  assert.match(methodStorageMigration, /alter table public\.customer_payment_methods enable row level security/);
+  assert.match(methodStorageMigration, /create policy "Authenticated users can read their factory customer payment methods"[\s\S]*for select[\s\S]*factory_users\.factory_id = customer_payment_methods\.factory_id/);
   assert.match(verifier, /Factory A user cannot read Factory B summary/);
 });

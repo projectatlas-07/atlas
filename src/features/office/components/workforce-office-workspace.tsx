@@ -33,19 +33,7 @@ export function WorkforceOfficeWorkspace({
   children: ReactNode;
 }>) {
   return (
-    <div className="space-y-atlas-6">
-      <header className="border-b border-atlas-border pb-atlas-5">
-        <p className="text-atlas-xs font-atlas-semibold uppercase tracking-atlas-wide text-atlas-text-muted">
-          People, rates and accounts
-        </p>
-        <h2 className="mt-atlas-1 text-atlas-2xl font-atlas-semibold text-atlas-text">
-          Workforce workspace
-        </h2>
-        <p className="mt-atlas-2 max-w-3xl text-atlas-sm text-atlas-text-muted">
-          Manage workers, wage rates, earnings, payments, balances and history. Daily operational recording remains in Production.
-        </p>
-      </header>
-
+    <div className="space-y-atlas-4">
       <nav aria-label="Workforce areas" className="overflow-x-auto pb-atlas-1">
         <div className="flex min-w-max gap-atlas-2">
           {WORKFORCE_WORKSPACE_AREAS.map((area) => (

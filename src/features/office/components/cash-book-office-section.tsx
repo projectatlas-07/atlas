@@ -28,6 +28,7 @@ import type {
 } from "@/features/cash-book/types";
 import { formatChallanDate, formatSalesMoney } from "@/features/office/sales-office-model";
 import {
+  formatCustomerPaymentMethods,
   formatCustomerPaymentMode,
   NEW_CUSTOMER_PAYMENT_MODES,
 } from "@/features/sales/types";
@@ -375,6 +376,13 @@ function CashBookEntryRow({ entry, confirmingVoid, isVoiding, onAskVoid, onCance
         : entry.sourceType === "vehicle_wage_payment_reversal"
           ? "Vehicle Wage Payment Reversal"
           : entry.direction === "in" ? "Manual Money In" : "Manual Money Out";
+  const paymentModeDisplay = entry.sourceType === "customer_payment"
+    ? formatCustomerPaymentMethods(
+      entry.paymentMethods,
+      entry.paymentMode,
+      { includeSplitAmounts: false },
+    )
+    : formatCustomerPaymentMode(entry.paymentMode);
 
   return <li className={`px-4 py-4 sm:px-5 ${isVoid ? "bg-slate-50 text-slate-500" : "bg-white"}`}>
     <div className="flex items-start justify-between gap-4">
@@ -386,7 +394,7 @@ function CashBookEntryRow({ entry, confirmingVoid, isVoiding, onAskVoid, onCance
         <p className="mt-1 text-xs text-slate-500">
           {isVehicleWageMovement
             ? sourceLabel
-            : <>{sourceLabel} · {formatCustomerPaymentMode(entry.paymentMode)}
+            : <>{sourceLabel} · {paymentModeDisplay}
               {entry.sourceType !== "manual_cash_entry" ? ` · ${entry.description}` : ""}</>}
         </p>
         <p className="mt-1 text-xs text-slate-500">

@@ -27,6 +27,9 @@ const fakeSupabase = {
   },
   from(table: string) {
     calls.push(["from", table]);
+    const orderings: Array<{ column: string; ascending: boolean }> = [];
+    let afterId: string | null = null;
+    let maximumRows = Number.POSITIVE_INFINITY;
     const builder = {
       select(columns: string) {
         calls.push(["select", columns]);
@@ -44,18 +47,43 @@ const fakeSupabase = {
         calls.push(["lte", column, value]);
         return builder;
       },
+      gt(column: string, value: string) {
+        calls.push(["gt", column, value]);
+        if (column === "id") afterId = value;
+        return builder;
+      },
       in(column: string, values: string[]) {
         calls.push(["in", column, values]);
         return builder;
       },
       order(column: string, options: { ascending: boolean }) {
         calls.push(["order", column, options]);
+        orderings.push({ column, ascending: options.ascending });
+        return builder;
+      },
+      limit(value: number) {
+        calls.push(["limit", value]);
+        maximumRows = value;
         return builder;
       },
       then(resolve: (value: Response) => unknown) {
-        return Promise.resolve(resolve(
-          tableResponses.get(table) ?? { data: [], error: null },
-        ));
+        const response = tableResponses.get(table) ?? { data: [], error: null };
+        if (response.error || !Array.isArray(response.data)) {
+          return Promise.resolve(resolve(response));
+        }
+        const data = response.data
+          .filter((row) => afterId === null || String(row.id) > afterId)
+          .sort((left, right) => {
+            for (const ordering of orderings) {
+              const comparison = String(left[ordering.column]).localeCompare(
+                String(right[ordering.column]),
+              );
+              if (comparison !== 0) return ordering.ascending ? comparison : -comparison;
+            }
+            return 0;
+          })
+          .slice(0, maximumRows);
+        return Promise.resolve(resolve({ data, error: null }));
       },
     };
     return builder;
@@ -69,9 +97,11 @@ await mock.module("../../../lib/supabase/client.ts", {
 const {
   CustomerPaymentServiceError,
   createCustomerPayment,
+  createCustomerPaymentWithMethods,
   getChallanPaymentState,
   getCustomerPayment,
   getCustomerSalesSummary,
+  listFactoryCustomerPayments,
   listCustomerOutstandingChallans,
   listCustomerPayments,
 } = await import("./customer-payment-service.ts");
@@ -116,6 +146,14 @@ const allocationRows = [{
   created_at: "2026-08-27T10:00:00Z",
 }];
 
+const paymentMethodRows = [{
+  factory_id: "factory-a",
+  payment_id: "payment-1",
+  mode: "upi",
+  split_amount: null,
+  created_at: "2026-08-27T10:00:00Z",
+}];
+
 const challanNumberRows = [
   { id: "challan-1", challan_number: "41", challan_date: "2026-08-25" },
   { id: "challan-2", challan_number: "42", challan_date: "2026-08-26" },
@@ -125,6 +163,7 @@ test("creates one payment through the controlled RPC with explicit multi-Challan
   reset();
   rpcResponses.set("create_customer_payment", { data: paymentRow, error: null });
   tableResponses.set("customer_payment_allocations", { data: allocationRows, error: null });
+  tableResponses.set("customer_payment_methods", { data: paymentMethodRows, error: null });
   tableResponses.set("challans", { data: challanNumberRows, error: null });
 
   const result = await createCustomerPayment({
@@ -144,6 +183,7 @@ test("creates one payment through the controlled RPC with explicit multi-Challan
   assert.equal(result.amount, 60_000);
   assert.equal(result.note, "Bank reference 42");
   assert.equal(result.paymentMode, "upi");
+  assert.deepEqual(result.methods, [{ mode: "upi", splitAmount: null }]);
   assert.equal(result.customerNameSnapshot, "Customer A at payment");
   assert.deepEqual(result.allocations.map((allocation: { challanId: string }) => (
     allocation.challanId
@@ -167,6 +207,120 @@ test("creates one payment through the controlled RPC with explicit multi-Challan
     ],
   }]);
   assert.equal(calls.some(([method]) => method === "insert"), false);
+});
+
+test("creates one multi-mode payment through the new RPC without changing allocations", async () => {
+  reset();
+  const multiPaymentRow = { ...paymentRow, payment_mode: "multiple" };
+  rpcResponses.set("create_customer_payment_with_methods", {
+    data: multiPaymentRow,
+    error: null,
+  });
+  tableResponses.set("customer_payment_allocations", { data: allocationRows, error: null });
+  tableResponses.set("customer_payment_methods", {
+    data: [{
+      ...paymentMethodRows[0], mode: "upi", split_amount: "10000",
+    }, {
+      ...paymentMethodRows[0], mode: "cheque", split_amount: "50000",
+    }],
+    error: null,
+  });
+  tableResponses.set("challans", { data: challanNumberRows, error: null });
+
+  const result = await createCustomerPaymentWithMethods({
+    factoryId: "factory-a",
+    customerId: "customer-a",
+    paymentDate: "2026-08-27",
+    amount: 60_000,
+    methods: [
+      { mode: "upi", splitAmount: 10_000 },
+      { mode: "cheque", splitAmount: 50_000 },
+    ],
+    note: "  Split   tender ",
+    allocations: [
+      { challanId: "challan-2", amount: 30_000 },
+      { challanId: "challan-1", amount: 30_000 },
+    ],
+  });
+
+  assert.equal(result.id, "payment-1");
+  assert.equal(result.paymentMode, "multiple");
+  assert.deepEqual(result.methods, [
+    { mode: "cheque", splitAmount: 50_000 },
+    { mode: "upi", splitAmount: 10_000 },
+  ]);
+  assert.equal(result.allocations.length, 2);
+  assert.deepEqual(calls[0], ["rpc", "create_customer_payment_with_methods", {
+    p_factory_id: "factory-a",
+    p_customer_id: "customer-a",
+    p_payment_date: "2026-08-27",
+    p_amount: 60_000,
+    p_payment_methods: [
+      { mode: "upi", amount: 10_000 },
+      { mode: "cheque", amount: 50_000 },
+    ],
+    p_note: "Split tender",
+    p_allocations: [
+      { challan_id: "challan-2", amount: 30_000 },
+      { challan_id: "challan-1", amount: 30_000 },
+    ],
+  }]);
+});
+
+test("rejects partial, duplicate, and mismatched method splits before calling Supabase", async () => {
+  const base = {
+    factoryId: "factory-a",
+    customerId: "customer-a",
+    paymentDate: "2026-08-27",
+    amount: 60_000,
+    allocations: [{ challanId: "challan-1", amount: 60_000 }],
+  };
+
+  for (const methods of [
+    [{ mode: "upi", splitAmount: 10_000 }, { mode: "cheque" }],
+    [{ mode: "upi" }, { mode: "upi" }],
+    [{ mode: "upi", splitAmount: 10_000 }, { mode: "cheque", splitAmount: 40_000 }],
+  ] as const) {
+    reset();
+    await assert.rejects(
+      () => createCustomerPaymentWithMethods({ ...base, methods: [...methods] }),
+      /every payment method|same payment mode|exactly equal/,
+    );
+    assert.equal(calls.length, 0);
+  }
+});
+
+test("new writer sends unsplit methods as explicit NULL amounts", async () => {
+  reset();
+  rpcResponses.set("create_customer_payment_with_methods", {
+    data: { ...paymentRow, payment_mode: "multiple" },
+    error: null,
+  });
+  tableResponses.set("customer_payment_allocations", { data: [], error: null });
+  tableResponses.set("customer_payment_methods", {
+    data: [{ ...paymentMethodRows[0], mode: "upi" }, {
+      ...paymentMethodRows[0], mode: "cheque",
+    }],
+    error: null,
+  });
+
+  const result = await createCustomerPaymentWithMethods({
+    factoryId: "factory-a",
+    customerId: "customer-a",
+    paymentDate: "2026-08-27",
+    amount: 60_000,
+    methods: [{ mode: "upi" }, { mode: "cheque", splitAmount: null }],
+    allocations: [{ challanId: "challan-1", amount: 60_000 }],
+  });
+
+  assert.deepEqual((calls[0]?.[2] as { p_payment_methods: unknown }).p_payment_methods, [
+    { mode: "upi", amount: null },
+    { mode: "cheque", amount: null },
+  ]);
+  assert.deepEqual(result.methods, [
+    { mode: "cheque", splitAmount: null },
+    { mode: "upi", splitAmount: null },
+  ]);
 });
 
 test("rejects invalid, duplicate, or non-equal allocations before calling Supabase", async () => {
@@ -276,11 +430,13 @@ test("lists immutable payment history with source payment and Challan IDs", asyn
   reset();
   tableResponses.set("customer_payments", { data: [paymentRow], error: null });
   tableResponses.set("customer_payment_allocations", { data: allocationRows, error: null });
+  tableResponses.set("customer_payment_methods", { data: paymentMethodRows, error: null });
   tableResponses.set("challans", { data: challanNumberRows, error: null });
 
   const payments = await listCustomerPayments("factory-a", "customer-a");
   assert.equal(payments.length, 1);
   assert.equal(payments[0]?.id, "payment-1");
+  assert.deepEqual(payments[0]?.methods, [{ mode: "upi", splitAmount: null }]);
   assert.deepEqual(payments[0]?.allocations.map((allocation: { paymentId: string; challanId: string }) => ({
     paymentId: allocation.paymentId,
     challanId: allocation.challanId,
@@ -291,21 +447,207 @@ test("lists immutable payment history with source payment and Challan IDs", asyn
   assert.deepEqual(calls.find(([method]) => method === "in"), [
     "in", "payment_id", ["payment-1"],
   ]);
+  assert.ok(calls.some((call) => call[0] === "eq"
+    && call[1] === "customer_id"
+    && call[2] === "customer-a"));
+  assert.equal(calls.filter((call) => call[0] === "from"
+    && call[1] === "customer_payment_methods").length, 1);
+  assert.deepEqual(calls.filter(([method]) => method === "order").slice(0, 3), [
+    ["order", "payment_date", { ascending: false }],
+    ["order", "created_at", { ascending: false }],
+    ["order", "id", { ascending: false }],
+  ]);
+});
+
+test("lists factory-wide payments for multiple customers with allocations and UUID-safe duplicate Challan numbers", async () => {
+  reset();
+  const paymentA = {
+    ...paymentRow,
+    id: "00000000-0000-4000-8000-000000000001",
+    customer_id: "customer-a",
+    customer_name_snapshot: "Customer A at payment",
+    payment_date: "2026-09-10",
+    created_at: "2026-09-10T09:00:00Z",
+  };
+  const paymentB = {
+    ...paymentRow,
+    id: "00000000-0000-4000-8000-000000000002",
+    customer_id: "customer-b",
+    customer_name_snapshot: "Customer B at payment",
+    payment_date: "2026-09-10",
+    created_at: "2026-09-10T10:00:00Z",
+  };
+  const paymentC = {
+    ...paymentRow,
+    id: "00000000-0000-4000-8000-000000000003",
+    customer_id: "customer-c",
+    customer_name_snapshot: "Customer C at payment",
+    payment_date: "2026-09-10",
+    created_at: "2026-09-10T10:00:00Z",
+  };
+  const olderPayment = {
+    ...paymentRow,
+    id: "00000000-0000-4000-8000-000000000004",
+    customer_id: "customer-b",
+    customer_name_snapshot: "Customer B at payment",
+    payment_date: "2026-09-09",
+    created_at: "2026-09-11T12:00:00Z",
+  };
+  tableResponses.set("customer_payments", {
+    data: [paymentA, olderPayment, paymentC, paymentB],
+    error: null,
+  });
+  tableResponses.set("customer_payment_allocations", {
+    data: [{
+      id: "allocation-b",
+      factory_id: "factory-a",
+      payment_id: paymentB.id,
+      challan_id: "challan-duplicate-b",
+      allocated_amount: "20000",
+      created_at: "2026-09-10T10:00:00Z",
+    }, {
+      id: "allocation-a-2",
+      factory_id: "factory-a",
+      payment_id: paymentA.id,
+      challan_id: "challan-extra",
+      allocated_amount: "30000",
+      created_at: "2026-09-10T09:00:01Z",
+    }, {
+      id: "allocation-a-1",
+      factory_id: "factory-a",
+      payment_id: paymentA.id,
+      challan_id: "challan-duplicate-a",
+      allocated_amount: "30000",
+      created_at: "2026-09-10T09:00:00Z",
+    }],
+    error: null,
+  });
+  tableResponses.set("customer_payment_methods", {
+    data: [{
+      factory_id: "factory-a", payment_id: paymentA.id,
+      mode: "cash", split_amount: null, created_at: paymentA.created_at,
+    }, {
+      factory_id: "factory-a", payment_id: paymentB.id,
+      mode: "upi", split_amount: "5000", created_at: paymentB.created_at,
+    }, {
+      factory_id: "factory-a", payment_id: paymentB.id,
+      mode: "cheque", split_amount: "55000", created_at: paymentB.created_at,
+    }],
+    error: null,
+  });
+  tableResponses.set("challans", {
+    data: [
+      { id: "challan-duplicate-a", challan_number: "11", challan_date: "2026-09-01" },
+      { id: "challan-duplicate-b", challan_number: "11", challan_date: "2026-09-02" },
+      { id: "challan-extra", challan_number: null, challan_date: "2026-09-03" },
+    ],
+    error: null,
+  });
+
+  const payments = await listFactoryCustomerPayments("factory-a");
+
+  assert.deepEqual(payments.map((payment: { id: string }) => payment.id), [
+    paymentC.id,
+    paymentB.id,
+    paymentA.id,
+    olderPayment.id,
+  ]);
+  assert.deepEqual(payments.map((payment: { customerId: string }) => payment.customerId), [
+    "customer-c",
+    "customer-b",
+    "customer-a",
+    "customer-b",
+  ]);
+  const customerAPayment = payments.find((payment: { id: string }) => payment.id === paymentA.id);
+  assert.deepEqual(customerAPayment?.allocations.map((allocation: {
+    challanId: string;
+    challanNumber: string | null;
+    allocatedAmount: number;
+  }) => ({
+    challanId: allocation.challanId,
+    challanNumber: allocation.challanNumber,
+    allocatedAmount: allocation.allocatedAmount,
+  })), [{
+    challanId: "challan-duplicate-a",
+    challanNumber: "11",
+    allocatedAmount: 30_000,
+  }, {
+    challanId: "challan-extra",
+    challanNumber: null,
+    allocatedAmount: 30_000,
+  }]);
+  const customerBPayment = payments.find((payment: { id: string }) => payment.id === paymentB.id);
+  assert.equal(customerBPayment?.allocations[0]?.challanId, "challan-duplicate-b");
+  assert.equal(customerBPayment?.allocations[0]?.challanNumber, "11");
+  assert.deepEqual(customerBPayment?.methods, [{
+    mode: "cheque", splitAmount: 55_000,
+  }, {
+    mode: "upi", splitAmount: 5_000,
+  }]);
+  assert.deepEqual(payments.find((payment: { id: string }) => payment.id === paymentC.id)?.methods, [{
+    mode: "upi", splitAmount: null,
+  }]);
+
+  assert.equal(calls.some((call) => call[0] === "eq" && call[1] === "customer_id"), false);
+  assert.equal(calls.filter((call) => call[0] === "eq"
+    && call[1] === "factory_id"
+    && call[2] === "factory-a").length, 4);
+  assert.equal(calls.filter((call) => call[0] === "from"
+    && call[1] === "customer_payment_allocations").length, 1);
+  assert.equal(calls.filter((call) => call[0] === "from"
+    && call[1] === "customer_payment_methods").length, 1);
+  assert.deepEqual(calls.filter(([method]) => method === "limit"), [
+    ["limit", 500],
+    ["limit", 500],
+  ]);
+});
+
+test("factory-wide payment history returns empty without unnecessary allocation reads", async () => {
+  reset();
+  tableResponses.set("customer_payments", { data: [], error: null });
+
+  assert.deepEqual(await listFactoryCustomerPayments("factory-empty"), []);
+  assert.deepEqual(calls.filter(([method]) => method === "from"), [
+    ["from", "customer_payments"],
+  ]);
+  assert.ok(calls.some((call) => call[0] === "eq"
+    && call[1] === "factory_id"
+    && call[2] === "factory-empty"));
 });
 
 test("loads one receipt source with immutable payment-time snapshots and Challan numbers", async () => {
   reset();
   tableResponses.set("customer_payments", { data: [paymentRow], error: null });
   tableResponses.set("customer_payment_allocations", { data: allocationRows, error: null });
+  tableResponses.set("customer_payment_methods", { data: paymentMethodRows, error: null });
   tableResponses.set("challans", { data: challanNumberRows, error: null });
   const payment = await getCustomerPayment("factory-a", "payment-1");
   assert.equal(payment.companyNameSnapshot, "Atlas Bricks at payment");
   assert.equal(payment.customerAddressSnapshot, "Old customer address");
+  assert.deepEqual(payment.methods, [{ mode: "upi", splitAmount: null }]);
   assert.deepEqual(payment.allocations.map((allocation: { challanNumber: string | null }) => allocation.challanNumber), ["42", "41"]);
   assert.deepEqual(calls.filter(([method]) => method === "eq").slice(0, 2), [
     ["eq", "factory_id", "factory-a"],
     ["eq", "id", "payment-1"],
   ]);
+});
+
+test("falls back to a legacy scalar without inventing a split when child methods are missing", async () => {
+  reset();
+  tableResponses.set("customer_payments", { data: [paymentRow], error: null });
+  tableResponses.set("customer_payment_allocations", { data: [], error: null });
+  tableResponses.set("customer_payment_methods", { data: [], error: null });
+
+  const payment = await getCustomerPayment("factory-a", "payment-1");
+  assert.deepEqual(payment.methods, [{ mode: "upi", splitAmount: null }]);
+
+  reset();
+  tableResponses.set("customer_payments", {
+    data: [{ ...paymentRow, payment_mode: "multiple" }], error: null,
+  });
+  tableResponses.set("customer_payment_allocations", { data: [], error: null });
+  tableResponses.set("customer_payment_methods", { data: [], error: null });
+  assert.deepEqual((await getCustomerPayment("factory-a", "payment-1")).methods, []);
 });
 
 test("lists outstanding Challans with one goods batch and authoritative payment states", async () => {

@@ -76,7 +76,8 @@ const entries: SalesRegisterEntry[] = [
 test("active and void Challans both remain visible in the register", () => {
   assert.deepEqual(entries.map((entry) => entry.status), ["active", "void", "active"]);
   assert.match(registerSource, /entries\.map/);
-  assert.match(registerSource, /entry\.status === "void" \? "Void" : "Active"/);
+  assert.match(registerSource, /resolveStatusPresentation\(CHALLAN_STATUS, entry\.status\)/);
+  assert.match(registerSource, /<StatusPill label=\{lifecycleStatus\.label\} tone=\{lifecycleStatus\.tone\}/);
 });
 
 test("duplicate visible numbers remain separate Sales Register transactions", () => {
@@ -122,7 +123,7 @@ test("multiple brick rows aggregate quantity without duplicating any revenue val
     voidChallans: 0,
   });
   assert.match(registerSource, /getChallanBrickQuantity\(entry\)/);
-  assert.match(registerSource, /formatSalesMoney\(entry\.totalRevenue\)/);
+  assert.match(registerSource, /formatIndianCurrency\(entry\.totalRevenue, MONEY_WITH_PAISE\)/);
 });
 
 test("register shows authoritative Unpaid, Partial, and Paid state without changing revenue classification", () => {
@@ -134,8 +135,8 @@ test("register shows authoritative Unpaid, Partial, and Paid state without chang
     [entries[0]?.brickRevenue, entries[0]?.otherRevenue, entries[0]?.totalRevenue],
     [4000, 321.09, 4321.09],
   );
-  assert.match(registerSource, /Paid \{formatSalesMoney\(entry\.paidAmount\)\}/);
-  assert.match(registerSource, /Due \{formatSalesMoney\(entry\.outstandingAmount\)\}/);
+  assert.match(registerSource, /Paid \{formatIndianCurrency\(entry\.paidAmount, MONEY_WITH_PAISE\)\}/);
+  assert.match(registerSource, /Due \{formatIndianCurrency\(entry\.outstandingAmount, MONEY_WITH_PAISE\)\}/);
 });
 
 test("Sales Register exposes an explicit uncluttered three-way revenue summary", () => {
@@ -207,4 +208,29 @@ test("register opens the existing S3 Challan and introduces no Sale entry or sto
   assert.match(officeSource, /<SalesRegisterSection/);
   assert.doesNotMatch(registerSource, /Create Sale|Enter Sale|Record Sale/i);
   assert.doesNotMatch(serviceSource, /\.from\(["']sales["']\)|insert\(|update\(|delete\(/i);
+});
+
+test("Sales Register V2 matches the approved dense reference with intentional mobile cards", () => {
+  for (const primitive of [
+    "Button",
+    "Card",
+    "EmptyState",
+    "Feedback",
+    "FormField",
+    "Input",
+    "StatusPill",
+    "TableContainer",
+  ]) assert.match(registerSource, new RegExp(`<${primitive}\\b`));
+  assert.match(registerSource, /className="hidden md:block"/);
+  assert.match(registerSource, /className="space-y-atlas-3 md:hidden"/);
+  assert.match(registerSource, /<TableHeader sticky>/);
+  assert.match(registerSource, /<TableRow hoverable>/);
+  assert.match(registerSource, /formatIndianNumber\(getChallanBrickQuantity\(entry\)\)/);
+  assert.doesNotMatch(registerSource, /(?:bg|text|border)-(?:slate|stone|red|amber|emerald|blue|cyan|indigo)-|#[0-9a-f]{3,8}/i);
+  assert.doesNotMatch(registerSource, /(?:p|m|gap|space-[xy]|rounded|shadow|max-h|min-w)-\[[^\]]+\]/);
+});
+
+test("Sales Register V2 adds no reference-only tax, export, inventory, or accounting semantics", () => {
+  assert.doesNotMatch(registerSource, /GST|CGST|SGST|IGST|tax rate|taxable value|CSV|Export report|inventory deduction|settlement/i);
+  assert.doesNotMatch(registerSource, /\bcreateCustomerPayment\b|\bcreateChallan\b|\bupdateChallan\b|\bvoidChallan\b|\.from\(|\.rpc\(/);
 });

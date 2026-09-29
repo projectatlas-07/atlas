@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Atlas - Sales Register</title>
+<!-- Tailwind CSS CDN with forms and container queries plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            atlas: {
+              green: '#2F6B4F',
+              greenDark: '#1A4D36',
+              greenLight: '#EAF3ED',
+              greenSoft: '#F0F6F2',
+              bg: '#F7F7F5',
+              surface: '#FFFFFF',
+              border: '#E5E5E2',
+              borderSubtle: '#EEEEEC',
+              textPrimary: '#1F1F1D',
+              textSecondary: '#686864',
+              textMuted: '#8E8E8A',
+              activePill: '#0e6579',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="typography">
+    /* Enforce clear tabular figures for all financial and numeric displays */
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+<style data-purpose="custom-scrollbars">
+    /* Subtle custom scrollbar matching Atlas minimalist aesthetics */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #D8D8D4;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #B0B0AC;
+    }
+  </style>
+</head>
+<body class="h-full bg-atlas-bg font-sans text-atlas-textPrimary antialiased overflow-hidden">
+<!-- BEGIN: ApplicationLayout -->
+<div class="flex h-full w-full">
+<!-- BEGIN: LeftSidebar -->
+<aside class="w-64 flex-shrink-0 bg-atlas-bg border-r border-atlas-border flex flex-col justify-between p-4 select-none" data-purpose="workspace-sidebar">
+<div class="space-y-6">
+<!-- Atlas Workspace Branding -->
+<div class="px-2 pt-1">
+<h1 class="text-lg font-bold tracking-tight text-atlas-textPrimary">Atlas</h1>
+<p class="text-[11px] font-semibold tracking-wider text-atlas-textMuted uppercase mt-0.5">OFFICE</p>
+</div>
+<!-- Primary Navigation Menu -->
+<nav class="space-y-1 text-sm font-medium" data-purpose="primary-navigation">
+<a class="block px-3 py-2 rounded-lg text-atlas-textSecondary hover:text-atlas-textPrimary hover:bg-black/5 transition-colors" href="#">
+            Dashboard
+          </a>
+<a class="block px-3 py-2 rounded-lg text-atlas-textSecondary hover:text-atlas-textPrimary hover:bg-black/5 transition-colors" href="#">
+            Production
+          </a>
+<a class="block px-3 py-2 rounded-lg text-atlas-textSecondary hover:text-atlas-textPrimary hover:bg-black/5 transition-colors" href="#">
+            Workforce
+          </a>
+<!-- Active Nav Item: Sales -->
+<a aria-current="page" class="block px-3 py-2 rounded-lg text-atlas-greenDark bg-atlas-greenSoft border border-[#CDE0D5] font-semibold transition-colors" href="#">
+            Sales
+          </a>
+<a class="block px-3 py-2 rounded-lg text-atlas-textSecondary hover:text-atlas-textPrimary hover:bg-black/5 transition-colors" href="#">
+            Purchases &amp; Expenses
+          </a>
+<a class="block px-3 py-2 rounded-lg text-atlas-textSecondary hover:text-atlas-textPrimary hover:bg-black/5 transition-colors" href="#">
+            Cash Book
+          </a>
+<a class="block px-3 py-2 rounded-lg text-atlas-textSecondary hover:text-atlas-textPrimary hover:bg-black/5 transition-colors" href="#">
+            Reports
+          </a>
+<a class="block px-3 py-2 rounded-lg text-atlas-textSecondary hover:text-atlas-textPrimary hover:bg-black/5 transition-colors" href="#">
+            Settings
+          </a>
+</nav>
+</div>
+<!-- User/Operator Session Control -->
+<div class="pt-4 border-t border-atlas-border/70 px-1">
+<button class="w-full py-2 px-3 text-xs font-medium text-atlas-textSecondary hover:text-atlas-textPrimary bg-white hover:bg-gray-50 border border-atlas-border rounded-lg shadow-sm transition-all text-center" type="button">
+          Log out
+        </button>
+</div>
+</aside>
+<!-- END: LeftSidebar -->
+<!-- BEGIN: MainContentWorkspace -->
+<main class="flex-1 flex flex-col h-full min-w-0 bg-atlas-bg overflow-hidden p-6" data-purpose="main-workspace">
+<!-- Top Meta Breadcrumb and Module Tabs -->
+<div class="flex-shrink-0 mb-4 space-y-3">
+<!-- Breadcrumb & Workspace path -->
+<div class="flex items-center text-[11px] font-semibold tracking-wider text-atlas-textMuted uppercase space-x-1.5">
+<span>Sales</span>
+<span class="text-atlas-border">/</span>
+<span class="text-atlas-textSecondary">Sales Register</span>
+</div>
+<!-- Sales Module Sub-Navigation -->
+<div class="flex items-center gap-2 border-b border-atlas-border pb-2 text-sm font-medium">
+<a class="px-3 py-1.5 rounded-md text-atlas-textSecondary hover:text-atlas-textPrimary hover:bg-white/70 transition-colors" href="#">
+            Challans
+          </a>
+<a class="px-3 py-1.5 rounded-md text-atlas-textSecondary hover:text-atlas-textPrimary hover:bg-white/70 transition-colors" href="#">
+            Customer Payments
+          </a>
+<a class="px-3 py-1.5 rounded-md text-atlas-greenDark bg-white shadow-sm border border-atlas-border font-semibold" href="#">
+            Sales Register
+          </a>
+</div>
+</div>
+<!-- Main White Container Card Holding View & Scrollable Content -->
+<div class="flex-1 bg-white border border-atlas-border rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col min-h-0 overflow-hidden">
+<!-- Header & Filter Controls Section -->
+<header class="flex-shrink-0 p-6 pb-5 border-b border-atlas-border" data-purpose="register-controls-header">
+<div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+<!-- Title & Context Notes -->
+<div class="max-w-2xl">
+<h2 class="text-2xl font-bold tracking-tight text-atlas-textPrimary leading-none">
+                Sales Register
+              </h2>
+<p class="text-xs font-normal text-atlas-textSecondary mt-2.5 leading-relaxed">
+                Saved Challans are the sale records. Void Challans remain visible but do not count toward totals.
+              </p>
+<p class="text-[12px] text-atlas-textMuted mt-1">
+                Showing 1 Sept 2026 to 28 Sept 2026, inclusive.
+              </p>
+</div>
+<!-- Date Range Controls -->
+<div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 self-start lg:self-auto" data-purpose="period-filters">
+<div class="inline-flex items-center bg-[#F1F1EF] p-1 rounded-lg border border-atlas-borderSubtle text-xs font-medium">
+<button class="px-3 py-1.5 rounded-md text-atlas-textSecondary hover:text-atlas-textPrimary transition" type="button">
+                  Today
+                </button>
+<button class="px-3 py-1.5 rounded-md text-atlas-textSecondary hover:text-atlas-textPrimary transition" type="button">
+                  Yesterday
+                </button>
+<button class="px-3 py-1.5 rounded-md text-atlas-textSecondary hover:text-atlas-textPrimary transition" type="button">
+                  This week
+                </button>
+<button class="px-3.5 py-1.5 rounded-md text-white bg-[#0e6579] font-medium shadow-xs transition" type="button">
+                  This month
+                </button>
+</div>
+<button class="px-3.5 py-1.5 bg-white border border-atlas-border hover:bg-gray-50 text-xs font-medium rounded-lg text-atlas-textPrimary shadow-2xs transition" type="button">
+                Custom range
+              </button>
+</div>
+</div>
+</header>
+<!-- BEGIN: CompactSummaryStrip -->
+<section class="flex-shrink-0 border-b border-atlas-border bg-white px-6 py-4" data-purpose="metrics-summary-strip">
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 divide-y lg:divide-y-0 lg:divide-x divide-atlas-border gap-y-3 lg:gap-y-0">
+<!-- Brick Revenue -->
+<div class="lg:pr-5">
+<span class="block text-[10px] font-semibold uppercase tracking-wider text-atlas-textMuted">BRICK REVENUE</span>
+<span class="block text-lg font-bold text-atlas-textPrimary tabular-nums mt-0.5">₹1,60,410.00</span>
+</div>
+<!-- Other Revenue -->
+<div class="lg:px-5">
+<span class="block text-[10px] font-semibold uppercase tracking-wider text-atlas-textMuted">OTHER REVENUE</span>
+<span class="block text-lg font-bold text-atlas-textPrimary tabular-nums mt-0.5">₹2,000.00</span>
+</div>
+<!-- Total Revenue -->
+<div class="lg:px-5">
+<span class="block text-[10px] font-semibold uppercase tracking-wider text-atlas-textMuted">TOTAL REVENUE</span>
+<span class="block text-lg font-extrabold text-atlas-textPrimary tabular-nums mt-0.5">₹1,62,410.00</span>
+</div>
+<!-- Active Challans -->
+<div class="lg:px-5">
+<span class="block text-[10px] font-semibold uppercase tracking-wider text-atlas-textMuted">ACTIVE CHALLANS</span>
+<span class="block text-lg font-bold text-atlas-textPrimary tabular-nums mt-0.5">6</span>
+</div>
+<!-- Brick Quantity -->
+<div class="lg:px-5">
+<span class="block text-[10px] font-semibold uppercase tracking-wider text-atlas-textMuted">BRICK QUANTITY</span>
+<span class="block text-lg font-bold text-atlas-textPrimary tabular-nums mt-0.5">18,200</span>
+</div>
+<!-- Void Challans -->
+<div class="lg:pl-5">
+<span class="block text-[10px] font-semibold uppercase tracking-wider text-atlas-textMuted">VOID CHALLANS</span>
+<span class="block text-lg font-bold text-atlas-textPrimary tabular-nums mt-0.5">0</span>
+</div>
+</div>
+</section>
+<!-- END: CompactSummaryStrip -->
+<!-- BEGIN: SalesRegisterTable -->
+<div class="flex-1 overflow-y-auto relative min-h-0" data-purpose="table-scroll-container">
+<table class="w-full text-left border-collapse">
+<!-- Sticky Header -->
+<thead class="sticky top-0 bg-white z-10 border-b border-atlas-border text-[11px] font-bold uppercase tracking-wider text-atlas-textMuted">
+<tr>
+<th class="py-3 px-6 whitespace-nowrap" scope="col">CHALLAN</th>
+<th class="py-3 px-4 whitespace-nowrap" scope="col">DATE</th>
+<th class="py-3 px-4 whitespace-nowrap" scope="col">CUSTOMER</th>
+<th class="py-3 px-4 whitespace-nowrap" scope="col">BRICK PARTICULARS</th>
+<th class="py-3 px-4 text-right whitespace-nowrap" scope="col">QUANTITY</th>
+<th class="py-3 px-4 text-right whitespace-nowrap" scope="col">TOTAL REVENUE</th>
+<th class="py-3 px-4 whitespace-nowrap" scope="col">VEHICLE</th>
+<th class="py-3 px-4 text-center whitespace-nowrap" scope="col">STATUS</th>
+<th class="py-3 px-4 whitespace-nowrap" scope="col">PAYMENT</th>
+<th class="py-3 px-6 text-right whitespace-nowrap" scope="col">DOCUMENT</th>
+</tr>
+</thead>
+<!-- Table Rows Data -->
+<tbody class="divide-y divide-atlas-borderSubtle text-xs text-atlas-textPrimary font-medium">
+<!-- Row 1: Challan 11 -->
+<tr class="hover:bg-atlas-bg/60 transition-colors">
+<td class="py-3.5 px-6 font-bold tabular-nums">11</td>
+<td class="py-3.5 px-4 text-atlas-textSecondary whitespace-nowrap">7 Sept 2026</td>
+<td class="py-3.5 px-4 font-medium">Cocomelon</td>
+<td class="py-3.5 px-4 tabular-nums leading-tight">
+<div>1st Class · 8,700</div>
+<div class="text-atlas-textSecondary">2nd Class · 1,500</div>
+</td>
+<td class="py-3.5 px-4 text-right font-semibold tabular-nums">10,200</td>
+<td class="py-3.5 px-4 text-right font-bold tabular-nums">₹94,410.00</td>
+<td class="py-3.5 px-4 text-atlas-textSecondary font-mono text-[11px]">WB65C8804</td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#E7F6EC] text-[#196B3E]">
+                    Active
+                  </span>
+</td>
+<td class="py-3.5 px-4 leading-tight tabular-nums">
+<div class="font-semibold text-atlas-textPrimary">Unpaid</div>
+<div class="text-[11px] text-atlas-textMuted">Paid ₹0.00</div>
+<div class="text-[11px] text-atlas-textMuted">Due ₹94,410.00</div>
+</td>
+<td class="py-3.5 px-6 text-right whitespace-nowrap">
+<a class="inline-flex items-center text-xs font-semibold text-[#0e6579] hover:underline" href="#">
+                    Open Challan
+                  </a>
+</td>
+</tr>
+<!-- Row 2: Challan 10 -->
+<tr class="hover:bg-atlas-bg/60 transition-colors">
+<td class="py-3.5 px-6 font-bold tabular-nums">10</td>
+<td class="py-3.5 px-4 text-atlas-textSecondary whitespace-nowrap">7 Sept 2026</td>
+<td class="py-3.5 px-4 font-medium">Cocomelon</td>
+<td class="py-3.5 px-4 tabular-nums leading-tight">
+<div>1st Class · 1,500</div>
+</td>
+<td class="py-3.5 px-4 text-right font-semibold tabular-nums">1,500</td>
+<td class="py-3.5 px-4 text-right font-bold tabular-nums">₹15,000.00</td>
+<td class="py-3.5 px-4 text-atlas-textSecondary font-mono text-[11px]">WB12AB1234</td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#E7F6EC] text-[#196B3E]">
+                    Active
+                  </span>
+</td>
+<td class="py-3.5 px-4 leading-tight tabular-nums">
+<div class="font-semibold text-atlas-textPrimary">Partial</div>
+<div class="text-[11px] text-atlas-textMuted">Paid ₹10,000.00</div>
+<div class="text-[11px] text-atlas-textMuted">Due ₹5,000.00</div>
+</td>
+<td class="py-3.5 px-6 text-right whitespace-nowrap">
+<a class="inline-flex items-center text-xs font-semibold text-[#0e6579] hover:underline" href="#">
+                    Open Challan
+                  </a>
+</td>
+</tr>
+<!-- Row 3: Challan 9 -->
+<tr class="hover:bg-atlas-bg/60 transition-colors">
+<td class="py-3.5 px-6 font-bold tabular-nums">9</td>
+<td class="py-3.5 px-4 text-atlas-textSecondary whitespace-nowrap">5 Sept 2026</td>
+<td class="py-3.5 px-4 font-medium">Cocomelon</td>
+<td class="py-3.5 px-4 tabular-nums leading-tight">
+<div>1st Class · 1,500</div>
+</td>
+<td class="py-3.5 px-4 text-right font-semibold tabular-nums">1,500</td>
+<td class="py-3.5 px-4 text-right font-bold tabular-nums">₹15,000.00</td>
+<td class="py-3.5 px-4 text-atlas-textMuted font-mono text-[11px]">—</td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#E7F6EC] text-[#196B3E]">
+                    Active
+                  </span>
+</td>
+<td class="py-3.5 px-4 leading-tight tabular-nums">
+<div class="font-semibold text-atlas-textPrimary">Unpaid</div>
+<div class="text-[11px] text-atlas-textMuted">Paid ₹0.00</div>
+<div class="text-[11px] text-atlas-textMuted">Due ₹15,000.00</div>
+</td>
+<td class="py-3.5 px-6 text-right whitespace-nowrap">
+<a class="inline-flex items-center text-xs font-semibold text-[#0e6579] hover:underline" href="#">
+                    Open Challan
+                  </a>
+</td>
+</tr>
+<!-- Row 4: Challan 8 -->
+<tr class="hover:bg-atlas-bg/60 transition-colors">
+<td class="py-3.5 px-6 font-bold tabular-nums">8</td>
+<td class="py-3.5 px-4 text-atlas-textSecondary whitespace-nowrap">5 Sept 2026</td>
+<td class="py-3.5 px-4 font-medium">Cocomelon</td>
+<td class="py-3.5 px-4 tabular-nums leading-tight">
+<div>1st Class · 1,500</div>
+</td>
+<td class="py-3.5 px-4 text-right font-semibold tabular-nums">1,500</td>
+<td class="py-3.5 px-4 text-right font-bold tabular-nums">₹9,000.00</td>
+<td class="py-3.5 px-4 text-atlas-textSecondary font-mono text-[11px]">WB12AB1234</td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#E7F6EC] text-[#196B3E]">
+                    Active
+                  </span>
+</td>
+<td class="py-3.5 px-4 leading-tight tabular-nums">
+<div class="font-semibold text-atlas-textPrimary">Unpaid</div>
+<div class="text-[11px] text-atlas-textMuted">Paid ₹0.00</div>
+<div class="text-[11px] text-atlas-textMuted">Due ₹9,000.00</div>
+</td>
+<td class="py-3.5 px-6 text-right whitespace-nowrap">
+<a class="inline-flex items-center text-xs font-semibold text-[#0e6579] hover:underline" href="#">
+                    Open Challan
+                  </a>
+</td>
+</tr>
+<!-- Row 5: Challan 7 -->
+<tr class="hover:bg-atlas-bg/60 transition-colors">
+<td class="py-3.5 px-6 font-bold tabular-nums">7</td>
+<td class="py-3.5 px-4 text-atlas-textSecondary whitespace-nowrap">3 Sept 2026</td>
+<td class="py-3.5 px-4 font-medium">Cocomelon</td>
+<td class="py-3.5 px-4 tabular-nums leading-tight">
+<div>1st Class · 1,500</div>
+</td>
+<td class="py-3.5 px-4 text-right font-semibold tabular-nums">1,500</td>
+<td class="py-3.5 px-4 text-right font-bold tabular-nums">₹15,000.00</td>
+<td class="py-3.5 px-4 text-atlas-textSecondary font-mono text-[11px]">WB12AB1234</td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#E7F6EC] text-[#196B3E]">
+                    Active
+                  </span>
+</td>
+<td class="py-3.5 px-4 leading-tight tabular-nums">
+<div class="font-semibold text-atlas-textPrimary">Paid</div>
+<div class="text-[11px] text-atlas-textMuted">Paid ₹15,000.00</div>
+<div class="text-[11px] text-atlas-textMuted">Due ₹0.00</div>
+</td>
+<td class="py-3.5 px-6 text-right whitespace-nowrap">
+<a class="inline-flex items-center text-xs font-semibold text-[#0e6579] hover:underline" href="#">
+                    Open Challan
+                  </a>
+</td>
+</tr>
+<!-- Row 6: Challan 6 -->
+<tr class="hover:bg-atlas-bg/60 transition-colors">
+<td class="py-3.5 px-6 font-bold tabular-nums">6</td>
+<td class="py-3.5 px-4 text-atlas-textSecondary whitespace-nowrap">2 Sept 2026</td>
+<td class="py-3.5 px-4 font-medium">Cocomelon</td>
+<td class="py-3.5 px-4 tabular-nums leading-tight">
+<div>1st Class · 2,000</div>
+</td>
+<td class="py-3.5 px-4 text-right font-semibold tabular-nums">2,000</td>
+<td class="py-3.5 px-4 text-right font-bold tabular-nums">₹14,000.00</td>
+<td class="py-3.5 px-4 text-atlas-textSecondary font-mono text-[11px]">WB12AB1234</td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#E7F6EC] text-[#196B3E]">
+                    Active
+                  </span>
+</td>
+<td class="py-3.5 px-4 leading-tight tabular-nums">
+<div class="font-semibold text-atlas-textPrimary">Paid</div>
+<div class="text-[11px] text-atlas-textMuted">Paid ₹14,000.00</div>
+<div class="text-[11px] text-atlas-textMuted">Due ₹0.00</div>
+</td>
+<td class="py-3.5 px-6 text-right whitespace-nowrap">
+<a class="inline-flex items-center text-xs font-semibold text-[#0e6579] hover:underline" href="#">
+                    Open Challan
+                  </a>
+</td>
+</tr>
+<!-- Row 7: Optional/Realistic Void row illustrative of the prompt context note -->
+<tr class="bg-gray-50/50 hover:bg-atlas-bg/60 transition-colors opacity-70">
+<td class="py-3.5 px-6 font-bold tabular-nums text-atlas-textMuted">5</td>
+<td class="py-3.5 px-4 text-atlas-textMuted whitespace-nowrap">1 Sept 2026</td>
+<td class="py-3.5 px-4 font-medium text-atlas-textSecondary">Apex Builders</td>
+<td class="py-3.5 px-4 tabular-nums leading-tight text-atlas-textMuted">
+<div>1st Class · 1,000</div>
+</td>
+<td class="py-3.5 px-4 text-right font-semibold tabular-nums text-atlas-textMuted">1,000</td>
+<td class="py-3.5 px-4 text-right font-bold tabular-nums text-atlas-textMuted line-through">₹10,000.00</td>
+<td class="py-3.5 px-4 text-atlas-textMuted font-mono text-[11px]">WB12AB1234</td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-200 text-gray-700">
+                    Void
+                  </span>
+</td>
+<td class="py-3.5 px-4 leading-tight tabular-nums text-atlas-textMuted">
+<div class="font-medium">Voided</div>
+<div class="text-[11px]">—</div>
+</td>
+<td class="py-3.5 px-6 text-right whitespace-nowrap">
+<a class="inline-flex items-center text-xs font-medium text-atlas-textSecondary hover:underline" href="#">
+                    Open Challan
+                  </a>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- END: SalesRegisterTable -->
+</div>
+<!-- END: Main White Container Card -->
+</main>
+<!-- END: MainContentWorkspace -->
+</div>
+<!-- END: ApplicationLayout -->
+</body></html>

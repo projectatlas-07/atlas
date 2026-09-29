@@ -3,9 +3,12 @@ import { supabase } from "../../../lib/supabase/client.ts";
 import type {
   ChallanPaymentSummary,
   CreateCustomerPaymentInput,
+  CreateCustomerPaymentWithMethodsInput,
   CustomerPayment,
   CustomerPaymentAllocation,
   CustomerPaymentAllocationInput,
+  CustomerPaymentMethod,
+  CustomerPaymentMethodMode,
   CustomerOutstandingChallan,
   CustomerSalesSummary,
 } from "../types.ts";
@@ -18,6 +21,8 @@ const PAYMENT_COLUMNS =
   "id, factory_id, customer_id, customer_name_snapshot, customer_address_snapshot, customer_mobile_snapshot, company_name_snapshot, company_business_description_snapshot, company_address_snapshot, company_mobile_snapshot, payment_date, amount, payment_mode, note, created_at";
 const ALLOCATION_COLUMNS =
   "id, factory_id, payment_id, challan_id, allocated_amount, created_at";
+const METHOD_COLUMNS = "factory_id, payment_id, mode, split_amount, created_at";
+const REFERENCE_QUERY_BATCH_SIZE = 100;
 
 type CustomerPaymentRow = {
   id: string;
@@ -32,7 +37,7 @@ type CustomerPaymentRow = {
   company_mobile_snapshot: string;
   payment_date: string;
   amount: number | string;
-  payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other" | "unspecified";
+  payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other" | "unspecified" | "multiple";
   note: string | null;
   created_at: string;
 };
@@ -43,6 +48,14 @@ type CustomerPaymentAllocationRow = {
   payment_id: string;
   challan_id: string;
   allocated_amount: number | string;
+  created_at: string;
+};
+
+type CustomerPaymentMethodRow = {
+  factory_id: string;
+  payment_id: string;
+  mode: CustomerPaymentMethodMode;
+  split_amount: number | string | null;
   created_at: string;
 };
 
@@ -100,6 +113,10 @@ function readableCustomerPaymentError(error: PostgrestError): string {
   if (error.code === "P3104") return "A void Challan cannot receive a payment.";
   if (error.code === "P3105") return "Allocation exceeds the Challan outstanding amount.";
   if (error.code === "P3106") return "Customer payment history is immutable.";
+  if (error.code === "P3200") return "Choose a supported payment mode.";
+  if (error.code === "P3201") return "Provide valid amounts for every payment method or for none of them.";
+  if (error.code === "P3202") return "Payment method amounts must exactly equal the payment amount.";
+  if (error.code === "P3203") return "The same payment mode cannot appear twice.";
   if (error.code === "P3010") return "Complete the printable factory profile before recording a customer payment.";
   if (error.code === "22023" || error.code === "23514" || error.code === "23505") {
     return "Check the payment date, amount, note, and Challan allocations.";
@@ -168,6 +185,37 @@ function validateAllocations(
   }
 }
 
+function validatePaymentMethods(
+  methods: CreateCustomerPaymentWithMethodsInput["methods"],
+  paymentMinorUnits: number,
+): void {
+  if (methods.length === 0 || methods.length > 5) {
+    throw new Error("A payment requires between 1 and 5 payment methods.");
+  }
+
+  const seenModes = new Set<string>();
+  let suppliedAmountCount = 0;
+  let suppliedAmountMinorUnits = 0;
+  for (const method of methods) {
+    requireNewPaymentMode(method.mode);
+    if (seenModes.has(method.mode)) {
+      throw new Error("The same payment mode cannot appear twice.");
+    }
+    seenModes.add(method.mode);
+    if (method.splitAmount !== null && method.splitAmount !== undefined) {
+      suppliedAmountCount += 1;
+      suppliedAmountMinorUnits += toMinorUnits(method.splitAmount, "payment method amount");
+    }
+  }
+
+  if (suppliedAmountCount !== 0 && suppliedAmountCount !== methods.length) {
+    throw new Error("Provide amounts for every payment method or for none of them.");
+  }
+  if (suppliedAmountCount > 0 && suppliedAmountMinorUnits !== paymentMinorUnits) {
+    throw new Error("Payment method amounts must exactly equal the payment amount.");
+  }
+}
+
 function mapAllocation(
   row: CustomerPaymentAllocationRow,
   challanReferences: ReadonlyMap<
@@ -192,6 +240,7 @@ function mapAllocation(
 function mapPayment(
   row: CustomerPaymentRow,
   allocations: CustomerPaymentAllocation[],
+  methods: CustomerPaymentMethod[],
 ): CustomerPayment {
   return {
     id: row.id,
@@ -207,10 +256,45 @@ function mapPayment(
     paymentDate: row.payment_date,
     amount: Number(row.amount),
     paymentMode: row.payment_mode,
+    methods: methods.length > 0
+      ? methods
+      : row.payment_mode === "multiple"
+        ? []
+        : [{ mode: row.payment_mode, splitAmount: null }],
     note: row.note,
     createdAt: row.created_at,
     allocations,
   };
+}
+
+function mapPaymentMethod(row: CustomerPaymentMethodRow): CustomerPaymentMethod {
+  return {
+    mode: row.mode,
+    splitAmount: row.split_amount === null
+      ? null
+      : toFiniteNumber(row.split_amount, "Customer payment method split"),
+  };
+}
+
+async function listPaymentMethods(
+  factoryId: string,
+  paymentIds: string[],
+): Promise<CustomerPaymentMethodRow[]> {
+  if (paymentIds.length === 0) return [];
+  const methodBatches = await Promise.all(
+    chunkIds(paymentIds).map(async (batchPaymentIds) => {
+      const { data, error } = await supabase
+        .from("customer_payment_methods")
+        .select(METHOD_COLUMNS)
+        .eq("factory_id", factoryId)
+        .in("payment_id", batchPaymentIds)
+        .order("payment_id", { ascending: true })
+        .order("mode", { ascending: true });
+      if (error) throw new CustomerPaymentServiceError(error);
+      return (data ?? []) as CustomerPaymentMethodRow[];
+    }),
+  );
+  return methodBatches.flat();
 }
 
 async function listPaymentAllocations(
@@ -235,14 +319,19 @@ async function attachChallanReferences(
 ): Promise<CustomerPaymentAllocation[]> {
   if (rows.length === 0) return [];
   const challanIds = [...new Set(rows.map((row) => row.challan_id))];
-  const { data, error } = await supabase
-    .from("challans")
-    .select("id, challan_number, challan_date")
-    .eq("factory_id", factoryId)
-    .in("id", challanIds);
-  if (error) throw new CustomerPaymentServiceError(error);
+  const challanReferenceBatches = await Promise.all(
+    chunkIds(challanIds).map(async (challanIds) => {
+      const { data, error } = await supabase
+        .from("challans")
+        .select("id, challan_number, challan_date")
+        .eq("factory_id", factoryId)
+        .in("id", challanIds);
+      if (error) throw new CustomerPaymentServiceError(error);
+      return (data ?? []) as ChallanReferenceRow[];
+    }),
+  );
   const challanReferences = new Map(
-    ((data ?? []) as ChallanReferenceRow[]).map((row) => [
+    challanReferenceBatches.flat().map((row) => [
       row.id,
       {
         challanNumber: row.challan_number === null ? null : String(row.challan_number),
@@ -251,6 +340,49 @@ async function attachChallanReferences(
     ]),
   );
   return rows.map((row) => mapAllocation(row, challanReferences));
+}
+
+function chunkIds(ids: string[]): string[][] {
+  const batches: string[][] = [];
+  for (let index = 0; index < ids.length; index += REFERENCE_QUERY_BATCH_SIZE) {
+    batches.push(ids.slice(index, index + REFERENCE_QUERY_BATCH_SIZE));
+  }
+  return batches;
+}
+
+function mapPaymentsWithAllocations(
+  paymentRows: CustomerPaymentRow[],
+  allocations: CustomerPaymentAllocation[],
+  methodRows: CustomerPaymentMethodRow[],
+): CustomerPayment[] {
+  const allocationsByPayment = new Map<string, CustomerPaymentAllocation[]>();
+  for (const allocation of allocations) {
+    const paymentAllocations = allocationsByPayment.get(allocation.paymentId) ?? [];
+    paymentAllocations.push(allocation);
+    allocationsByPayment.set(allocation.paymentId, paymentAllocations);
+  }
+
+  const methodsByPayment = new Map<string, CustomerPaymentMethod[]>();
+  for (const methodRow of methodRows) {
+    const paymentMethods = methodsByPayment.get(methodRow.payment_id) ?? [];
+    paymentMethods.push(mapPaymentMethod(methodRow));
+    methodsByPayment.set(methodRow.payment_id, paymentMethods);
+  }
+
+  return paymentRows.map((payment) => mapPayment(
+    payment,
+    allocationsByPayment.get(payment.id) ?? [],
+    methodsByPayment.get(payment.id) ?? [],
+  ));
+}
+
+function comparePaymentRowsNewestFirst(
+  left: CustomerPaymentRow,
+  right: CustomerPaymentRow,
+): number {
+  return right.payment_date.localeCompare(left.payment_date)
+    || right.created_at.localeCompare(left.created_at)
+    || right.id.localeCompare(left.id);
 }
 
 export async function createCustomerPayment(
@@ -279,8 +411,47 @@ export async function createCustomerPayment(
 
   if (error) throw new CustomerPaymentServiceError(error);
   if (!data) throw new Error("create_customer_payment returned no payment.");
-  const allocations = await listPaymentAllocations(input.factoryId, data.id);
-  return mapPayment(data, allocations);
+  const [allocations, methodRows] = await Promise.all([
+    listPaymentAllocations(input.factoryId, data.id),
+    listPaymentMethods(input.factoryId, [data.id]),
+  ]);
+  return mapPayment(data, allocations, methodRows.map(mapPaymentMethod));
+}
+
+export async function createCustomerPaymentWithMethods(
+  input: CreateCustomerPaymentWithMethodsInput,
+): Promise<CustomerPayment> {
+  requireId(input.factoryId, "factoryId");
+  requireId(input.customerId, "customerId");
+  assertCanonicalPaymentDate(input.paymentDate);
+  const paymentMinorUnits = toMinorUnits(input.amount, "amount");
+  validatePaymentMethods(input.methods, paymentMinorUnits);
+  validateAllocations(input.allocations, paymentMinorUnits);
+  const note = normalizeNote(input.note);
+
+  const { data, error } = await supabase.rpc("create_customer_payment_with_methods", {
+    p_factory_id: input.factoryId,
+    p_customer_id: input.customerId,
+    p_payment_date: input.paymentDate,
+    p_amount: input.amount,
+    p_payment_methods: input.methods.map((method) => ({
+      mode: method.mode,
+      amount: method.splitAmount ?? null,
+    })),
+    p_note: note,
+    p_allocations: input.allocations.map((allocation) => ({
+      challan_id: allocation.challanId,
+      amount: allocation.amount,
+    })),
+  });
+
+  if (error) throw new CustomerPaymentServiceError(error);
+  if (!data) throw new Error("create_customer_payment_with_methods returned no payment.");
+  const [allocations, methodRows] = await Promise.all([
+    listPaymentAllocations(input.factoryId, data.id),
+    listPaymentMethods(input.factoryId, [data.id]),
+  ]);
+  return mapPayment(data, allocations, methodRows.map(mapPaymentMethod));
 }
 
 export async function getPaymentsReceivedTotal(
@@ -419,30 +590,71 @@ export async function listCustomerPayments(
   if (!paymentRows?.length) return [];
 
   const paymentIds = paymentRows.map((payment) => payment.id);
-  const { data: allocationRows, error: allocationError } = await supabase
-    .from("customer_payment_allocations")
-    .select(ALLOCATION_COLUMNS)
-    .eq("factory_id", factoryId)
-    .in("payment_id", paymentIds)
-    .order("created_at", { ascending: true })
-    .order("id", { ascending: true });
+  const [{ data: allocationRows, error: allocationError }, methodRows] = await Promise.all([
+    supabase
+      .from("customer_payment_allocations")
+      .select(ALLOCATION_COLUMNS)
+      .eq("factory_id", factoryId)
+      .in("payment_id", paymentIds)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true }),
+    listPaymentMethods(factoryId, paymentIds),
+  ]);
 
   if (allocationError) throw new CustomerPaymentServiceError(allocationError);
   const allocations = await attachChallanReferences(
     factoryId,
     (allocationRows ?? []) as CustomerPaymentAllocationRow[],
   );
-  const allocationsByPayment = new Map<string, CustomerPaymentAllocation[]>();
-  for (const allocation of allocations) {
-    const allocations = allocationsByPayment.get(allocation.paymentId) ?? [];
-    allocations.push(allocation);
-    allocationsByPayment.set(allocation.paymentId, allocations);
-  }
+  return mapPaymentsWithAllocations(paymentRows, allocations, methodRows);
+}
 
-  return paymentRows.map((payment) => mapPayment(
-    payment,
-    allocationsByPayment.get(payment.id) ?? [],
-  ));
+export async function listFactoryCustomerPayments(
+  factoryId: string,
+): Promise<CustomerPayment[]> {
+  assertFactoryId(factoryId);
+  const paymentRows = await readAllKeysetPages<CustomerPaymentRow>(async (afterId, pageSize) => {
+    let query = supabase
+      .from("customer_payments")
+      .select(PAYMENT_COLUMNS)
+      .eq("factory_id", factoryId)
+      .order("id", { ascending: true })
+      .limit(pageSize);
+    if (afterId) query = query.gt("id", afterId);
+    const { data, error } = await query;
+    if (error) throw new CustomerPaymentServiceError(error);
+    return (data ?? []) as CustomerPaymentRow[];
+  });
+  if (paymentRows.length === 0) return [];
+
+  const paymentIds = new Set(paymentRows.map((payment) => payment.id));
+  const [allocationRows, methodRows] = await Promise.all([
+    readAllKeysetPages<CustomerPaymentAllocationRow>(
+      async (afterId, pageSize) => {
+        let query = supabase
+          .from("customer_payment_allocations")
+          .select(ALLOCATION_COLUMNS)
+          .eq("factory_id", factoryId)
+          .order("id", { ascending: true })
+          .limit(pageSize);
+        if (afterId) query = query.gt("id", afterId);
+        const { data, error } = await query;
+        if (error) throw new CustomerPaymentServiceError(error);
+        return (data ?? []) as CustomerPaymentAllocationRow[];
+      },
+    ),
+    listPaymentMethods(factoryId, [...paymentIds]),
+  ]);
+  const relevantAllocationRows = allocationRows
+    .filter((allocation) => paymentIds.has(allocation.payment_id))
+    .sort((left, right) => left.created_at.localeCompare(right.created_at)
+      || left.id.localeCompare(right.id));
+  const allocations = await attachChallanReferences(factoryId, relevantAllocationRows);
+  return mapPaymentsWithAllocations(
+    [...paymentRows].sort(comparePaymentRowsNewestFirst),
+    allocations,
+    methodRows,
+  );
 }
 
 export async function getCustomerPayment(
@@ -459,7 +671,11 @@ export async function getCustomerPayment(
   if (error) throw new CustomerPaymentServiceError(error);
   const payment = (data?.[0] ?? null) as CustomerPaymentRow | null;
   if (!payment) throw new Error("Customer payment was not found.");
-  return mapPayment(payment, await listPaymentAllocations(factoryId, paymentId));
+  const [allocations, methodRows] = await Promise.all([
+    listPaymentAllocations(factoryId, paymentId),
+    listPaymentMethods(factoryId, [paymentId]),
+  ]);
+  return mapPayment(payment, allocations, methodRows.map(mapPaymentMethod));
 }
 
 export async function listCustomerOutstandingChallans(

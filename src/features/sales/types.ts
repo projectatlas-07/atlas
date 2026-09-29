@@ -1,3 +1,5 @@
+import { formatIndianCurrency } from "../../lib/formatting.ts";
+
 export type FactoryPrintableProfile = {
   id: string;
   name: string;
@@ -224,9 +226,21 @@ export type CustomerPaymentMode =
   | "bank_transfer"
   | "cheque"
   | "other"
-  | "unspecified";
+  | "unspecified"
+  | "multiple";
 
-export type NewCustomerPaymentMode = Exclude<CustomerPaymentMode, "unspecified">;
+export type NewCustomerPaymentMode = Exclude<
+  CustomerPaymentMode,
+  "unspecified" | "multiple"
+>;
+
+export type CustomerPaymentMethodMode = Exclude<CustomerPaymentMode, "multiple">;
+
+export type CustomerPaymentMethod = {
+  mode: CustomerPaymentMethodMode;
+  /** NULL means the user selected methods without recording an explicit split. */
+  splitAmount: number | null;
+};
 
 export const NEW_CUSTOMER_PAYMENT_MODES: readonly NewCustomerPaymentMode[] = [
   "cash", "upi", "bank_transfer", "cheque", "other",
@@ -240,7 +254,25 @@ export function formatCustomerPaymentMode(mode: CustomerPaymentMode): string {
   if (mode === "upi") return "UPI";
   if (mode === "bank_transfer") return "Bank Transfer";
   if (mode === "unspecified") return "Legacy / Unspecified";
+  if (mode === "multiple") return "Multiple";
   return `${mode.slice(0, 1).toUpperCase()}${mode.slice(1)}`;
+}
+
+export function formatCustomerPaymentMethods(
+  methods: readonly CustomerPaymentMethod[],
+  fallbackMode: CustomerPaymentMode,
+  options: Readonly<{ includeSplitAmounts?: boolean }> = {},
+): string {
+  if (methods.length === 0) return formatCustomerPaymentMode(fallbackMode);
+
+  const hasExplicitSplits = options.includeSplitAmounts !== false
+    && methods.every((method) => method.splitAmount !== null);
+  return methods.map((method) => {
+    const mode = formatCustomerPaymentMode(method.mode);
+    return hasExplicitSplits && method.splitAmount !== null
+      ? `${mode} ${formatIndianCurrency(method.splitAmount)}`
+      : mode;
+  }).join(" + ");
 }
 
 export type CustomerPayment = {
@@ -257,6 +289,7 @@ export type CustomerPayment = {
   paymentDate: string;
   amount: number;
   paymentMode: CustomerPaymentMode;
+  methods: CustomerPaymentMethod[];
   note: string | null;
   createdAt: string;
   allocations: CustomerPaymentAllocation[];
@@ -275,6 +308,19 @@ export type CreateCustomerPaymentInput = {
   paymentMode: NewCustomerPaymentMode;
   note?: string | null;
   allocations: CustomerPaymentAllocationInput[];
+};
+
+export type CreateCustomerPaymentMethodInput = {
+  mode: NewCustomerPaymentMode;
+  /** Omit or pass NULL for an unsplit method collection. */
+  splitAmount?: number | null;
+};
+
+export type CreateCustomerPaymentWithMethodsInput = Omit<
+  CreateCustomerPaymentInput,
+  "paymentMode"
+> & {
+  methods: CreateCustomerPaymentMethodInput[];
 };
 
 export type ChallanPaymentState = "unpaid" | "partially_paid" | "paid";

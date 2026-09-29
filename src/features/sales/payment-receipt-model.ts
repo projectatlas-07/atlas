@@ -1,4 +1,8 @@
-import type { ChallanNumber, CustomerPayment, CustomerPaymentMode } from "@/features/sales/types";
+import {
+  formatCustomerPaymentMethods,
+  type ChallanNumber,
+  type CustomerPayment,
+} from "./types.ts";
 
 export type PrintablePaymentReceipt = {
   company: {
@@ -10,7 +14,7 @@ export type PrintablePaymentReceipt = {
   customer: { name: string; address: string; mobile: string };
   paymentDate: string;
   amount: number;
-  paymentMode: CustomerPaymentMode;
+  paymentMethodDisplay: string;
   note: string | null;
   allocations: Array<{ challanNumber: ChallanNumber; challanDate: string; amount: number }>;
 };
@@ -32,7 +36,7 @@ export function buildPrintablePaymentReceipt(
     },
     paymentDate: payment.paymentDate,
     amount: payment.amount,
-    paymentMode: payment.paymentMode,
+    paymentMethodDisplay: formatCustomerPaymentMethods(payment.methods, payment.paymentMode),
     note: payment.note,
     allocations: payment.allocations.map((allocation) => ({
       challanNumber: allocation.challanNumber,

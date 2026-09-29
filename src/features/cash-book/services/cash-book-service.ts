@@ -2,6 +2,10 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "../../../lib/supabase/client.ts";
 import { isNewCustomerPaymentMode } from "../../sales/types.ts";
 import type {
+  CustomerPaymentMethod,
+  CustomerPaymentMethodMode,
+} from "../../sales/types.ts";
+import type {
   CashBookDay,
   CashBookDaySummary,
   CashBookInitialization,
@@ -17,6 +21,10 @@ import {
   assertInclusiveBusinessDateRange,
   inclusiveBusinessDates,
 } from "../../../lib/business-date-contract.ts";
+import { toFiniteNumber } from "../../../lib/numeric-total.ts";
+
+const CUSTOMER_PAYMENT_METHOD_COLUMNS = "factory_id, payment_id, mode, split_amount, created_at";
+const CUSTOMER_PAYMENT_METHOD_BATCH_SIZE = 100;
 
 type InitializationRow = {
   factory_id: string;
@@ -56,11 +64,19 @@ type MovementRow = {
   business_date: string;
   direction: "in" | "out";
   amount: number | string;
-  payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other" | "unspecified";
+  payment_mode: "cash" | "upi" | "bank_transfer" | "cheque" | "other" | "unspecified" | "multiple";
   counterparty: string;
   description: string;
   note: string | null;
   source_status: "active" | "void";
+  created_at: string;
+};
+
+type CustomerPaymentMethodRow = {
+  factory_id: string;
+  payment_id: string;
+  mode: CustomerPaymentMethodMode;
+  split_amount: number | string | null;
   created_at: string;
 };
 
@@ -160,7 +176,28 @@ export async function getCashBookDay(
     }),
   ]);
   if (movementsResult.error) throw new CashBookServiceError(movementsResult.error);
-  const movements = ((movementsResult.data ?? []) as MovementRow[]).map(mapMovement);
+  const movementRows = (movementsResult.data ?? []) as MovementRow[];
+  const customerPaymentIds = [...new Set(movementRows
+    .filter((row) => row.source_type === "customer_payment")
+    .map((row) => row.source_id))];
+  const methodRows = await listCashBookCustomerPaymentMethods(factoryId, customerPaymentIds);
+  const methodsByPayment = new Map<string, CustomerPaymentMethod[]>();
+  for (const row of methodRows) {
+    const methods = methodsByPayment.get(row.payment_id) ?? [];
+    methods.push({
+      mode: row.mode,
+      splitAmount: row.split_amount === null
+        ? null
+        : toFiniteNumber(row.split_amount, "Cash Book customer payment method split"),
+    });
+    methodsByPayment.set(row.payment_id, methods);
+  }
+  const movements = movementRows.map((row) => mapMovement(
+    row,
+    row.source_type === "customer_payment"
+      ? methodsByPayment.get(row.source_id) ?? []
+      : [],
+  ));
   return {
     summary: summaryResult,
     moneyIn: movements.filter((movement) => movement.direction === "in"),
@@ -248,7 +285,10 @@ function mapSummary(row: SummaryRow): CashBookDaySummary {
   };
 }
 
-function mapMovement(row: MovementRow): CashBookMovement {
+function mapMovement(
+  row: MovementRow,
+  paymentMethods: CustomerPaymentMethod[],
+): CashBookMovement {
   return {
     sourceType: row.source_type,
     sourceId: row.source_id,
@@ -256,12 +296,36 @@ function mapMovement(row: MovementRow): CashBookMovement {
     direction: row.direction,
     amount: Number(row.amount),
     paymentMode: row.payment_mode,
+    paymentMethods,
     counterparty: row.counterparty,
     description: row.description,
     note: row.note,
     sourceStatus: row.source_status,
     createdAt: row.created_at,
   };
+}
+
+async function listCashBookCustomerPaymentMethods(
+  factoryId: string,
+  paymentIds: string[],
+): Promise<CustomerPaymentMethodRow[]> {
+  if (paymentIds.length === 0) return [];
+  const batches: string[][] = [];
+  for (let index = 0; index < paymentIds.length; index += CUSTOMER_PAYMENT_METHOD_BATCH_SIZE) {
+    batches.push(paymentIds.slice(index, index + CUSTOMER_PAYMENT_METHOD_BATCH_SIZE));
+  }
+  const results = await Promise.all(batches.map(async (batchPaymentIds) => {
+    const { data, error } = await supabase
+      .from("customer_payment_methods")
+      .select(CUSTOMER_PAYMENT_METHOD_COLUMNS)
+      .eq("factory_id", factoryId)
+      .in("payment_id", batchPaymentIds)
+      .order("payment_id", { ascending: true })
+      .order("mode", { ascending: true });
+    if (error) throw new CashBookServiceError(error);
+    return (data ?? []) as CustomerPaymentMethodRow[];
+  }));
+  return results.flat();
 }
 
 function requireId(value: string, label: string): void {

@@ -12,7 +12,9 @@ import type {
   UpdateChallanInput,
   Vehicle,
 } from "@/features/sales/types";
-import { isNewCustomerPaymentMode } from "../sales/types.ts";
+import { formatIndianCurrency } from "../../lib/formatting.ts";
+import { isLocalDate, shiftLocalDate } from "../../lib/local-date.ts";
+import { formatChallanLabel, isNewCustomerPaymentMode } from "../sales/types.ts";
 
 export const SALES_SECTION_HEADING = "Sales / Challan";
 
@@ -72,6 +74,7 @@ export type SavedChallanPaymentHistoryEntry = {
   paymentId: string;
   paymentDate: string;
   paymentMode: CustomerPayment["paymentMode"];
+  methods: CustomerPayment["methods"];
   note: string | null;
   allocatedAmount: number;
 };
@@ -325,6 +328,7 @@ export function getSavedChallanPaymentHistoryEntries(
       paymentId: payment.id,
       paymentDate: payment.paymentDate,
       paymentMode: payment.paymentMode,
+      methods: payment.methods,
       note: payment.note,
       allocatedAmount: allocation.allocatedAmount,
     })));
@@ -601,6 +605,114 @@ export function filterChallansByNumber(
   if (!normalizedSearch) return [...challans];
   return challans.filter((challan) =>
     challan.challanNumber?.toLocaleLowerCase("en-IN").includes(normalizedSearch));
+}
+
+export function getCompactChallanHistory(
+  challans: readonly ChallanHeader[],
+): ChallanHeader[] {
+  return challans.slice(0, 10);
+}
+
+export function isChallanHistoryRowSelected(
+  selectedChallanId: string,
+  challanId: string,
+): boolean {
+  return selectedChallanId === challanId;
+}
+
+export type ChallanHistoryPeriod = "today" | "week" | "month" | "custom" | "all";
+export type ChallanHistoryLifecycle = "all" | ChallanHeader["status"];
+export type ChallanHistoryFinancialLock = "all" | "locked" | "unlocked";
+
+export type ExpandedChallanFilters = Readonly<{
+  searchText: string;
+  period: ChallanHistoryPeriod;
+  lifecycle: ChallanHistoryLifecycle;
+  financialLock: ChallanHistoryFinancialLock;
+  localToday: string;
+  customFrom: string;
+  customTo: string;
+}>;
+
+export type ExpandedChallanFilterResult = Readonly<{
+  challans: ChallanHeader[];
+  error: string;
+}>;
+
+function resolveExpandedChallanDateRange(
+  filters: Pick<ExpandedChallanFilters, "period" | "localToday" | "customFrom" | "customTo">,
+): Readonly<{ fromDate: string; toDate: string }> | null | string {
+  if (!isLocalDate(filters.localToday)) return "Current local date is invalid.";
+  if (filters.period === "all") return null;
+  if (filters.period === "today") {
+    return { fromDate: filters.localToday, toDate: filters.localToday };
+  }
+  if (filters.period === "week") {
+    const [year, month, day] = filters.localToday.split("-").map(Number);
+    const weekday = new Date(year!, month! - 1, day!, 12).getDay();
+    const fromDate = shiftLocalDate(filters.localToday, -((weekday + 6) % 7))!;
+    return { fromDate, toDate: shiftLocalDate(fromDate, 6)! };
+  }
+  if (filters.period === "month") {
+    const [year, month] = filters.localToday.split("-").map(Number);
+    const nextMonthFirst = month === 12
+      ? `${year! + 1}-01-01`
+      : `${year}-${String(month! + 1).padStart(2, "0")}-01`;
+    return {
+      fromDate: `${filters.localToday.slice(0, 7)}-01`,
+      toDate: shiftLocalDate(nextMonthFirst, -1)!,
+    };
+  }
+  if (!filters.customFrom || !filters.customTo) {
+    return "Choose both From and To dates.";
+  }
+  if (!isLocalDate(filters.customFrom) || !isLocalDate(filters.customTo)) {
+    return "Choose valid From and To dates.";
+  }
+  if (filters.customFrom > filters.customTo) {
+    return "From date cannot be after To date.";
+  }
+  return { fromDate: filters.customFrom, toDate: filters.customTo };
+}
+
+export function filterChallansForExpandedView(
+  challans: readonly ChallanHeader[],
+  filters: ExpandedChallanFilters,
+): ExpandedChallanFilterResult {
+  const dateRange = resolveExpandedChallanDateRange(filters);
+  if (typeof dateRange === "string") return { challans: [], error: dateRange };
+
+  const normalizedSearch = filters.searchText.trim().toLocaleLowerCase("en-IN");
+  const normalizedAmountSearch = filters.searchText.trim().replace(/[₹,\s]/g, "");
+  const searchesByAmount = /^\d+(?:\.\d+)?$/.test(normalizedAmountSearch);
+  return {
+    error: "",
+    challans: challans.filter((challan) => {
+      if (dateRange && (
+        challan.challanDate < dateRange.fromDate
+        || challan.challanDate > dateRange.toDate
+      )) return false;
+      if (filters.lifecycle !== "all" && challan.status !== filters.lifecycle) return false;
+      if (filters.financialLock === "locked" && !challan.isLocked) return false;
+      if (filters.financialLock === "unlocked" && challan.isLocked) return false;
+      if (!normalizedSearch) return true;
+
+      const matchesText = [
+        formatChallanLabel(challan.challanNumber),
+        challan.customerNameSnapshot,
+        challan.customerAddressSnapshot,
+        challan.vehicleNumberSnapshot ?? challan.vehicleNumber,
+      ].some((value) => value.toLocaleLowerCase("en-IN").includes(normalizedSearch));
+      if (matchesText) return true;
+      if (!searchesByAmount) return false;
+
+      const normalizedTotal = formatIndianCurrency(challan.challanTotal, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).replace(/[₹,\s]/g, "");
+      return normalizedTotal.includes(normalizedAmountSearch);
+    }),
+  };
 }
 
 export function formatSalesMoney(amount: number): string {

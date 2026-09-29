@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+
+<html lang="en" style=""><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "text-secondary": "#686864",
+          "on-tertiary-container": "#ffd1d1",
+          "on-primary": "#ffffff",
+          "on-tertiary-fixed": "#390b0f",
+          "background": "#f9f9f7",
+          "card-surface": "#FFFFFF",
+          "inverse-on-surface": "#f1f1ef",
+          "tertiary-container": "#8e4e50",
+          "secondary-container": "#dce5e0",
+          "outline-variant": "#c0c9c1",
+          "surface-tint": "#2d694d",
+          "on-surface": "#1a1c1b",
+          "row-hover": "#F1F1EF",
+          "on-background": "#1a1c1b",
+          "on-secondary-container": "#5d6663",
+          "primary-container": "#2f6b4f",
+          "surface-variant": "#e2e3e1",
+          "outline": "#707972",
+          "primary-fixed": "#b1f0cd",
+          "state-success": "#047857",
+          "on-primary-container": "#aae9c6",
+          "tertiary-fixed": "#ffdad9",
+          "on-secondary-fixed-variant": "#404945",
+          "on-secondary": "#ffffff",
+          "on-tertiary": "#ffffff",
+          "sidebar-surface": "#F2F3F1",
+          "on-error": "#ffffff",
+          "on-surface-variant": "#404943",
+          "inverse-primary": "#96d4b2",
+          "error-container": "#ffdad6",
+          "primary-fixed-dim": "#96d4b2",
+          "surface-container-high": "#e8e8e6",
+          "surface-container-low": "#f4f4f2",
+          "surface-dim": "#dadad8",
+          "on-error-container": "#93000a",
+          "surface-container-lowest": "#ffffff",
+          "surface-container-highest": "#e2e3e1",
+          "on-primary-fixed": "#002113",
+          "tertiary-fixed-dim": "#ffb3b4",
+          "error": "#ba1a1a",
+          "border-strong": "#D5D5D1",
+          "text-tertiary": "#989894",
+          "surface": "#f9f9f7",
+          "on-primary-fixed-variant": "#105137",
+          "secondary-fixed": "#dce5e0",
+          "text-primary": "#1F1F1D",
+          "tertiary": "#723739",
+          "inverse-surface": "#2f3130",
+          "secondary": "#57605d",
+          "secondary-fixed-dim": "#bfc9c4",
+          "on-secondary-fixed": "#151d1a",
+          "surface-container": "#eeeeec",
+          "on-tertiary-fixed-variant": "#6f3538",
+          "border-subtle": "#E5E5E2",
+          "primary": "#125238",
+          "surface-bright": "#f9f9f7"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "margin-mobile": "1rem",
+          "gutter-sm": "1rem",
+          "gutter-lg": "2rem",
+          "margin": "2rem",
+          "space-sm": "0.5rem",
+          "gutter": "1.5rem",
+          "margin-desktop": "3rem",
+          "space-xl": "2.5rem",
+          "space-xs": "0.25rem",
+          "space-lg": "1.5rem",
+          "space-md": "0.875rem"
+        },
+        "fontFamily": {
+          "headline-xl-mobile": [
+            "Plus Jakarta Sans"
+          ],
+          "headline-xl": [
+            "Plus Jakarta Sans"
+          ],
+          "caption": [
+            "Plus Jakarta Sans"
+          ],
+          "body-md": [
+            "Plus Jakarta Sans"
+          ],
+          "label-sm": [
+            "Plus Jakarta Sans"
+          ],
+          "headline-lg": [
+            "Plus Jakarta Sans"
+          ],
+          "label-md": [
+            "Plus Jakarta Sans"
+          ],
+          "body-lg": [
+            "Plus Jakarta Sans"
+          ],
+          "body-sm": [
+            "Plus Jakarta Sans"
+          ],
+          "headline-sm": [
+            "Plus Jakarta Sans"
+          ],
+          "headline-md": [
+            "Plus Jakarta Sans"
+          ]
+        },
+        "fontSize": {
+          "headline-xl-mobile": [
+            "26px",
+            {
+              "lineHeight": "34px",
+              "letterSpacing": "-0.015em",
+              "fontWeight": "600"
+            }
+          ],
+          "headline-xl": [
+            "32px",
+            {
+              "lineHeight": "40px",
+              "letterSpacing": "-0.02em",
+              "fontWeight": "600"
+            }
+          ],
+          "caption": [
+            "11px",
+            {
+              "lineHeight": "14px",
+              "letterSpacing": "0.02em",
+              "fontWeight": "500"
+            }
+          ],
+          "body-md": [
+            "14px",
+            {
+              "lineHeight": "22px",
+              "fontWeight": "400"
+            }
+          ],
+          "label-sm": [
+            "12px",
+            {
+              "lineHeight": "16px",
+              "letterSpacing": "0.01em",
+              "fontWeight": "500"
+            }
+          ],
+          "headline-lg": [
+            "24px",
+            {
+              "lineHeight": "32px",
+              "letterSpacing": "-0.015em",
+              "fontWeight": "600"
+            }
+          ],
+          "label-md": [
+            "14px",
+            {
+              "lineHeight": "20px",
+              "fontWeight": "500"
+            }
+          ],
+          "body-lg": [
+            "16px",
+            {
+              "lineHeight": "26px",
+              "fontWeight": "400"
+            }
+          ],
+          "body-sm": [
+            "13px",
+            {
+              "lineHeight": "20px",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-sm": [
+            "16px",
+            {
+              "lineHeight": "24px",
+              "letterSpacing": "-0.005em",
+              "fontWeight": "600"
+            }
+          ],
+          "headline-md": [
+            "20px",
+            {
+              "lineHeight": "28px",
+              "letterSpacing": "-0.01em",
+              "fontWeight": "600"
+            }
+          ]
+        }
+      },
+    },
+  }</script></head><body class="bg-background font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-sidebar-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between"><div class="flex flex-col flex-1 overflow-y-auto"><div class="h-16 flex items-center px-space-lg gap-space-sm"><div class="w-7 h-7 rounded-lg bg-primary-container flex items-center justify-center text-on-primary font-headline-sm text-headline-sm">A</div><div class="flex items-baseline gap-space-xs"><span class="font-headline-sm text-headline-sm text-text-primary tracking-tight">Atlas</span><span class="font-label-sm text-label-sm text-text-secondary uppercase tracking-wider font-semibold">OFFICE</span></div></div><div class="px-space-md py-space-xs"><div class="font-caption text-caption uppercase text-text-tertiary tracking-wider px-space-sm mb-space-xs">Workspace</div><nav class="flex flex-col gap-1" data-active-classes="bg-secondary-container text-primary font-label-md rounded-lg"><a class="flex items-center gap-space-md px-space-md py-2 text-text-secondary hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors font-label-md text-label-md" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span>Dashboard</a><a class="flex items-center gap-space-md px-space-md py-2 text-text-secondary hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors font-label-md text-label-md" data-path="production" href="#"><span class="material-symbols-outlined text-[20px]">precision_manufacturing</span>Production</a><a class="flex items-center gap-space-md px-space-md py-2 text-text-secondary hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors font-label-md text-label-md" data-path="workforce" href="#"><span class="material-symbols-outlined text-[20px]">group</span>Workforce</a><a class="flex items-center gap-space-md px-space-md py-2 text-text-secondary hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors font-label-md text-label-md" data-path="sales-workspace" href="#"><span class="material-symbols-outlined text-[20px]">point_of_sale</span>Sales</a><a class="flex items-center gap-space-md px-space-md py-2 text-text-secondary hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors font-label-md text-label-md" data-path="purchases-and-expenses" href="#"><span class="material-symbols-outlined text-[20px]">receipt_long</span>Purchases &amp; Expenses</a><a class="flex items-center gap-space-md px-space-md py-2 text-text-secondary hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors font-label-md text-label-md" data-path="cash-book" href="#"><span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>Cash Book</a><a class="flex items-center gap-space-md px-space-md py-2 text-text-secondary hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors font-label-md text-label-md" data-path="reports" href="#"><span class="material-symbols-outlined text-[20px]">analytics</span>Reports</a><a class="flex items-center gap-space-md px-space-md py-2 text-text-secondary hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors font-label-md text-label-md" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span>Settings</a></nav></div></div><div class="p-space-md mt-auto"><div class="bg-surface-container-low rounded-lg p-space-sm flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-8 h-8 rounded-full bg-primary-container text-on-primary font-label-md text-label-md flex items-center justify-center font-semibold">N</div><div class="flex flex-col"><span class="font-label-md text-label-md text-text-primary leading-tight">Operator Admin</span><span class="font-caption text-caption text-text-secondary">Atlas Console</span></div></div><a class="p-1.5 rounded-lg text-text-secondary hover:text-error hover:bg-surface-container-high transition-colors flex items-center justify-center" data-path="login" href="#" title="Log out"><span class="material-symbols-outlined text-[18px]">logout</span></a></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-16 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-sm"><span class="font-caption text-caption uppercase text-text-tertiary tracking-wider font-semibold">SALES</span><span class="font-caption text-caption text-text-tertiary">/</span><span class="font-label-sm text-label-sm text-text-primary font-semibold tracking-wide">CUSTOMER PAYMENTS</span></div><div class="flex items-center gap-space-md"><button aria-label="Help" class="w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">help_outline</span></button><button aria-label="Notifications" class="w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors relative"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-2 right-2 w-1.5 h-1.5 bg-state-success rounded-full"></span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-16 bg-background min-h-screen w-full px-space-lg"><div class="flex flex-col w-full">
+<!-- Sub-Navigation Bar -->
+<div class="flex items-center justify-between pb-space-sm pt-space-xs">
+<nav aria-label="Sales Sub-navigation" class="flex items-center gap-space-xs">
+<a class="px-space-md py-1.5 text-text-secondary hover:text-text-primary hover:bg-surface-container-high rounded-lg font-label-md text-label-md transition-colors" href="#">
+        Challans
+      </a>
+<a class="px-space-md py-1.5 bg-secondary-container text-primary font-label-md text-label-md rounded-lg flex items-center gap-1.5 font-semibold" href="#">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+        Customer Payments
+      </a>
+<a class="px-space-md py-1.5 text-text-secondary hover:text-text-primary hover:bg-surface-container-high rounded-lg font-label-md text-label-md transition-colors" href="#">
+        Sales Register
+      </a>
+</nav>
+</div>
+<!-- Header & Back Navigation -->
+<div class="flex flex-col gap-space-xs mt-space-sm mb-space-md">
+<div>
+<a class="inline-flex items-center gap-1.5 text-text-secondary hover:text-primary transition-colors font-label-sm text-label-sm group" href="#">
+<span class="material-symbols-outlined text-[16px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+        Back to Customer Payments
+      </a>
+</div>
+<div class="flex flex-wrap items-baseline justify-between gap-space-sm">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-text-primary tracking-tight">All Payments</h1>
+</div>
+</div>
+</div>
+<!-- Filter & Controls Toolbar -->
+<div class="bg-card-surface rounded-xl p-space-sm mb-space-md shadow-sm">
+<div class="flex flex-wrap items-center justify-between gap-space-sm">
+<!-- Search & Filters Group -->
+<div class="flex flex-wrap items-center gap-space-sm flex-1 min-w-[280px]">
+<!-- Search Input -->
+<div class="relative flex-1 max-w-xs min-w-[200px]">
+<span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary text-[18px]">search</span>
+<input class="w-full h-9 pl-9 pr-space-md bg-surface text-text-primary placeholder:text-text-tertiary rounded-lg font-body-sm text-body-sm focus:outline-none focus:bg-card-surface focus:shadow-[0_0_0_2px_#EAF3EE] transition-all" id="searchInput" placeholder="Search customer..." type="text"/>
+</div>
+<!-- Period Select -->
+<div class="relative">
+<select class="h-9 pl-3 pr-8 bg-surface hover:bg-surface-container-low text-text-primary font-label-md text-label-md rounded-lg appearance-none cursor-pointer focus:outline-none transition-colors" id="periodSelect">
+<option value="all">Period: All</option>
+<option value="today">Period: Today</option>
+<option value="yesterday">Period: Yesterday</option>
+<option value="this-week">Period: This Week</option>
+<option value="this-month">Period: This Month</option>
+<option value="custom">Period: Custom</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none text-[18px]">expand_more</span>
+</div>
+<!-- Sort Select -->
+<div class="relative">
+<select class="h-9 pl-3 pr-8 bg-surface hover:bg-surface-container-low text-text-primary font-label-md text-label-md rounded-lg appearance-none cursor-pointer focus:outline-none transition-colors" id="sortSelect">
+<option value="newest">Sort: Newest first</option>
+<option value="oldest">Sort: Oldest first</option>
+<option value="amount-high">Sort: Amount (High to Low)</option>
+<option value="amount-low">Sort: Amount (Low to High)</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none text-[18px]">expand_more</span>
+</div>
+</div>
+<!-- Result Counter & Export -->
+<div class="flex items-center gap-space-md">
+</div>
+</div>
+</div>
+<!-- Payment Archive Table: Internally Scrollable Workspace -->
+<div class="bg-card-surface rounded-xl shadow-sm overflow-hidden flex flex-col mb-space-xl">
+<div class="overflow-x-auto">
+<div class="inline-block min-w-full align-middle">
+<!-- Pinned Header & Scrollable Body Container -->
+<div class="max-h-[640px] overflow-y-auto">
+<table class="min-w-full text-left" id="paymentsTable">
+<thead class="sticky top-0 z-20 bg-surface-container-low font-caption text-caption text-text-tertiary uppercase tracking-wider">
+<tr>
+<th class="py-3 px-space-md font-semibold" scope="col">DATE</th>
+<th class="py-3 px-space-md font-semibold" scope="col">CUSTOMER</th>
+<th class="py-3 px-space-md text-right font-semibold" scope="col">AMOUNT</th>
+<th class="py-3 px-space-md font-semibold" scope="col">MODE</th>
+<th class="py-3 px-space-md font-semibold" scope="col">ALLOCATION</th>
+<th class="py-3 px-space-md text-right font-semibold" scope="col">ACTION</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm text-text-primary" id="paymentRows">
+<!-- Row 1 -->
+<tr class="hover:bg-row-hover transition-colors group cursor-pointer bg-surface-container-low" onclick="openDrawer('REC-2026-0928', 'Cocomelon Enterprises', '₹20,000.00', '28 Sep 2026', 'Bank Transfer (NEFT)', 'Challan 11')">
+<td class="py-3.5 px-space-md tabular-nums whitespace-nowrap text-text-secondary font-medium">28 Sep 2026</td>
+<td class="py-3.5 px-space-md whitespace-nowrap font-medium text-text-primary">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="">Cocomelon Enterprises</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md tabular-nums text-right whitespace-nowrap font-semibold text-text-primary">₹20,000.00</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface font-caption text-caption text-text-secondary">Bank Transfer (NEFT)</span>
+</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary tabular-nums">Challan 11 · ₹20,000.00</td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<button class="inline-flex items-center gap-1 font-label-sm text-label-sm text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-all">
+                    Open receipt <span class="">→</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-row-hover transition-colors group cursor-pointer" onclick="openDrawer('REC-2026-0927', 'Apex Builders &amp; Infra', '₹34,200.00', '27 Sep 2026', 'Cheque', 'Challan 17')">
+<td class="py-3.5 px-space-md tabular-nums whitespace-nowrap text-text-secondary font-medium">27 Sep 2026</td>
+<td class="py-3.5 px-space-md whitespace-nowrap font-medium text-text-primary">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="">Apex Builders &amp; Infra</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md tabular-nums text-right whitespace-nowrap font-semibold text-text-primary">₹34,200.00</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface font-caption text-caption text-text-secondary">Cheque</span>
+</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary tabular-nums">Challan 17 · ₹34,200.00</td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<button class="inline-flex items-center gap-1 font-label-sm text-label-sm text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-all">
+                    Open receipt <span class="">→</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-row-hover transition-colors group cursor-pointer" onclick="openDrawer('REC-2026-0926', 'Shree Balaji Bricks', '₹18,500.00', '26 Sep 2026', 'Cash', 'Challan 16')">
+<td class="py-3.5 px-space-md tabular-nums whitespace-nowrap text-text-secondary font-medium">26 Sep 2026</td>
+<td class="py-3.5 px-space-md whitespace-nowrap font-medium text-text-primary">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="">Shree Balaji Bricks</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md tabular-nums text-right whitespace-nowrap font-semibold text-text-primary">₹18,500.00</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface font-caption text-caption text-text-secondary">Cash</span>
+</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary tabular-nums">Challan 16 · ₹18,500.00</td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<button class="inline-flex items-center gap-1 font-label-sm text-label-sm text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-all">
+                    Open receipt <span class="">→</span>
+</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-row-hover transition-colors group cursor-pointer" onclick="openDrawer('REC-2026-0921', 'Dutt &amp; Sons Housing', '₹2,00,000.00', '21 Sep 2026', 'Cheque', '4 Challans')">
+<td class="py-3.5 px-space-md tabular-nums whitespace-nowrap text-text-secondary font-medium">21 Sep 2026</td>
+<td class="py-3.5 px-space-md whitespace-nowrap font-medium text-text-primary">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="">Dutt &amp; Sons Housing</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md tabular-nums text-right whitespace-nowrap font-semibold text-text-primary">₹2,00,000.00</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface font-caption text-caption text-text-secondary">Cheque</span>
+</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-primary">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-secondary-container text-primary font-caption text-caption font-semibold">4 Challans</span>
+</td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<button class="inline-flex items-center gap-1 font-label-sm text-label-sm text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-all">
+                    Open receipt <span class="">→</span>
+</button>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-row-hover transition-colors group cursor-pointer" onclick="openDrawer('REC-2026-0918', 'Kolkata Metro Infra', '₹56,000.00', '18 Sep 2026', 'Bank Transfer', 'Challan 9')">
+<td class="py-3.5 px-space-md tabular-nums whitespace-nowrap text-text-secondary font-medium">18 Sep 2026</td>
+<td class="py-3.5 px-space-md whitespace-nowrap font-medium text-text-primary">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="">Kolkata Metro Infra</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md tabular-nums text-right whitespace-nowrap font-semibold text-text-primary">₹56,000.00</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface font-caption text-caption text-text-secondary">Bank Transfer</span>
+</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary tabular-nums">Challan 9 · ₹56,000.00</td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<button class="inline-flex items-center gap-1 font-label-sm text-label-sm text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-all">
+                    Open receipt <span class="">→</span>
+</button>
+</td>
+</tr>
+<!-- Row 6 -->
+<tr class="hover:bg-row-hover transition-colors group cursor-pointer" onclick="openDrawer('REC-2026-0915', 'Cocomelon Enterprises', '₹10,000.00', '15 Sep 2026', 'Bank Transfer', 'Challan 10')">
+<td class="py-3.5 px-space-md tabular-nums whitespace-nowrap text-text-secondary font-medium">15 Sep 2026</td>
+<td class="py-3.5 px-space-md whitespace-nowrap font-medium text-text-primary">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="">Cocomelon Enterprises</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md tabular-nums text-right whitespace-nowrap font-semibold text-text-primary">₹10,000.00</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface font-caption text-caption text-text-secondary">Bank Transfer</span>
+</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary tabular-nums">Challan 10 · ₹10,000.00</td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<button class="inline-flex items-center gap-1 font-label-sm text-label-sm text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-all">
+                    Open receipt <span class="">→</span>
+</button>
+</td>
+</tr>
+<!-- Row 7 -->
+<tr class="hover:bg-row-hover transition-colors group cursor-pointer" onclick="openDrawer('REC-2026-0912', 'Cocomelon Enterprises', '₹15,000.00', '12 Sep 2026', 'Bank Transfer', 'Challan 7')">
+<td class="py-3.5 px-space-md tabular-nums whitespace-nowrap text-text-secondary font-medium">12 Sep 2026</td>
+<td class="py-3.5 px-space-md whitespace-nowrap font-medium text-text-primary">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="">Cocomelon Enterprises</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md tabular-nums text-right whitespace-nowrap font-semibold text-text-primary">₹15,000.00</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface font-caption text-caption text-text-secondary">Bank Transfer</span>
+</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary tabular-nums">Challan 7 · ₹15,000.00</td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<button class="inline-flex items-center gap-1 font-label-sm text-label-sm text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-all">
+                    Open receipt <span class="">→</span>
+</button>
+</td>
+</tr>
+<!-- Row 8 -->
+<tr class="hover:bg-row-hover transition-colors group cursor-pointer" onclick="openDrawer('REC-2026-0909', 'Shree Balaji Bricks', '₹14,000.00', '09 Sep 2026', 'Cash', 'Challan 6')">
+<td class="py-3.5 px-space-md tabular-nums whitespace-nowrap text-text-secondary font-medium">09 Sep 2026</td>
+<td class="py-3.5 px-space-md whitespace-nowrap font-medium text-text-primary">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="">Shree Balaji Bricks</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md tabular-nums text-right whitespace-nowrap font-semibold text-text-primary">₹14,000.00</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface font-caption text-caption text-text-secondary">Cash</span>
+</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary tabular-nums">Challan 6 · ₹14,000.00</td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<button class="inline-flex items-center gap-1 font-label-sm text-label-sm text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-all">
+                    Open receipt <span class="">→</span>
+</button>
+</td>
+</tr>
+<!-- Row 9 -->
+<tr class="hover:bg-row-hover transition-colors group cursor-pointer" onclick="openDrawer('REC-2026-0905', 'Apex Builders &amp; Infra', '₹94,410.00', '05 Sep 2026', 'Bank Transfer', '3 Challans')">
+<td class="py-3.5 px-space-md tabular-nums whitespace-nowrap text-text-secondary font-medium">05 Sep 2026</td>
+<td class="py-3.5 px-space-md whitespace-nowrap font-medium text-text-primary">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="">Apex Builders &amp; Infra</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md tabular-nums text-right whitespace-nowrap font-semibold text-text-primary">₹94,410.00</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface font-caption text-caption text-text-secondary">Bank Transfer</span>
+</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-primary">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-secondary-container text-primary font-caption text-caption font-semibold">3 Challans</span>
+</td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<button class="inline-flex items-center gap-1 font-label-sm text-label-sm text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-all">
+                    Open receipt <span class="">→</span>
+</button>
+</td>
+</tr>
+<!-- Row 10 -->
+<tr class="hover:bg-row-hover transition-colors group cursor-pointer" onclick="openDrawer('REC-2026-0828', 'Cocomelon Enterprises', '₹2,00,000.00', '28 Aug 2026', 'Cheque', '4 Challans')">
+<td class="py-3.5 px-space-md tabular-nums whitespace-nowrap text-text-secondary font-medium">28 Aug 2026</td>
+<td class="py-3.5 px-space-md whitespace-nowrap font-medium text-text-primary">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="">Cocomelon Enterprises</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md tabular-nums text-right whitespace-nowrap font-semibold text-text-primary">₹2,00,000.00</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface font-caption text-caption text-text-secondary">Cheque</span>
+</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-primary">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-secondary-container text-primary font-caption text-caption font-semibold">4 Challans</span>
+</td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<button class="inline-flex items-center gap-1 font-label-sm text-label-sm text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-all">
+                    Open receipt <span class="">→</span>
+</button>
+</td>
+</tr>
+<!-- Row 11 -->
+<tr class="hover:bg-row-hover transition-colors group cursor-pointer" onclick="openDrawer('REC-2026-0822', 'Malda Infra Works', '₹45,000.00', '22 Aug 2026', 'Bank Transfer', 'Challan 3')">
+<td class="py-3.5 px-space-md tabular-nums whitespace-nowrap text-text-secondary font-medium">22 Aug 2026</td>
+<td class="py-3.5 px-space-md whitespace-nowrap font-medium text-text-primary">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="">Malda Infra Works</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md tabular-nums text-right whitespace-nowrap font-semibold text-text-primary">₹45,000.00</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface font-caption text-caption text-text-secondary">Bank Transfer</span>
+</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary tabular-nums">Challan 3 · ₹45,000.00</td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<button class="inline-flex items-center gap-1 font-label-sm text-label-sm text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-all">
+                    Open receipt <span class="">→</span>
+</button>
+</td>
+</tr>
+<!-- Row 12 -->
+<tr class="hover:bg-row-hover transition-colors group cursor-pointer" onclick="openDrawer('REC-2026-0818', 'Dutt &amp; Sons Housing', '₹24,900.00', '18 Aug 2026', 'Cash', 'Challan 4')">
+<td class="py-3.5 px-space-md tabular-nums whitespace-nowrap text-text-secondary font-medium">18 Aug 2026</td>
+<td class="py-3.5 px-space-md whitespace-nowrap font-medium text-text-primary">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="">Dutt &amp; Sons Housing</span>
+</div>
+</td>
+<td class="py-3.5 px-space-md tabular-nums text-right whitespace-nowrap font-semibold text-text-primary">₹24,900.00</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface font-caption text-caption text-text-secondary">Cash</span>
+</td>
+<td class="py-3.5 px-space-md whitespace-nowrap text-text-secondary tabular-nums">Challan 4 · ₹24,900.00</td>
+<td class="py-3.5 px-space-md text-right whitespace-nowrap">
+<button class="inline-flex items-center gap-1 font-label-sm text-label-sm text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-all">
+                    Open receipt <span class="">→</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Table Footer Meta Bar -->
+</div>
+<!-- Slide-Over Inspection Drawer (Inspector View for Receipt) -->
+<aside aria-label="Payment Receipt Drawer" class="fixed inset-y-0 right-0 w-[440px] max-w-full bg-card-surface shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col" id="receiptDrawer"><div class="h-16 px-space-lg flex items-center justify-between border-b border-border-subtle"><div class="flex flex-col"><h2 class="font-headline-sm text-headline-sm text-text-primary">Payment receipt</h2><span class="font-body-sm text-body-sm text-text-secondary">28 Sep 2026</span></div><button aria-label="Close receipt drawer" class="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-container-high transition-colors flex items-center justify-center" onclick="closeDrawer()"><span class="material-symbols-outlined text-[20px]">close</span></button></div><div class="flex-1 overflow-y-auto p-space-lg flex flex-col gap-space-lg"><div class="flex flex-col gap-1 pb-space-md border-b border-border-subtle"><span class="font-caption text-caption text-text-tertiary uppercase tracking-wider">Amount received</span><div class="font-headline-xl text-headline-xl text-text-primary font-bold tabular-nums">₹20,000.00</div><div class="flex items-center gap-space-md pt-1 font-body-sm text-body-sm"><div class="flex items-center gap-1.5"><span class="text-text-secondary">Allocated:</span><span class="font-semibold tabular-nums text-text-primary">₹20,000.00</span></div><span class="text-border-strong">·</span><div class="flex items-center gap-1.5"><span class="text-text-secondary">Remaining:</span><span class="font-semibold tabular-nums text-text-primary">₹0.00</span></div></div></div><div class="flex flex-col gap-space-md pb-space-md border-b border-border-subtle"><div class="flex items-center justify-between"><span class="font-body-sm text-body-sm text-text-secondary">Customer</span><span class="font-label-md text-label-md text-text-primary font-medium">Cocomelon Enterprises</span></div><div class="flex items-center justify-between"><span class="font-body-sm text-body-sm text-text-secondary">Payment mode</span><span class="font-label-md text-label-md text-text-primary font-medium">Bank Transfer (NEFT)</span></div><div class="flex items-start justify-between gap-space-sm"><span class="font-body-sm text-body-sm text-text-secondary">Note</span><span class="font-body-sm text-body-sm text-text-primary text-right font-medium">Sept final tranche</span></div></div><div class="flex flex-col gap-space-sm"><div class="flex items-center justify-between"><span class="font-label-md text-label-md text-text-primary font-semibold">Allocated Challans</span><span class="font-caption text-caption text-text-tertiary tabular-nums">1 Challan settled</span></div><div class="rounded-xl bg-surface border border-border-subtle flex flex-col overflow-hidden"><div class="max-h-[320px] overflow-y-auto divide-y divide-border-subtle"><div class="p-space-md flex flex-col gap-1 hover:bg-surface-container-low transition-colors"><div class="flex items-center justify-between"><span class="font-label-md text-label-md text-text-primary font-medium">Challan 11</span><span class="font-label-md text-label-md text-text-primary font-bold tabular-nums">₹20,000.00</span></div><div class="flex items-center justify-end"><a class="inline-flex items-center gap-1 font-label-sm text-label-sm text-primary hover:text-primary-container font-medium group transition-colors" href="#"><span class="group-hover:underline">Open Challan</span><span class="material-symbols-outlined text-[14px]">arrow_forward</span></a></div></div></div><div class="p-space-md bg-surface-container-low border-t border-border-subtle flex items-center justify-between"><span class="font-label-md text-label-md text-text-secondary font-medium">Total allocated</span><span class="font-label-md text-label-md text-text-primary font-bold tabular-nums">₹20,000.00</span></div></div></div></div><div class="p-space-md bg-surface border-t border-border-subtle flex items-center justify-end"><button class="px-space-md h-9 rounded-lg bg-surface-container hover:bg-surface-container-high text-text-primary font-label-md text-label-md font-medium transition-colors" onclick="closeDrawer()">Close</button></div></aside>
+<!-- Drawer Backdrop -->
+<div class="fixed inset-0 bg-inverse-surface/20 backdrop-blur-sm z-40 transition-opacity" id="drawerBackdrop" onclick="closeDrawer()"></div>
+</div>
+<script>
+  function openDrawer(receiptNo, customer, amount, date, mode, allocation) {
+    document.getElementById('drawerReceiptNo').textContent = receiptNo;
+    document.getElementById('drawerCustomer').textContent = customer;
+    document.getElementById('drawerAmount').textContent = amount;
+    document.getElementById('drawerDate').textContent = date;
+    document.getElementById('drawerMode').textContent = mode;
+    document.getElementById('drawerAllocation').textContent = allocation;
+
+    const drawer = document.getElementById('receiptDrawer');
+    const backdrop = document.getElementById('drawerBackdrop');
+
+    drawer.classList.remove('translate-x-full');
+    backdrop.classList.remove('hidden');
+  }
+
+  function closeDrawer() {
+    const drawer = document.getElementById('receiptDrawer');
+    const backdrop = document.getElementById('drawerBackdrop');
+
+    drawer.classList.add('translate-x-full');
+    backdrop.classList.add('hidden');
+  }
+
+  // Client-side quick filter behavior
+  document.getElementById('searchInput').addEventListener('input', function(e) {
+    const query = e.target.value.toLowerCase();
+    const rows = document.querySelectorAll('#paymentRows tr');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      if (text.includes(query)) {
+        row.style.display = '';
+        visibleCount++;
+      } else {
+        row.style.display = 'none';
+      }
+    });
+
+    const badge = document.getElementById('resultCountBadge');
+    if (query.trim() === '') {
+      badge.textContent = 'Showing latest payments';
+    } else {
+      badge.textContent = `${visibleCount} match${visibleCount === 1 ? '' : 'es'} found`;
+    }
+  });
+
+  // Export Feedback Trigger
+  document.getElementById('quickExportBtn').addEventListener('click', function() {
+    const originalText = this.innerHTML;
+    this.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">refresh</span> Generating...';
+    setTimeout(() => {
+      this.innerHTML = '<span class="material-symbols-outlined text-[16px] text-state-success">check</span> Export Ready';
+      setTimeout(() => {
+        this.innerHTML = originalText;
+      }, 2000);
+    }, 800);
+  });
+</script></main></div>
+</body></html>

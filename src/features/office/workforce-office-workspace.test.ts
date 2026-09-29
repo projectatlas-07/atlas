@@ -14,6 +14,10 @@ const sales = readFileSync(
   new URL("./components/sales-office-section.tsx", import.meta.url),
   "utf8",
 );
+const shell = readFileSync(
+  new URL("./components/office-shell.tsx", import.meta.url),
+  "utf8",
+);
 const overview = office.slice(
   office.indexOf("function LabourerManagement"),
   office.indexOf("function LabourerProductionRateOverrideControls"),
@@ -34,6 +38,34 @@ test("Workforce exposes the six approved areas through one local navigation", ()
   assert.match(workspace, /aria-pressed=\{activeArea === area\.id\}/);
   assert.match(workspace, /activeArea === area\.id \? "primary" : "ghost"/);
   assert.match(office, /useState<WorkforceWorkspaceArea>\("production-workers"\)/);
+});
+
+test("Workforce removes repeated headings and begins with compact category navigation", () => {
+  assert.doesNotMatch(workspace, /People, rates and accounts/i);
+  assert.doesNotMatch(workspace, /Workforce workspace/);
+  assert.doesNotMatch(workspace, /Manage workers, wage rates/);
+  assert.doesNotMatch(workspace, /<header/);
+  assert.match(workspace, /<div className="space-y-atlas-4">\s*<nav aria-label="Workforce areas"/);
+  assert.match(shell, /activeArea !== "sales" && activeArea !== "workforce" && \(/);
+});
+
+test("Production Workers starts with actions and filters instead of a repeated banner", () => {
+  assert.doesNotMatch(overview, /Today ·/);
+  assert.doesNotMatch(overview, /production-workers-heading/);
+  assert.doesNotMatch(overview, /active ·[\s\S]*archived/);
+  assert.doesNotMatch(overview, /Work and earnings shown here use today/);
+  assert.match(overview, /<section aria-label="Production workers">\s*<div className="flex flex-col gap-atlas-2 lg:flex-row lg:items-end lg:justify-between">/);
+  assert.match(overview, /Filter Production workers by lifecycle[\s\S]*Set rates[\s\S]*\+ Add labourer[\s\S]*Search Production workers/);
+  assert.doesNotMatch(overview, /border-b border-atlas-border pb-atlas-4/);
+});
+
+test("Production Worker filters, actions, and search share one compact responsive toolbar", () => {
+  assert.match(overview, /flex w-full flex-col gap-atlas-2 sm:flex-row sm:items-end lg:flex-1 lg:justify-end/);
+  assert.match(overview, /Set rates[\s\S]*\+ Add labourer[\s\S]*<FormField label="Search Production workers">/);
+  assert.match(overview, /className="w-full lg:max-w-sm"/);
+  assert.match(overview, /mt-atlas-3 hidden md:block/);
+  assert.match(overview, /mt-atlas-3 divide-y divide-atlas-border border-y border-atlas-border md:hidden/);
+  assert.doesNotMatch(overview, /<div className="mt-atlas-4 space-y-atlas-3">/);
 });
 
 test("Production and Mud use focused V2 presentations while remaining modules stay single mounted", () => {

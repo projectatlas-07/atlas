@@ -1,16 +1,23 @@
 import type {
   ChallanHeader,
-  CreateCustomerPaymentInput,
+  CreateCustomerPaymentWithMethodsInput,
+  Customer,
   CustomerOutstandingChallan,
   CustomerPayment,
+  NewCustomerPaymentMode,
 } from "@/features/sales/types";
 import { isLocalDate, shiftLocalDate } from "../../lib/local-date.ts";
-import { formatChallanLabel, isNewCustomerPaymentMode } from "../sales/types.ts";
+import {
+  formatChallanLabel,
+  isNewCustomerPaymentMode,
+  NEW_CUSTOMER_PAYMENT_MODES,
+} from "../sales/types.ts";
 
 export type CustomerPaymentForm = {
   paymentDate: string;
   amount: string;
-  paymentMode: string;
+  paymentModes: NewCustomerPaymentMode[];
+  paymentMethodAmounts: Partial<Record<NewCustomerPaymentMode, string>>;
   note: string;
   allocations: Record<string, string>;
 };
@@ -21,6 +28,7 @@ export type CustomerPaymentFormStatus = {
   remainingAmount: number;
   canSubmit: boolean;
   error: string;
+  methodSplitError: string;
 };
 
 export type CustomerDuesSortOrder = "newest" | "oldest";
@@ -35,6 +43,40 @@ export type CustomerDuesDateFilter = {
   range: CustomerDuesDateRange | null;
   error: string;
 };
+
+export type CustomerPaymentHistorySort =
+  | "newest"
+  | "oldest"
+  | "amount-high"
+  | "amount-low";
+
+export type ExpandedCustomerPaymentFilters = Readonly<{
+  searchText: string;
+  period: CustomerDuesDatePreset;
+  sort: CustomerPaymentHistorySort;
+  localToday: string;
+  customFrom: string;
+  customTo: string;
+}>;
+
+export type ExpandedCustomerPaymentFilterResult = Readonly<{
+  payments: CustomerPayment[];
+  error: string;
+}>;
+
+export function filterCustomersForPaymentSelection(
+  customers: readonly Customer[],
+  searchText: string,
+): Customer[] {
+  const normalizedNameSearch = searchText.trim().toLocaleLowerCase("en-IN");
+  const normalizedMobileSearch = searchText.replace(/\D/g, "");
+  if (!normalizedNameSearch) return [...customers];
+
+  return customers.filter((customer) =>
+    customer.name.toLocaleLowerCase("en-IN").includes(normalizedNameSearch)
+    || (normalizedMobileSearch.length > 0
+      && customer.mobile.replace(/\D/g, "").includes(normalizedMobileSearch)));
+}
 
 export function resolveCustomerDuesDateFilter(
   preset: CustomerDuesDatePreset,
@@ -84,6 +126,59 @@ export function resolveCustomerDuesDateFilter(
   return { range: { fromDate: customFrom, toDate: customTo }, error: "" };
 }
 
+function compareCustomerPaymentsNewestFirst(
+  left: CustomerPayment,
+  right: CustomerPayment,
+): number {
+  return right.paymentDate.localeCompare(left.paymentDate)
+    || right.createdAt.localeCompare(left.createdAt)
+    || right.id.localeCompare(left.id);
+}
+
+export function filterCustomerPaymentsForExpandedView(
+  payments: readonly CustomerPayment[],
+  filters: ExpandedCustomerPaymentFilters,
+): ExpandedCustomerPaymentFilterResult {
+  const dateFilter = resolveCustomerDuesDateFilter(
+    filters.period,
+    filters.localToday,
+    filters.customFrom,
+    filters.customTo,
+  );
+  if (dateFilter.error) return { payments: [], error: dateFilter.error };
+
+  const normalizedSearch = filters.searchText.trim().toLocaleLowerCase("en-IN");
+  const filtered = payments.filter((payment) => {
+    if (dateFilter.range && (
+      payment.paymentDate < dateFilter.range.fromDate
+      || payment.paymentDate > dateFilter.range.toDate
+    )) return false;
+    if (!normalizedSearch) return true;
+
+    return [
+      payment.customerNameSnapshot,
+      payment.customerAddressSnapshot,
+      payment.customerMobileSnapshot,
+      payment.note ?? "",
+      ...payment.allocations.map((allocation) => formatChallanLabel(allocation.challanNumber)),
+    ].some((value) => value.toLocaleLowerCase("en-IN").includes(normalizedSearch));
+  });
+
+  const newestFirst = (left: CustomerPayment, right: CustomerPayment) =>
+    compareCustomerPaymentsNewestFirst(left, right);
+  const comparator = filters.sort === "oldest"
+    ? (left: CustomerPayment, right: CustomerPayment) => -newestFirst(left, right)
+    : filters.sort === "amount-high"
+      ? (left: CustomerPayment, right: CustomerPayment) => right.amount - left.amount
+        || newestFirst(left, right)
+      : filters.sort === "amount-low"
+        ? (left: CustomerPayment, right: CustomerPayment) => left.amount - right.amount
+          || newestFirst(left, right)
+        : newestFirst;
+
+  return { payments: [...filtered].sort(comparator), error: "" };
+}
+
 export function sortCustomerOutstandingChallans(
   challans: readonly CustomerOutstandingChallan[],
   sortOrder: CustomerDuesSortOrder,
@@ -105,7 +200,53 @@ export function clearCustomerPaymentAllocations(
 }
 
 export function emptyCustomerPaymentForm(localToday: string): CustomerPaymentForm {
-  return { paymentDate: localToday, amount: "", paymentMode: "", note: "", allocations: {} };
+  return {
+    paymentDate: localToday,
+    amount: "",
+    paymentModes: [],
+    paymentMethodAmounts: {},
+    note: "",
+    allocations: {},
+  };
+}
+
+export function toggleCustomerPaymentMode(
+  form: CustomerPaymentForm,
+  mode: NewCustomerPaymentMode,
+): CustomerPaymentForm {
+  const selected = new Set(form.paymentModes);
+  const paymentMethodAmounts = { ...form.paymentMethodAmounts };
+  if (selected.has(mode)) {
+    selected.delete(mode);
+    delete paymentMethodAmounts[mode];
+  } else {
+    selected.add(mode);
+  }
+  return {
+    ...form,
+    paymentModes: NEW_CUSTOMER_PAYMENT_MODES.filter((candidate) => selected.has(candidate)),
+    paymentMethodAmounts,
+  };
+}
+
+export function setCustomerPaymentMethodAmount(
+  form: CustomerPaymentForm,
+  mode: NewCustomerPaymentMode,
+  amount: string,
+): CustomerPaymentForm {
+  if (!form.paymentModes.includes(mode)) return form;
+  return {
+    ...form,
+    paymentMethodAmounts: { ...form.paymentMethodAmounts, [mode]: amount },
+  };
+}
+
+export function clearCustomerPaymentMethodAmounts(
+  form: CustomerPaymentForm,
+): CustomerPaymentForm {
+  return Object.keys(form.paymentMethodAmounts).length === 0
+    ? form
+    : { ...form, paymentMethodAmounts: {} };
 }
 
 export function setPaymentAmount(
@@ -141,25 +282,24 @@ export function setPaymentAllocation(
   return { ...form, amount: formatAllocationTotal(allocations), allocations };
 }
 
-export function fillOutstandingAllocation(
-  form: CustomerPaymentForm,
-  challan: CustomerOutstandingChallan,
-): CustomerPaymentForm {
-  return togglePaymentAllocation(form, challan, true);
-}
-
 export function getCustomerPaymentFormStatus(
   form: CustomerPaymentForm,
   challans: readonly CustomerOutstandingChallan[],
 ): CustomerPaymentFormStatus {
   const paymentPaise = parseMoneyToPaise(form.amount);
+  const methodSplitError = getPaymentMethodSplitError(form, paymentPaise);
   const selected = Object.entries(form.allocations);
   let allocatedPaise = 0;
   let error = "";
 
   if (!isCanonicalDate(form.paymentDate)) error = "Choose a valid payment date.";
-  else if (!isNewCustomerPaymentMode(form.paymentMode)) error = "Choose a payment mode.";
+  else if (form.paymentModes.length === 0) error = "Choose at least one payment mode.";
+  else if (new Set(form.paymentModes).size !== form.paymentModes.length
+    || form.paymentModes.some((mode) => !isNewCustomerPaymentMode(mode))) {
+    error = "Choose valid payment modes.";
+  }
   else if (paymentPaise === null) error = "Enter a payment amount greater than zero.";
+  else if (methodSplitError) error = methodSplitError;
   else if (selected.length === 0) error = "Select at least one Challan to allocate this payment.";
 
   const challansById = new Map(challans.map((challan) => [challan.challanId, challan]));
@@ -189,6 +329,7 @@ export function getCustomerPaymentFormStatus(
     remainingAmount: remainingPaise / 100,
     canSubmit: !error && paymentPaise !== null && selected.length > 0,
     error,
+    methodSplitError,
   };
 }
 
@@ -197,7 +338,7 @@ export function buildCustomerPaymentInput(
   customerId: string,
   form: CustomerPaymentForm,
   challans: readonly CustomerOutstandingChallan[],
-): CreateCustomerPaymentInput | null {
+): CreateCustomerPaymentWithMethodsInput | null {
   if (!factoryId || !customerId) return null;
   const status = getCustomerPaymentFormStatus(form, challans);
   if (!status.canSubmit) return null;
@@ -206,13 +347,51 @@ export function buildCustomerPaymentInput(
     customerId,
     paymentDate: form.paymentDate,
     amount: status.paymentAmount,
-    paymentMode: form.paymentMode as CreateCustomerPaymentInput["paymentMode"],
+    methods: form.paymentModes.map((mode) => {
+      const rawSplitAmount = form.paymentMethodAmounts[mode]?.trim() ?? "";
+      return {
+        mode,
+        splitAmount: rawSplitAmount
+          ? parseMoneyToPaise(rawSplitAmount)! / 100
+          : null,
+      };
+    }),
     note: form.note,
     allocations: Object.entries(form.allocations).map(([challanId, amount]) => ({
       challanId,
       amount: parseMoneyToPaise(amount)! / 100,
     })),
   };
+}
+
+function getPaymentMethodSplitError(
+  form: CustomerPaymentForm,
+  paymentPaise: number | null,
+): string {
+  const rawAmounts = form.paymentModes.map((mode) => (
+    form.paymentMethodAmounts[mode]?.trim() ?? ""
+  ));
+  const suppliedCount = rawAmounts.filter(Boolean).length;
+  if (suppliedCount === 0) return "";
+  if (suppliedCount !== form.paymentModes.length) {
+    return "Enter an amount for every selected method, or leave all method amounts blank.";
+  }
+
+  const parsedAmounts = rawAmounts.map(parseMoneyToPaise);
+  if (parsedAmounts.some((amount) => amount === null)) {
+    return "Method amounts must be positive and use at most two decimal places.";
+  }
+  if (paymentPaise === null) {
+    return "Enter a valid Payment amount to reconcile method amounts.";
+  }
+  const methodTotalPaise = parsedAmounts.reduce<number>(
+    (total, amount) => total + (amount ?? 0),
+    0,
+  );
+  if (!Number.isSafeInteger(methodTotalPaise) || methodTotalPaise !== paymentPaise) {
+    return "Method amounts must equal the Payment total.";
+  }
+  return "";
 }
 
 export function applyPaymentLocks(

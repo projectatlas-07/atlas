@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import type { CashBookMovement } from "../cash-book/types.ts";
-import { formatCustomerPaymentMode } from "../sales/types.ts";
+import {
+  formatCustomerPaymentMethods,
+  formatCustomerPaymentMode,
+} from "../sales/types.ts";
 import {
   buildCashBookInitializationInput,
   buildCashBookManualEntryInput,
@@ -30,6 +33,7 @@ const customerPayment: CashBookMovement = {
   direction: "in",
   amount: 60_000,
   paymentMode: "upi",
+  paymentMethods: [{ mode: "upi", splitAmount: null }],
   counterparty: "Diego Forlan",
   description: "Challans #12, #15",
   note: null,
@@ -88,13 +92,41 @@ test("customer and multi-Challan payments remain one Money In source row with re
   assert.doesNotMatch(sectionSource, /allocations\.map/);
 });
 
-test("payment modes render human labels including legacy data", () => {
+test("customer payment methods render authoritatively without changing one-movement totals", () => {
   assert.deepEqual([
-    "cash", "upi", "bank_transfer", "cheque", "other", "unspecified",
+    "cash", "upi", "bank_transfer", "cheque", "other", "unspecified", "multiple",
   ].map((mode) => formatCustomerPaymentMode(mode as CashBookMovement["paymentMode"])), [
-    "Cash", "UPI", "Bank Transfer", "Cheque", "Other", "Legacy / Unspecified",
+    "Cash", "UPI", "Bank Transfer", "Cheque", "Other", "Legacy / Unspecified", "Multiple",
   ]);
-  assert.match(sectionSource, /formatCustomerPaymentMode\(entry\.paymentMode\)/);
+  assert.equal(formatCustomerPaymentMethods(
+    customerPayment.paymentMethods,
+    customerPayment.paymentMode,
+    { includeSplitAmounts: false },
+  ), "UPI");
+  assert.equal(formatCustomerPaymentMethods(
+    [
+      { mode: "upi", splitAmount: null },
+      { mode: "cheque", splitAmount: null },
+    ],
+    "multiple",
+    { includeSplitAmounts: false },
+  ), "UPI + Cheque");
+  assert.equal(formatCustomerPaymentMethods(
+    [
+      { mode: "upi", splitAmount: 10_000 },
+      { mode: "cheque", splitAmount: 90_000 },
+    ],
+    "multiple",
+    { includeSplitAmounts: false },
+  ), "UPI + Cheque");
+  assert.equal(formatCustomerPaymentMethods([], "upi", {
+    includeSplitAmounts: false,
+  }), "UPI");
+  assert.equal(formatCustomerPaymentMethods([], "multiple", {
+    includeSplitAmounts: false,
+  }), "Multiple");
+  assert.match(sectionSource, /formatCustomerPaymentMethods\([\s\S]*entry\.paymentMethods[\s\S]*includeSplitAmounts: false/);
+  assert.match(sectionSource, /entry\.sourceType === "customer_payment"/);
 });
 
 test("manual Money In and Money Out use one validated controlled request shape", () => {

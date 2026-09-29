@@ -3,24 +3,49 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { formatChallanDate, formatSalesMoney } from "@/features/office/sales-office-model";
+
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState, Feedback } from "@/components/ui/feedback";
+import { Input } from "@/components/ui/form-controls";
+import { FormField } from "@/components/ui/form-field";
+import { StatusPill } from "@/components/ui/status-pill";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableContainer,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/ui/table";
 import {
   getChallanBrickQuantity,
   getSalesRegisterPaymentLabel,
   resolveSalesDateRange,
   summarizeSalesRegister,
   type SalesDatePreset,
+  type SalesRegisterEntry,
 } from "@/features/sales/sales-register-model";
 import { listSalesRegister } from "@/features/sales/services/sales-register-service";
+import { formatDateOnly, formatIndianCurrency, formatIndianNumber } from "@/lib/formatting";
 import { getLocalDate } from "@/lib/local-date";
+import { CHALLAN_STATUS, resolveStatusPresentation } from "@/lib/statuses";
+import { ATLAS_UI_STRINGS } from "@/lib/strings";
 
-const presets: Array<{ value: SalesDatePreset; label: string }> = [
+const presets: ReadonlyArray<Readonly<{ value: SalesDatePreset; label: string }>> = [
   { value: "today", label: "Today" },
   { value: "yesterday", label: "Yesterday" },
   { value: "week", label: "This week" },
   { value: "month", label: "This month" },
   { value: "custom", label: "Custom range" },
 ];
+
+const MONEY_WITH_PAISE = {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+} as const;
 
 export function SalesRegisterSection({ factoryId }: Readonly<{ factoryId: string }>) {
   const [localToday] = useState(() => getLocalDate());
@@ -35,86 +60,318 @@ export function SalesRegisterSection({ factoryId }: Readonly<{ factoryId: string
   });
   const entries = registerQuery.data ?? [];
   const summary = summarizeSalesRegister(entries);
+  const errorMessage = registerQuery.error instanceof Error
+    ? registerQuery.error.message
+    : registerQuery.error
+      ? "Could not load the Sales Register."
+      : "";
 
   return (
-    <section aria-labelledby="sales-register-heading" className="mt-8 rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-200 p-5 sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h3 id="sales-register-heading" className="text-xl font-bold">Sales Register</h3>
-            <p className="mt-1 text-sm text-slate-600">Saved Challans are the sale records. Void Challans remain visible but do not count toward totals.</p>
-          </div>
-          <div className="flex flex-wrap gap-2" aria-label="Sales Register date filters">
-            {presets.map((option) => <button
-              key={option.value}
-              type="button"
-              aria-pressed={preset === option.value}
-              onClick={() => setPreset(option.value)}
-              className={`h-9 rounded-lg border px-3 text-sm font-semibold ${preset === option.value ? "border-cyan-700 bg-cyan-700 text-white" : "border-slate-300 bg-white text-slate-700"}`}
-            >{option.label}</button>)}
-          </div>
+    <Card as="section" aria-labelledby="sales-register-heading">
+      <header className="flex flex-col gap-atlas-4 border-b border-atlas-border pb-atlas-5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-2xl">
+          <h3 id="sales-register-heading" className="text-atlas-2xl font-atlas-semibold text-atlas-text">
+            Sales Register
+          </h3>
+          <p className="mt-atlas-2 text-atlas-sm text-atlas-text-muted">
+            Saved Challans are the sale records. Void Challans remain visible but do not count toward totals.
+          </p>
+          {range && (
+            <p className="mt-atlas-2 text-atlas-xs text-atlas-text-subtle">
+              Showing {formatDateOnly(range.fromDate)} to {formatDateOnly(range.toDate)}, inclusive.
+            </p>
+          )}
         </div>
 
-        {preset === "custom" && <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
-          <label className="text-xs font-medium text-slate-600">From date<input type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" /></label>
-          <label className="text-xs font-medium text-slate-600">To date<input type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" /></label>
-        </div>}
-        {preset === "custom" && !range && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">Choose a valid start and end date. The start date cannot be after the end date.</p>}
-        {range && <p className="mt-3 text-xs text-slate-500">Showing {formatChallanDate(range.fromDate)} to {formatChallanDate(range.toDate)}, inclusive.</p>}
+        <div className="flex flex-wrap items-center gap-atlas-2" aria-label="Sales Register date filters">
+          <div className="flex flex-wrap gap-atlas-1 rounded-atlas-control bg-atlas-surface-muted p-atlas-1">
+            {presets.slice(0, 4).map((option) => (
+              <Button
+                key={option.value}
+                variant={preset === option.value ? "primary" : "ghost"}
+                aria-pressed={preset === option.value}
+                onClick={() => setPreset(option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+          <Button
+            variant={preset === "custom" ? "primary" : "secondary"}
+            aria-pressed={preset === "custom"}
+            onClick={() => setPreset("custom")}
+          >
+            Custom range
+          </Button>
+        </div>
+      </header>
+
+      {preset === "custom" && (
+        <div className="mt-atlas-4 grid gap-atlas-3 border-b border-atlas-border pb-atlas-4 sm:max-w-xl sm:grid-cols-2">
+          <FormField label={ATLAS_UI_STRINGS.fields.fromDate}>
+            <Input type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} />
+          </FormField>
+          <FormField label={ATLAS_UI_STRINGS.fields.toDate}>
+            <Input type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} />
+          </FormField>
+        </div>
+      )}
+      {preset === "custom" && !range && (
+        <div className="mt-atlas-3">
+          <Feedback tone="danger" role="alert">
+            Choose a valid start and end date. The start date cannot be after the end date.
+          </Feedback>
+        </div>
+      )}
+
+      <dl className="mt-atlas-4 grid grid-cols-2 overflow-hidden rounded-atlas-card border border-atlas-border bg-atlas-surface-muted sm:grid-cols-3 xl:grid-cols-6">
+        <SummaryValue label="Brick Revenue" value={formatIndianCurrency(summary.brickRevenue, MONEY_WITH_PAISE)} />
+        <SummaryValue label="Other Revenue" value={formatIndianCurrency(summary.otherRevenue, MONEY_WITH_PAISE)} />
+        <SummaryValue label="Total Revenue" value={formatIndianCurrency(summary.totalRevenue, MONEY_WITH_PAISE)} emphasized />
+        <SummaryValue label="Active Challans" value={formatIndianNumber(summary.activeChallans)} />
+        <SummaryValue label="Brick quantity" value={formatIndianNumber(summary.totalBrickQuantity)} />
+        <SummaryValue label="Void Challans" value={formatIndianNumber(summary.voidChallans)} />
+      </dl>
+
+      <div className="mt-atlas-4">
+        {registerQuery.isLoading && (
+          <Feedback tone="neutral" role="status">Loading Sales Register...</Feedback>
+        )}
+        {errorMessage && (
+          <Feedback tone="danger" role="alert">
+            <div className="flex flex-col gap-atlas-3 sm:flex-row sm:items-center sm:justify-between">
+              <span>{errorMessage}</span>
+              <Button variant="secondary" onClick={() => { void registerQuery.refetch(); }}>
+                {ATLAS_UI_STRINGS.actions.retry}
+              </Button>
+            </div>
+          </Feedback>
+        )}
+        {!registerQuery.isLoading && !errorMessage && range && entries.length === 0 && (
+          <EmptyState
+            title="No Challans in this date range"
+            description="Choose another period to review saved Sales records."
+          />
+        )}
+
+        {!registerQuery.isLoading && !errorMessage && entries.length > 0 && (
+          <>
+            <div className="hidden md:block">
+              <div className="max-h-screen overflow-y-auto">
+                <TableContainer>
+                  <Table wide>
+                    <TableCaption visuallyHidden>Authoritative Sales Register for the selected date range</TableCaption>
+                    <TableHeader sticky>
+                      <TableRow>
+                        <TableHeaderCell>Challan</TableHeaderCell>
+                        <TableHeaderCell>{ATLAS_UI_STRINGS.fields.date}</TableHeaderCell>
+                        <TableHeaderCell>Customer</TableHeaderCell>
+                        <TableHeaderCell>Brick particulars</TableHeaderCell>
+                        <TableHeaderCell numeric>Quantity</TableHeaderCell>
+                        <TableHeaderCell numeric>Total Revenue</TableHeaderCell>
+                        <TableHeaderCell>Vehicle</TableHeaderCell>
+                        <TableHeaderCell>{ATLAS_UI_STRINGS.fields.status}</TableHeaderCell>
+                        <TableHeaderCell>Payment</TableHeaderCell>
+                        <TableHeaderCell>Document</TableHeaderCell>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {entries.map((entry) => <SalesRegisterTableRow key={entry.challanId} entry={entry} />)}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </div>
+            </div>
+
+            <ul className="space-y-atlas-3 md:hidden">
+              {entries.map((entry) => (
+                <li key={entry.challanId}><SalesRegisterMobileCard entry={entry} /></li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
-
-      <div className="grid grid-cols-2 border-b border-slate-200 bg-slate-50 sm:grid-cols-3 xl:grid-cols-6">
-        <SummaryValue label="Brick Revenue" value={formatSalesMoney(summary.brickRevenue)} />
-        <SummaryValue label="Other Revenue" value={formatSalesMoney(summary.otherRevenue)} />
-        <SummaryValue label="Total Revenue" value={formatSalesMoney(summary.totalRevenue)} />
-        <SummaryValue label="Active Challans" value={summary.activeChallans.toLocaleString("en-IN")} />
-        <SummaryValue label="Brick quantity" value={summary.totalBrickQuantity.toLocaleString("en-IN")} />
-        <SummaryValue label="Void Challans" value={summary.voidChallans.toLocaleString("en-IN")} />
-      </div>
-
-      {registerQuery.isLoading && <p className="px-5 py-10 text-center text-sm text-slate-500">Loading Sales Register...</p>}
-      {registerQuery.error && <p role="alert" className="px-5 py-10 text-center text-sm font-semibold text-red-700">{registerQuery.error instanceof Error ? registerQuery.error.message : "Could not load the Sales Register."}</p>}
-      {!registerQuery.isLoading && !registerQuery.error && range && entries.length === 0 && <p className="px-5 py-10 text-center text-sm text-slate-500">No Challans in this date range.</p>}
-
-      {!registerQuery.isLoading && !registerQuery.error && entries.length > 0 && <div className="max-h-[44rem] overflow-auto">
-        <table className="w-full min-w-[68rem] text-left text-sm">
-          <thead className="sticky top-0 z-10 border-b border-slate-200 bg-white text-xs uppercase tracking-wide text-slate-500 shadow-sm">
-            <tr>
-              <th className="px-4 py-3">Challan</th>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Customer</th>
-              <th className="px-4 py-3">Brick particulars</th>
-              <th className="px-4 py-3 text-right">Quantity</th>
-              <th className="px-4 py-3 text-right">Total Revenue</th>
-              <th className="px-4 py-3">Vehicle</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Payment</th>
-              <th className="px-4 py-3 text-right">Document</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {entries.map((entry) => <tr key={entry.challanId} className={entry.status === "void" ? "bg-slate-50 text-slate-500" : "bg-white"}>
-              <td className="px-4 py-3 font-bold text-slate-900">{entry.challanNumber ?? ""}</td>
-              <td className="whitespace-nowrap px-4 py-3">{formatChallanDate(entry.challanDate)}</td>
-              <td className="px-4 py-3 font-medium text-slate-900">{entry.customerNameSnapshot}</td>
-              <td className="px-4 py-3">{entry.items.length > 0 ? <ul className="space-y-1">{entry.items.map((item) => <li key={item.linePosition}><span className="font-medium text-slate-800">{item.particularsSnapshot}</span> <span className="text-xs">· {item.quantity.toLocaleString("en-IN")}</span></li>)}</ul> : <span className="text-slate-400">No brick revenue</span>}</td>
-              <td className="px-4 py-3 text-right font-semibold tabular-nums">{getChallanBrickQuantity(entry).toLocaleString("en-IN")}</td>
-              <td className="px-4 py-3 text-right font-bold tabular-nums text-slate-900">{formatSalesMoney(entry.totalRevenue)}</td>
-              <td className="px-4 py-3 font-medium">{entry.vehicleNumber || "—"}</td>
-              <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${entry.status === "void" ? "bg-slate-200 text-slate-700" : "bg-emerald-100 text-emerald-800"}`}>{entry.status === "void" ? "Void" : "Active"}</span></td>
-              <td className="px-4 py-3">
-                <span className="text-xs font-bold text-slate-800">{getSalesRegisterPaymentLabel(entry)}</span>
-                {entry.status === "active" && <div className="mt-1 space-y-0.5 whitespace-nowrap text-xs text-slate-500"><p>Paid {formatSalesMoney(entry.paidAmount)}</p><p>Due {formatSalesMoney(entry.outstandingAmount)}</p></div>}
-              </td>
-              <td className="px-4 py-3 text-right"><Link href={`/office/challans/${entry.challanId}`} target="_blank" rel="noreferrer" className="font-semibold text-cyan-800 hover:underline">Open Challan</Link></td>
-            </tr>)}
-          </tbody>
-        </table>
-      </div>}
-    </section>
+    </Card>
   );
 }
 
-function SummaryValue({ label, value }: Readonly<{ label: string; value: string }>) {
-  return <div className="border-r border-t border-slate-200 px-4 py-4 first:border-t-0 sm:border-t-0"><p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-950">{value}</p></div>;
+function SummaryValue({
+  label,
+  value,
+  emphasized = false,
+}: Readonly<{
+  label: string;
+  value: string;
+  emphasized?: boolean;
+}>) {
+  return (
+    <div className="border-b border-r border-atlas-border p-atlas-3 last:border-r-0">
+      <dt className="text-atlas-xs font-atlas-semibold uppercase tracking-atlas-wide text-atlas-text-subtle">{label}</dt>
+      <dd className={emphasized
+        ? "mt-atlas-1 text-atlas-xl font-atlas-semibold tabular-nums text-atlas-primary"
+        : "mt-atlas-1 text-atlas-xl font-atlas-semibold tabular-nums text-atlas-text"}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function SalesRegisterTableRow({ entry }: Readonly<{ entry: SalesRegisterEntry }>) {
+  const lifecycleStatus = resolveStatusPresentation(CHALLAN_STATUS, entry.status);
+  const isVoid = entry.status === "void";
+
+  return (
+    <TableRow hoverable>
+      <TableCell>
+        <span className={isVoid ? "font-atlas-semibold tabular-nums text-atlas-text-subtle" : "font-atlas-semibold tabular-nums text-atlas-text"}>
+          {entry.challanNumber ?? "—"}
+        </span>
+      </TableCell>
+      <TableCell>
+        <span className={isVoid ? "whitespace-nowrap text-atlas-text-subtle" : "whitespace-nowrap text-atlas-text-muted"}>
+          {formatDateOnly(entry.challanDate)}
+        </span>
+      </TableCell>
+      <TableCell>
+        <span className={isVoid ? "font-atlas-medium text-atlas-text-subtle" : "font-atlas-medium text-atlas-text"}>
+          {entry.customerNameSnapshot}
+        </span>
+      </TableCell>
+      <TableCell><BrickParticulars entry={entry} muted={isVoid} /></TableCell>
+      <TableCell numeric>
+        <span className={isVoid ? "font-atlas-semibold text-atlas-text-subtle" : "font-atlas-semibold text-atlas-text"}>
+          {formatIndianNumber(getChallanBrickQuantity(entry))}
+        </span>
+      </TableCell>
+      <TableCell numeric>
+        <span className={isVoid ? "font-atlas-semibold text-atlas-text-subtle line-through" : "font-atlas-semibold text-atlas-text"}>
+          {formatIndianCurrency(entry.totalRevenue, MONEY_WITH_PAISE)}
+        </span>
+      </TableCell>
+      <TableCell>
+        <span className={entry.vehicleNumber && !isVoid ? "whitespace-nowrap font-atlas-medium text-atlas-text-muted" : "whitespace-nowrap text-atlas-text-subtle"}>
+          {entry.vehicleNumber || "—"}
+        </span>
+      </TableCell>
+      <TableCell><StatusPill label={lifecycleStatus.label} tone={lifecycleStatus.tone} /></TableCell>
+      <TableCell><PaymentDetails entry={entry} /></TableCell>
+      <TableCell><ChallanDocumentLink entry={entry} /></TableCell>
+    </TableRow>
+  );
+}
+
+function SalesRegisterMobileCard({ entry }: Readonly<{ entry: SalesRegisterEntry }>) {
+  const lifecycleStatus = resolveStatusPresentation(CHALLAN_STATUS, entry.status);
+  const isVoid = entry.status === "void";
+
+  return (
+    <Card as="article" surface={isVoid ? "muted" : "default"}>
+      <div className="flex items-start justify-between gap-atlas-3">
+        <div>
+          <p className="font-atlas-semibold tabular-nums text-atlas-text">Challan {entry.challanNumber ?? "—"}</p>
+          <p className="mt-atlas-1 text-atlas-xs text-atlas-text-muted">{formatDateOnly(entry.challanDate)}</p>
+        </div>
+        <p className={isVoid
+          ? "shrink-0 font-atlas-semibold tabular-nums text-atlas-text-subtle line-through"
+          : "shrink-0 font-atlas-semibold tabular-nums text-atlas-text"}
+        >
+          {formatIndianCurrency(entry.totalRevenue, MONEY_WITH_PAISE)}
+        </p>
+      </div>
+
+      <dl className="mt-atlas-4 space-y-atlas-3 border-t border-atlas-border pt-atlas-3 text-atlas-sm">
+        <MobileDetail label="Customer" value={entry.customerNameSnapshot} />
+        <div>
+          <dt className="text-atlas-text-muted">Brick particulars</dt>
+          <dd className="mt-atlas-1"><BrickParticulars entry={entry} muted={isVoid} /></dd>
+        </div>
+        <MobileDetail label="Quantity" value={formatIndianNumber(getChallanBrickQuantity(entry))} numeric />
+        <MobileDetail label="Vehicle" value={entry.vehicleNumber || "—"} />
+        <div className="flex items-start justify-between gap-atlas-3">
+          <dt className="text-atlas-text-muted">{ATLAS_UI_STRINGS.fields.status}</dt>
+          <dd><StatusPill label={lifecycleStatus.label} tone={lifecycleStatus.tone} /></dd>
+        </div>
+        <div className="flex items-start justify-between gap-atlas-3">
+          <dt className="text-atlas-text-muted">Payment</dt>
+          <dd className="text-right"><PaymentDetails entry={entry} /></dd>
+        </div>
+      </dl>
+
+      <div className="mt-atlas-4 flex justify-end border-t border-atlas-border pt-atlas-3">
+        <ChallanDocumentLink entry={entry} />
+      </div>
+    </Card>
+  );
+}
+
+function BrickParticulars({
+  entry,
+  muted,
+}: Readonly<{
+  entry: SalesRegisterEntry;
+  muted: boolean;
+}>) {
+  if (entry.items.length === 0) {
+    return <span className="text-atlas-xs text-atlas-text-subtle">No brick revenue</span>;
+  }
+
+  return (
+    <ul className="space-y-atlas-1">
+      {entry.items.map((item) => (
+        <li key={item.linePosition} className={muted ? "text-atlas-text-subtle" : "text-atlas-text"}>
+          <span className="font-atlas-medium">{item.particularsSnapshot}</span>
+          <span className="text-atlas-xs tabular-nums text-atlas-text-muted"> · {formatIndianNumber(item.quantity)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function PaymentDetails({ entry }: Readonly<{ entry: SalesRegisterEntry }>) {
+  return (
+    <div className="whitespace-nowrap text-atlas-xs">
+      <p className={entry.status === "void" ? "font-atlas-medium text-atlas-text-subtle" : "font-atlas-semibold text-atlas-text"}>
+        {getSalesRegisterPaymentLabel(entry)}
+      </p>
+      {entry.status === "active" && (
+        <div className="mt-atlas-1 space-y-atlas-1 tabular-nums text-atlas-text-muted">
+          <p>Paid {formatIndianCurrency(entry.paidAmount, MONEY_WITH_PAISE)}</p>
+          <p>Due {formatIndianCurrency(entry.outstandingAmount, MONEY_WITH_PAISE)}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MobileDetail({
+  label,
+  value,
+  numeric = false,
+}: Readonly<{
+  label: string;
+  value: string;
+  numeric?: boolean;
+}>) {
+  return (
+    <div className="flex items-start justify-between gap-atlas-3">
+      <dt className="text-atlas-text-muted">{label}</dt>
+      <dd className={numeric ? "text-right font-atlas-medium tabular-nums text-atlas-text" : "text-right font-atlas-medium text-atlas-text"}>
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function ChallanDocumentLink({ entry }: Readonly<{ entry: SalesRegisterEntry }>) {
+  return (
+    <Link
+      href={`/office/challans/${entry.challanId}`}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex min-h-atlas-12 items-center rounded-atlas-button px-atlas-2 py-atlas-2 text-atlas-sm font-atlas-semibold text-atlas-primary underline-offset-4 hover:bg-atlas-surface-hover hover:underline focus-visible:outline-none focus-visible:ring-atlas-focus focus-visible:ring-offset-atlas-focus"
+    >
+      Open Challan ↗
+    </Link>
+  );
 }

@@ -14,20 +14,20 @@ const service = readFileSync(
 test("dues entry renders every saved brick particulars snapshot and formatted quantity", () => {
   assert.match(office, /challan\.brickLines\.map/);
   assert.match(office, /line\.particularsSnapshot/);
-  assert.match(office, /line\.quantity\.toLocaleString\("en-IN"\)/);
+  assert.match(office, /formatIndianNumber\(line\.quantity\)/);
   assert.doesNotMatch(office, /brickType|brickTypes|current.*particular/i);
 });
 
 test("dues entry shows the current outstanding as due and removes payment-state labels", () => {
-  assert.match(office, /formatSalesMoney\(challan\.outstandingAmount\)\} due/);
-  assert.match(office, /Original \{formatSalesMoney\(challan\.saleTotal\)\} · Paid/);
+  assert.match(office, /formatIndianCurrency\(challan\.outstandingAmount, MONEY_WITH_PAISE\)\} due/);
+  assert.match(office, /Original \{formatIndianCurrency\(challan\.saleTotal, MONEY_WITH_PAISE\)\} · Paid/);
   assert.doesNotMatch(office, /customerPaymentStateLabel|\{challan\.paymentState\}/);
   assert.doesNotMatch(office, />Unpaid</);
 });
 
 test("manual Challan number is conditional and NULL has no fabricated fallback", () => {
   const identityBlock = office.match(
-    /<p className="text-xs text-slate-500">\{formatChallanDate[\s\S]*?No brick goods on this Challan\.<\/p>\}/,
+    /<p className="text-atlas-xs text-atlas-text-subtle">\{formatDateOnly[\s\S]*?No brick goods on this Challan\.<\/p>\}/,
   )?.[0] ?? "";
   assert.ok(identityBlock);
   assert.match(office, /\{challan\.challanNumber && <p[^>]*>Challan No\. \{challan\.challanNumber\}<\/p>\}/);
@@ -65,7 +65,7 @@ test("brick particulars, dash, and quantity form one compact visual pair", () =>
   const goodsLine = office.match(/<li key=\{line\.itemId\}[\s\S]*?<\/li>/)?.[0] ?? "";
   assert.ok(goodsLine);
   assert.match(goodsLine, /w-fit max-w-full/);
-  assert.match(goodsLine, /line\.particularsSnapshot[\s\S]*?—[\s\S]*?line\.quantity\.toLocaleString/);
+  assert.match(goodsLine, /line\.particularsSnapshot[\s\S]*?—[\s\S]*?formatIndianNumber\(line\.quantity\)/);
   assert.doesNotMatch(goodsLine, /justify-between/);
 });
 
@@ -99,7 +99,7 @@ test("date changes clear draft allocations and invalid or empty filtered ranges 
   assert.match(office, /changeDuesDatePreset[\s\S]*?clearDraftAllocations\(\)/);
   assert.match(office, /changeCustomFrom[\s\S]*?clearDraftAllocations\(\)/);
   assert.match(office, /changeCustomTo[\s\S]*?clearDraftAllocations\(\)/);
-  assert.match(office, /duesDateFilter\.error && <p role="alert"/);
+  assert.match(office, /duesDateFilter\.error && \([\s\S]*?<Feedback role="alert" tone="danger"/);
   assert.match(office, /No outstanding Challans in this date range\./);
 });
 
@@ -107,5 +107,5 @@ test("Customer Dues wires selection and edits through the outstanding-derived dr
   assert.match(office, /togglePaymentAllocation\(current, challan, event\.target\.checked\)/);
   assert.match(office, /setPaymentAmount\(current, event\.target\.value\)/);
   assert.match(office, /setPaymentAllocation\(current, challan\.challanId, event\.target\.value\)/);
-  assert.match(office, /fillOutstandingAllocation\(current, challan\)/);
+  assert.doesNotMatch(office, /Use outstanding|fillOutstandingAllocation/);
 });

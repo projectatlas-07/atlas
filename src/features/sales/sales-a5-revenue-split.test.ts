@@ -63,7 +63,7 @@ test("the existing Sales Register exposes exactly the requested summary split wi
   assert.match(registerUi, /label="Brick Revenue"[\s\S]*summary\.brickRevenue/);
   assert.match(registerUi, /label="Other Revenue"[\s\S]*summary\.otherRevenue/);
   assert.match(registerUi, /label="Total Revenue"[\s\S]*summary\.totalRevenue/);
-  assert.match(registerUi, /formatSalesMoney\(entry\.totalRevenue\)/);
+  assert.match(registerUi, /formatIndianCurrency\(entry\.totalRevenue, MONEY_WITH_PAISE\)/);
   assert.match(registerUi, /No brick revenue/);
   assert.doesNotMatch(registerUi, /chart|profit|cost per brick|Add additional line/i);
 });

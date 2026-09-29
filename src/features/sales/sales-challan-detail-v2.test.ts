@@ -25,11 +25,12 @@ const paymentBase = {
   companyAddressSnapshot: "Factory Address",
   companyMobileSnapshot: "9111111111",
   paymentMode: "cash",
+  methods: [{ mode: "cash", splitAmount: null }] as CustomerPayment["methods"],
   note: null,
   createdAt: "2026-09-20T04:30:00Z",
 } as const;
 
-test("saved detail follows the approved identity-to-actions hierarchy", () => {
+test("saved detail keeps its content hierarchy without duplicated card actions", () => {
   const labels = [
     "saved-challan-heading",
     "saved-challan-context-heading",
@@ -37,7 +38,6 @@ test("saved detail follows the approved identity-to-actions hierarchy", () => {
     "saved-challan-flexible-lines-heading",
     "saved-challan-financial-heading",
     "saved-challan-payment-history-heading",
-    "saved-challan-actions-heading",
   ];
 
   for (let index = 1; index < labels.length; index += 1) {
@@ -51,6 +51,8 @@ test("saved detail follows the approved identity-to-actions hierarchy", () => {
   assert.match(detail, /formatDateOnly\(challan\.challanDate\)/);
   assert.match(detail, /challan\.customerNameSnapshot/);
   assert.match(detail, /formatIndianCurrency\(challan\.challanTotal, MONEY_WITH_PAISE\)/);
+  assert.doesNotMatch(detail, /Correct Challan|>Edit<|>Void<|onEdit|onStartVoid/);
+  assert.doesNotMatch(detail, /saved-challan-actions-heading|Secondary actions/);
 });
 
 test("lifecycle, payment, and financial-lock statuses stay separate and canonical", () => {
@@ -61,10 +63,34 @@ test("lifecycle, payment, and financial-lock statuses stay separate and canonica
   assert.match(detail, /<StatusPill label=\{financialLockStatus\.label\}/);
   assert.match(detail, /<StatusPill label=\{paymentStatus\.label\}/);
   assert.match(detail, /getChallanEligibility\(challan\)/);
-  assert.match(detail, /disabled=\{!eligibility\.canEdit\}/);
-  assert.match(detail, /disabled=\{!eligibility\.canVoid\}/);
-  assert.match(detail, /financially locks this Challan/);
+  assert.match(office, /disabled=\{!selectedChallanEligibility\.canEdit\}/);
+  assert.match(office, /disabled=\{!selectedChallanEligibility\.canVoid\}/);
+  assert.doesNotMatch(detail, /Correction and void are unavailable because this Challan is financially locked/);
+  assert.doesNotMatch(detail, /Payment history financially locks this Challan/);
   assert.match(detail, /This Challan is Void/);
+});
+
+test("Void uses the Vehicle Archive-style modal without changing its handlers", () => {
+  assert.match(
+    detail,
+    /isConfirmingVoid && eligibility\.canVoid[\s\S]*<ChallanVoidConfirmation[\s\S]*challanNumber=\{challan\.challanNumber\}/,
+  );
+  assert.ok(detail.includes('`Void Challan ${challanNumber}?`'));
+  assert.ok(detail.includes('"Void this Challan?"'));
+  assert.ok(detail.includes("Challan stays in history but won’t count as an active sale."));
+  assert.match(detail, /fixed inset-0 z-50 flex items-center justify-center p-atlas-4/);
+  assert.match(detail, /bg-atlas-text\/25 backdrop-blur-sm/);
+  assert.match(detail, /role="dialog"[\s\S]*aria-modal="true"[\s\S]*max-w-md/);
+  assert.match(detail, /event\.key === "Escape"[\s\S]*cancelRef\.current\(\)/);
+  assert.match(detail, /event\.key !== "Tab"[\s\S]*querySelectorAll<HTMLElement>/);
+  assert.match(detail, /confirmButtonRef\.current\?\.focus\(\)/);
+  assert.match(detail, /variant="secondary" disabled=\{isVoiding\} onClick=\{onCancel\}/);
+  assert.match(detail, /variant="danger"[\s\S]*loading=\{isVoiding\}[\s\S]*onClick=\{onConfirm\}[\s\S]*>\s*Void/);
+
+  assert.match(office, /onCancelVoid=\{\(\) => setIsConfirmingVoid\(false\)\}/);
+  assert.match(office, /onConfirmVoid=\{\(\) => void confirmVoid\(selectedChallan\)\}/);
+  assert.match(office, /await voidChallan\(factoryId, challan\.id\)[\s\S]*setIsConfirmingVoid\(false\)/);
+  assert.match(office, /disabled=\{!selectedChallanEligibility\.canVoid\}/);
 });
 
 test("saved snapshots remain the only customer, company, Vehicle, and wage sources", () => {
@@ -116,6 +142,10 @@ test("payment position and immutable allocation history reuse existing authoriti
   assert.match(detail, /paymentStateQuery\.data\.outstandingAmount/);
   assert.match(detail, /No payments allocated/);
   assert.match(detail, /\/office\/payments\/\$\{entry\.paymentId\}/);
+  assert.equal(
+    (detail.match(/formatCustomerPaymentMethods\(entry\.methods, entry\.paymentMode\)/g) ?? []).length,
+    2,
+  );
   assert.match(detail, /Print \/ download PDF/);
 });
 
@@ -127,6 +157,7 @@ test("payment-history view filters allocations without recalculating authoritati
       paymentDate: "2026-09-22",
       amount: 900,
       paymentMode: "upi",
+      methods: [{ mode: "upi", splitAmount: null }],
       note: "Second receipt",
       allocations: [
         {
@@ -175,6 +206,7 @@ test("payment-history view filters allocations without recalculating authoritati
       paymentId: "payment-2",
       paymentDate: "2026-09-22",
       paymentMode: "upi",
+      methods: [{ mode: "upi", splitAmount: null }],
       note: "Second receipt",
       allocatedAmount: 600,
     },
@@ -183,6 +215,7 @@ test("payment-history view filters allocations without recalculating authoritati
       paymentId: "payment-1",
       paymentDate: "2026-09-21",
       paymentMode: "cash",
+      methods: [{ mode: "cash", splitAmount: null }],
       note: null,
       allocatedAmount: 400,
     },

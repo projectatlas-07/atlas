@@ -18,6 +18,11 @@ function queryBuilder(table: string) {
       filters.push((row) => row[column] === value);
       return query;
     },
+    in(column: string, values: unknown[]) {
+      const accepted = new Set(values);
+      filters.push((row) => accepted.has(row[column]));
+      return query;
+    },
     not(column: string, operator: string, value: unknown) {
       if (operator === "is" && value === null) filters.push((row) => row[column] !== null);
       return query;
@@ -41,7 +46,8 @@ function queryBuilder(table: string) {
       return query;
     },
     order(column: string, options: { ascending: boolean }) {
-      assert.deepEqual([column, options], ["id", { ascending: true }]);
+      assert.equal(["id", "payment_id", "mode"].includes(column), true);
+      assert.deepEqual(options, { ascending: true });
       return query;
     },
     limit(value: number) {
@@ -72,7 +78,7 @@ await mock.module("../lib/supabase/client.ts", {
 });
 
 const { getSalesTotal } = await import("./sales/services/sales-register-service.ts");
-const { getPaymentsReceivedTotal, getCurrentCustomerOutstandingTotal } =
+const { getPaymentsReceivedTotal, getCurrentCustomerOutstandingTotal, listFactoryCustomerPayments } =
   await import("./sales/services/customer-payment-service.ts");
 const { getRecordedExpenseTotal } = await import("./expenses/services/expense-service.ts");
 const { getProductionQuantityTotal } = await import("./production/services/production-read-service.ts");
@@ -113,6 +119,49 @@ test("Sales and payment headers include capped later pages", async () => {
   assert.equal(await getPaymentsReceivedTotal("factory-a", "2026-08-01", "2026-08-31"), 1002);
   assert.equal(requests.filter(({ table }) => table === "challans").length, 3);
   assert.equal(requests.filter(({ table }) => table === "customer_payments").length, 2);
+});
+
+test("factory-wide customer payment history completes capped pages before ordering", async () => {
+  reset();
+  tables.set("customer_payments", datedRows(
+    "payment",
+    501,
+    "payment_date",
+    "amount",
+    2,
+    {
+      customer_id: "customer-a",
+      customer_name_snapshot: "Customer A",
+      customer_address_snapshot: "",
+      customer_mobile_snapshot: "",
+      company_name_snapshot: "Atlas Bricks",
+      company_business_description_snapshot: "Brick works",
+      company_address_snapshot: "Factory address",
+      company_mobile_snapshot: "9000000000",
+      payment_mode: "cash",
+      note: null,
+      created_at: "2026-08-15T09:00:00Z",
+    },
+  ));
+  tables.set("customer_payment_allocations", []);
+  tables.set("customer_payment_methods", Array.from({ length: 501 }, (_, index) => ({
+    id: id("method", index),
+    factory_id: "factory-a",
+    payment_id: id("payment", index),
+    mode: "cash",
+    split_amount: null,
+    created_at: "2026-08-15T09:00:00Z",
+  })));
+
+  const payments = await listFactoryCustomerPayments("factory-a");
+
+  assert.equal(payments.length, 501);
+  assert.equal(payments[0]?.id, id("payment", 500));
+  assert.equal(payments[500]?.id, id("payment", 0));
+  assert.equal(requests.filter(({ table }) => table === "customer_payments").length, 2);
+  assert.equal(requests.filter(({ table }) => table === "customer_payment_allocations").length, 1);
+  assert.equal(requests.filter(({ table }) => table === "customer_payment_methods").length, 6);
+  assert.equal(payments.every((payment) => payment.methods[0]?.mode === "cash"), true);
 });
 
 test("Current Outstanding completes both active Challan and allocation sides", async () => {

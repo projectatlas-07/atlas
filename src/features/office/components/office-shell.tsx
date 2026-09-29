@@ -131,10 +131,12 @@ export function OfficeShell({
 
         <main className="px-atlas-4 py-atlas-5 sm:px-atlas-6 lg:px-atlas-8 lg:py-atlas-8">
           <div className="mx-auto w-full max-w-screen-2xl">
-            <header className="mb-atlas-6 hidden border-b border-atlas-border pb-atlas-5 lg:block">
-              <p className="text-atlas-xs font-atlas-semibold uppercase tracking-atlas-wide text-atlas-text-muted">Office workspace</p>
-              <h1 className="mt-atlas-1 text-atlas-3xl font-atlas-semibold text-atlas-text">{activeAreaLabel}</h1>
-            </header>
+            {activeArea !== "sales" && activeArea !== "workforce" && (
+              <header className="mb-atlas-6 hidden border-b border-atlas-border pb-atlas-5 lg:block">
+                <p className="text-atlas-xs font-atlas-semibold uppercase tracking-atlas-wide text-atlas-text-muted">Office workspace</p>
+                <h1 className="mt-atlas-1 text-atlas-3xl font-atlas-semibold text-atlas-text">{activeAreaLabel}</h1>
+              </header>
+            )}
             {children}
           </div>
         </main>
