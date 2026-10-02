@@ -42,6 +42,7 @@ export type CoalSelectivePaymentForm = {
   fromDate: string;
   toDate: string;
   paymentDate: string;
+  amount: string;
   paymentMode: string;
   note: string;
   allocations: Record<string, string>;
@@ -50,6 +51,9 @@ export type CoalSelectivePaymentForm = {
 export type CoalSelectivePaymentStatus = {
   periodOutstanding: number;
   selectedPurchases: number;
+  paymentAmount: number;
+  allocatedAmount: number;
+  remainingAmount: number;
   selectedPayment: number;
   canSubmit: boolean;
   error: string;
@@ -202,6 +206,7 @@ export function emptyCoalSelectivePaymentForm(localToday: string): CoalSelective
     fromDate: `${localToday.slice(0, 7)}-01`,
     toDate: localToday,
     paymentDate: localToday,
+    amount: "",
     paymentMode: "",
     note: "",
     allocations: {},
@@ -234,7 +239,30 @@ export function toggleCoalSettlementPurchase(
   const allocations = { ...form.allocations };
   if (selected) allocations[purchase.id] = formatDecimal(purchase.outstandingAmount, 2);
   else delete allocations[purchase.id];
-  return { ...form, allocations };
+  return { ...form, amount: formatCoalAllocationTotal(allocations), allocations };
+}
+
+export function setCoalSettlementAllocation(
+  form: CoalSelectivePaymentForm,
+  purchaseId: string,
+  amount: string,
+): CoalSelectivePaymentForm {
+  if (!Object.prototype.hasOwnProperty.call(form.allocations, purchaseId)) return form;
+  const allocations = { ...form.allocations, [purchaseId]: amount };
+  return { ...form, amount: formatCoalAllocationTotal(allocations), allocations };
+}
+
+export function setCoalSettlementPaymentAmount(
+  form: CoalSelectivePaymentForm,
+  amount: string,
+): CoalSelectivePaymentForm {
+  const selectedPurchaseIds = Object.keys(form.allocations);
+  if (selectedPurchaseIds.length !== 1) return { ...form, amount };
+  return {
+    ...form,
+    amount,
+    allocations: { [selectedPurchaseIds[0]!]: amount },
+  };
 }
 
 export function getCoalSelectivePaymentStatus(
@@ -246,12 +274,14 @@ export function getCoalSelectivePaymentStatus(
   );
   const eligibleById = new Map(eligible.map((purchase) => [purchase.id, purchase]));
   const selected = Object.entries(form.allocations);
+  const paymentPaise = parseScaled(form.amount, 2, false);
   let selectedPaise = 0n;
   let error = "";
   if (!form.sellerId) error = "Choose a Coal Seller.";
   else if (!isLocalDate(form.fromDate) || !isLocalDate(form.toDate) || form.fromDate > form.toDate) {
     error = "Choose a valid inclusive date range.";
   } else if (!isLocalDate(form.paymentDate)) error = "Choose a valid payment date.";
+  else if (paymentPaise === null) error = "Enter a payment amount greater than zero.";
   else if (!isNewCustomerPaymentMode(form.paymentMode)) error = "Choose a payment mode.";
   else if (normalizeText(form.note).length > 500) error = "Note must be at most 500 characters.";
   else if (selected.length === 0) error = "Select at least one Coal Purchase.";
@@ -267,12 +297,22 @@ export function getCoalSelectivePaymentStatus(
     }
     if (amountPaise !== null) selectedPaise += amountPaise;
   }
+  const safePaymentPaise = paymentPaise ?? 0n;
+  const remainingPaise = safePaymentPaise - selectedPaise;
+  if (!error && remainingPaise !== 0n) {
+    error = remainingPaise > 0n
+      ? "Allocate the full payment amount before saving."
+      : "Allocated amount cannot exceed the payment amount.";
+  }
   const periodPaise = eligible.reduce(
     (total, purchase) => total + BigInt(Math.round(purchase.outstandingAmount * 100)), 0n,
   );
   return {
     periodOutstanding: Number(periodPaise) / 100,
     selectedPurchases: selected.length,
+    paymentAmount: Number(safePaymentPaise) / 100,
+    allocatedAmount: Number(selectedPaise) / 100,
+    remainingAmount: Number(remainingPaise) / 100,
     selectedPayment: Number(selectedPaise) / 100,
     canSubmit: !error && selected.length > 0 && selectedPaise > 0n,
     error,
@@ -307,12 +347,21 @@ export function filterCoalPurchases(
   toDate: string,
   sellerId = "",
   paymentStatus: CoalPaymentStatusFilter = "all",
+  searchTerm = "",
 ): CoalPurchase[] {
   if (!isLocalDate(fromDate) || !isLocalDate(toDate) || fromDate > toDate) return [];
+  const normalizedSearch = searchTerm.trim().toLocaleLowerCase("en-IN");
   return purchases.filter((purchase) => purchase.purchaseDate >= fromDate
     && purchase.purchaseDate <= toDate
     && (!sellerId || purchase.sellerId === sellerId)
-    && matchesCoalPaymentStatus(purchase, paymentStatus))
+    && matchesCoalPaymentStatus(purchase, paymentStatus)
+    && (!normalizedSearch || [
+      purchase.sellerNameSnapshot,
+      purchase.coalNameSnapshot,
+      purchase.sourceLocationSnapshot,
+      purchase.coalChallanNumber ?? "",
+      purchase.vehicleNumberSnapshot,
+    ].some((value) => value.toLocaleLowerCase("en-IN").includes(normalizedSearch))))
     .sort((left, right) => right.purchaseDate.localeCompare(left.purchaseDate)
       || right.createdAt.localeCompare(left.createdAt)
       || right.id.localeCompare(left.id));
@@ -323,19 +372,49 @@ export function filterCoalPayments(
   fromDate: string,
   toDate: string,
   sellerId = "",
+  paymentMode: CoalPayment["paymentMode"] | "" = "",
+  searchTerm = "",
 ): CoalPayment[] {
   if (!isLocalDate(fromDate) || !isLocalDate(toDate) || fromDate > toDate) return [];
   const seenPaymentIds = new Set<string>();
+  const normalizedSearch = searchTerm.trim().toLocaleLowerCase("en-IN");
   return payments.filter((payment) => {
     if (seenPaymentIds.has(payment.id)
       || payment.paymentDate < fromDate
       || payment.paymentDate > toDate
-      || (sellerId && payment.sellerId !== sellerId)) return false;
+      || (sellerId && payment.sellerId !== sellerId)
+      || (paymentMode && payment.paymentMode !== paymentMode)
+      || (normalizedSearch && ![
+        payment.sellerNameSnapshot,
+        payment.note ?? "",
+        ...payment.allocations.flatMap((allocation) => [
+          allocation.coalChallanNumber ?? "",
+          allocation.coalNameSnapshot,
+          allocation.sourceLocationSnapshot,
+          allocation.vehicleNumberSnapshot,
+        ]),
+      ].some((value) => value.toLocaleLowerCase("en-IN").includes(normalizedSearch)))) return false;
     seenPaymentIds.add(payment.id);
     return true;
   }).sort((left, right) => right.paymentDate.localeCompare(left.paymentDate)
     || right.createdAt.localeCompare(left.createdAt)
     || right.id.localeCompare(left.id));
+}
+
+export function getCoalPaymentAllocationReconciliation(
+  payment: Pick<CoalPayment, "amount" | "allocations">,
+): { allocatedAmount: number; remainingAmount: number; reconciles: boolean } {
+  const paymentPaise = Math.round(payment.amount * 100);
+  const allocatedPaise = payment.allocations.reduce(
+    (total, allocation) => total + Math.round(allocation.allocatedAmount * 100),
+    0,
+  );
+  const remainingPaise = paymentPaise - allocatedPaise;
+  return {
+    allocatedAmount: allocatedPaise / 100,
+    remainingAmount: remainingPaise / 100,
+    reconciles: remainingPaise === 0,
+  };
 }
 
 function matchesCoalPaymentStatus(
@@ -455,6 +534,18 @@ function formatScaled(value: bigint, decimalPlaces: number): string {
 
 function formatDecimal(value: number, decimalPlaces: number): string {
   return value.toFixed(decimalPlaces).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
+}
+
+function formatCoalAllocationTotal(allocations: Readonly<Record<string, string>>): string {
+  const values = Object.values(allocations);
+  if (values.length === 0) return "";
+  let totalPaise = 0n;
+  for (const value of values) {
+    const paise = parseScaled(value, 2, false);
+    if (paise === null) return "";
+    totalPaise += paise;
+  }
+  return formatScaled(totalPaise, 2);
 }
 
 function normalizeText(value: string): string {

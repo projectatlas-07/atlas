@@ -61,8 +61,8 @@ test("dedicated UI has searchable Vehicle and Garage selection plus histories", 
   assert.match(dashboard, /<VehicleMaintenanceOfficeSection factoryId=\{factoryId!\}/);
   assert.match(searchChoice, /role="combobox"/);
   assert.match(component, /Add Garage/);
-  assert.match(component, /Vehicle and Garage Maintenance history/);
-  assert.match(component, /Garage payment history/);
+  assert.match(component, /Recent Maintenance/);
+  assert.match(component, /Recent Garage Payments/);
 });
 
 test("generic Expenses excludes Maintenance while preserving the Coal exclusion", () => {

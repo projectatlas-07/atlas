@@ -24,6 +24,10 @@ const dashboardSource = readFileSync(
   new URL("./components/office-dashboard.tsx", import.meta.url),
   "utf8",
 );
+const shellSource = readFileSync(
+  new URL("./components/office-shell.tsx", import.meta.url),
+  "utf8",
+);
 const requestId = "10000000-0000-4000-8000-000000000001";
 
 const customerPayment: CashBookMovement = {
@@ -81,6 +85,31 @@ test("initialized screen uses the authoritative S6A day response without fronten
   }
   assert.doesNotMatch(sectionSource, /openingBalance\s*[+]\s*|totalMoneyIn\s*[-]\s*/);
   assert.match(dashboardSource, /<CashBookOfficeSection factoryId=\{factoryId!\}/);
+});
+
+test("Cash Book removes redundant headers and keeps its daily workspace viewport-bounded", () => {
+  assert.match(shellSource, /activeArea !== "cash-book"/);
+  assert.doesNotMatch(sectionSource, /Daily money in and money out/);
+  assert.doesNotMatch(sectionSource, /tracking-wider text-emerald-800">Cash Book/);
+  assert.match(sectionSource, /aria-label="Cash Book" className="min-h-0"/);
+  assert.match(sectionSource, /lg:h-\[calc\(100dvh-var\(--atlas-space-16\)\)\]/);
+  assert.match(sectionSource, /grid shrink-0 grid-cols-2/);
+  for (const control of ["Previous day", "Today", "Next day", "Add Money In", "Add Money Out"]) {
+    assert.match(sectionSource, new RegExp(control));
+  }
+});
+
+test("daily histories use one bounded mobile region and independent desktop column scrolling", () => {
+  const columns = sectionSource.slice(
+    sectionSource.indexOf("function CashBookColumn"),
+    sectionSource.indexOf("function CashBookEntryRow"),
+  );
+  assert.match(sectionSource, /max-h-96 min-h-0 flex-1 overflow-y-auto[^"]*lg:overflow-hidden/);
+  assert.match(columns, /lg:flex lg:min-h-0 lg:flex-col/);
+  assert.match(columns, /lg:shrink-0/);
+  assert.match(columns, /lg:min-h-0 lg:flex-1 lg:overflow-y-auto/);
+  assert.equal((sectionSource.match(/<CashBookColumn\b/g) ?? []).length, 2);
+  assert.doesNotMatch(columns, /slice\(|pagination|overflow-x/);
 });
 
 test("customer and multi-Challan payments remain one Money In source row with receipt navigation", () => {

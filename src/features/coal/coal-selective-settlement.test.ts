@@ -34,11 +34,11 @@ test("server locks selected obligations and revalidates Coal seller, range, stat
 test("Coal UI requires explicit selection and per-purchase Pay This Time amounts", () => {
   assert.match(component, /Nothing is selected automatically/);
   assert.match(component, /Outstanding Coal Purchases/);
-  assert.match(component, /Pay This Time/);
-  assert.match(component, /Period Outstanding/);
-  assert.match(component, /Selected Purchases/);
-  assert.match(component, /Selected Payment/);
-  assert.match(component, /Confirm Total Payment/);
+  assert.match(component, /Allocation amount/);
+  assert.match(component, /label="Payment"/);
+  assert.match(component, /label="Allocated"/);
+  assert.match(component, /label="Remaining"/);
+  assert.match(component, /Save Seller Payment/);
   assert.doesNotMatch(component, /Outstanding Coal Purchase<select/);
 });
 
@@ -46,7 +46,7 @@ test("Coal payment history groups the header once and preserves its allocation b
   assert.match(migration, /list_coal_selective_payments/);
   assert.match(migration, /jsonb_agg\(jsonb_build_object/);
   assert.match(migration, /group by payments\.id/);
-  assert.match(component, /Each immutable payment appears once/);
+  assert.match(component, /Recent Seller Payments/);
   assert.match(component, /payment\.allocations\.map/);
 });
 

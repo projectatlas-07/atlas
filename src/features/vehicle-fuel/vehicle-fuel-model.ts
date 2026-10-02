@@ -6,6 +6,7 @@ import type {
   CreateVehicleFuelPaymentInput,
   FuelType,
   UpdateVehicleFuelInput,
+  VehicleFuelBatchPayment,
   VehicleFuelRecord,
 } from "./types.ts";
 
@@ -55,6 +56,14 @@ export type VehicleFuelSummary = {
   totalOutstanding: number;
   totalLitres: number;
 };
+
+export type VehicleFuelPaymentReconciliation = {
+  allocatedAmount: number;
+  remainingAmount: number;
+  reconciles: boolean;
+};
+
+export type VehicleFuelStateFilter = "all" | "unpaid" | "partially_paid" | "paid" | "void";
 
 const FIELD_ORDER: FuelMeasurementField[] = ["litres", "ratePerLitre", "fuelAmount"];
 
@@ -245,12 +254,34 @@ export function filterVehicleFuelRecords(
   toDate: string,
   vehicleId = "",
   pumpId = "",
+  search = "",
+  fuelType: FuelType | "" = "",
+  state: VehicleFuelStateFilter = "all",
 ): VehicleFuelRecord[] {
-  if (!isLocalDate(fromDate) || !isLocalDate(toDate) || fromDate > toDate) return [];
-  return records.filter((record) => record.fuelDate >= fromDate
-    && record.fuelDate <= toDate
+  if ((fromDate && !isLocalDate(fromDate)) || (toDate && !isLocalDate(toDate))
+    || (fromDate && toDate && fromDate > toDate)) return [];
+  const query = search.trim().toLocaleLowerCase("en-IN");
+  return records.filter((record) => (!fromDate || record.fuelDate >= fromDate)
+    && (!toDate || record.fuelDate <= toDate)
     && (!vehicleId || record.vehicleId === vehicleId)
-    && (!pumpId || record.pumpId === pumpId));
+    && (!pumpId || record.pumpId === pumpId)
+    && (!query || record.vehicleNumberSnapshot.toLocaleLowerCase().includes(query)
+      || record.pumpNameSnapshot.toLocaleLowerCase().includes(query))
+    && (!fuelType || record.fuelType === fuelType)
+    && matchesVehicleFuelState(record, state))
+    .sort((left, right) => right.fuelDate.localeCompare(left.fuelDate)
+      || right.fuelTime.localeCompare(left.fuelTime)
+      || right.createdAt.localeCompare(left.createdAt)
+      || right.id.localeCompare(left.id));
+}
+
+function matchesVehicleFuelState(
+  record: VehicleFuelRecord,
+  state: VehicleFuelStateFilter,
+): boolean {
+  if (state === "all") return true;
+  if (state === "void") return record.status === "void";
+  return record.status === "active" && record.paymentState === state;
 }
 
 export function summarizeVehicleFuel(records: readonly VehicleFuelRecord[]): VehicleFuelSummary {
@@ -270,6 +301,48 @@ export function summarizeVehicleFuel(records: readonly VehicleFuelRecord[]): Veh
     totalPaid: paidPaise / 100,
     totalOutstanding: outstandingPaise / 100,
     totalLitres: litresMicrolitres / 1_000_000,
+  };
+}
+
+export function filterVehicleFuelBatchPayments(
+  payments: readonly VehicleFuelBatchPayment[],
+  fromDate: string,
+  toDate: string,
+  pumpId = "",
+  vehicleId = "",
+  paymentMode: VehicleFuelBatchPayment["paymentMode"] | "" = "",
+  searchTerm = "",
+): VehicleFuelBatchPayment[] {
+  if ((fromDate && !isLocalDate(fromDate)) || (toDate && !isLocalDate(toDate))
+    || (fromDate && toDate && fromDate > toDate)) return [];
+  const normalizedSearch = searchTerm.trim().toLocaleLowerCase("en-IN");
+  return payments.filter((payment) => (!fromDate || payment.paymentDate >= fromDate)
+    && (!toDate || payment.paymentDate <= toDate)
+    && (!pumpId || payment.pumpId === pumpId)
+    && (!vehicleId || payment.vehicleIds.includes(vehicleId))
+    && (!paymentMode || payment.paymentMode === paymentMode)
+    && (!normalizedSearch || [
+      payment.pumpName,
+      payment.note ?? "",
+      ...payment.allocations.map((allocation) => allocation.vehicleNumberSnapshot),
+    ].some((value) => value.toLocaleLowerCase("en-IN").includes(normalizedSearch))))
+    .sort((left, right) => right.paymentDate.localeCompare(left.paymentDate)
+      || right.createdAt.localeCompare(left.createdAt)
+      || right.id.localeCompare(left.id));
+}
+
+export function getVehicleFuelPaymentAllocationReconciliation(
+  payment: Pick<VehicleFuelBatchPayment, "amount" | "allocations">,
+): VehicleFuelPaymentReconciliation {
+  const paymentPaise = Math.round(payment.amount * 100);
+  const allocatedPaise = payment.allocations.reduce(
+    (sum, allocation) => sum + Math.round(allocation.allocatedAmount * 100),
+    0,
+  );
+  return {
+    allocatedAmount: allocatedPaise / 100,
+    remainingAmount: (paymentPaise - allocatedPaise) / 100,
+    reconciles: paymentPaise === allocatedPaise,
   };
 }
 

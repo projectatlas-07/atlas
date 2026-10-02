@@ -23,6 +23,10 @@ const managerScreen = readFileSync(
   new URL("../manager/components/manager-entry-screen.tsx", import.meta.url),
   "utf8",
 );
+const productionWorkspace = readFileSync(
+  new URL("../office/components/production-office-workspace.tsx", import.meta.url),
+  "utf8",
+);
 const officeScreen = readFileSync(
   new URL("../office/components/soil-office-section.tsx", import.meta.url),
   "utf8",
@@ -67,9 +71,12 @@ test("archived historical rows remain visible but cannot leak into an active sav
 
 test("site stays quantity-only while Office remains the financial and lifecycle surface", () => {
   const officeSurface = [officeScreen, officeAccountDrawer, officeManagementDrawer].join("\n");
-  assert.match(managerScreen, /workflow === "soil".*<SoilDailyEntryScreen/s);
+  assert.match(managerScreen, /resolveLegacyProductionRedirect\(window\.location\.hash\)/);
+  assert.doesNotMatch(managerScreen, /SoilDailyEntryScreen/);
   assert.match(dailyScreen, /Trolley Quantity|trolley quantity/i);
   assert.doesNotMatch(dailyScreen, /createSoilPayment|financial adjustment|Available Balance|Total Paid/i);
+  assert.match(productionWorkspace, /Record trolley entries/);
+  assert.doesNotMatch(productionWorkspace, /createSoilPayment|financial adjustment|Available Balance|Total Paid/i);
   for (const phrase of [
     "Record payment",
     "Record adjustment",

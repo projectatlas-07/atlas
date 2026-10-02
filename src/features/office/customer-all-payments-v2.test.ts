@@ -30,7 +30,7 @@ test("Customer Payments opens and returns from one mounted All Payments view", (
   assert.match(sales, /hidden=\{customerPaymentsView !== "main"\}/);
   assert.match(sales, /hidden=\{customerPaymentsView !== "all"\}/);
   assert.match(expanded, /← Back to Customer Payments/);
-  assert.match(sales, /onBack=\{\(\) => setCustomerPaymentsView\("main"\)\}/);
+  assert.match(sales, /onBack=\{\(\) => showCustomerPaymentsView\("main"\)\}/);
   assert.match(sales, /function cacheSavedPayment[\s\S]*office-factory-customer-payments/);
   assert.match(sales, /receivedNowAmount > 0[\s\S]*office-factory-customer-payments/);
 });

@@ -47,21 +47,23 @@ test("Garage payment history groups one header and preserves allocation breakdow
   assert.match(migration, /list_vehicle_maintenance_batch_payments/);
   assert.match(migration, /jsonb_agg\(jsonb_build_object/);
   assert.match(migration, /group by payments\.id/);
-  assert.match(component, /Each immutable payment appears once/);
+  assert.match(component, /Latest 8 immutable payments/);
   assert.match(component, /payment\.allocations\.map/);
 });
 
 test("UI replaces the individual-job dropdown with Garage/range Period Outstanding", () => {
-  assert.match(component, /Settle Garage Dues/);
-  assert.match(component, /Period Outstanding/);
+  assert.match(component, /Automatic oldest-first allocation/);
+  assert.match(component, /Period \$\{ATLAS_UI_STRINGS\.payment\.outstanding\}/);
   assert.match(component, /Save Garage Payment/);
+  assert.match(component, /periodOutstanding\.eligibleRecords\.map/);
+  assert.doesNotMatch(component, /type="checkbox"|allocatedAmount.*onChange/);
   assert.doesNotMatch(component, /Outstanding Maintenance<select/);
 });
 
 test("Cash Book description is compact and Coal behavior remains intact", () => {
   assert.match(migration, /Maintenance payment · '/);
   assert.match(migration, /Coal seller settlement · '/);
-  assert.match(component, /Garage settlement ·/);
+  assert.match(component, /one Cash Book Money Out/);
 });
 
 test("rollback verifier covers allocation, atomicity, one Cash Book row, and isolation", () => {

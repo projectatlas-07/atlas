@@ -10,8 +10,16 @@ const brickTypeCutover = readFileSync(
   new URL("../../../supabase/migrations/20260924000065_remove_production_brick_types.sql", import.meta.url),
   "utf8",
 );
+const mudSettlementProtection = readFileSync(
+  new URL("../../../supabase/migrations/20260916000062_protect_mud_settlement_inputs.sql", import.meta.url),
+  "utf8",
+);
 const entryScreen = readFileSync(
   new URL("./components/production-entry-screen.tsx", import.meta.url),
+  "utf8",
+);
+const entryService = readFileSync(
+  new URL("./services/production-entry-service.ts", import.meta.url),
   "utf8",
 );
 const dashboard = readFileSync(
@@ -41,10 +49,11 @@ const legacyCalculator = migration.slice(
 );
 
 test("Production entry UI uses one controlled RPC and no direct table mutation", () => {
-  assert.match(entryScreen, /rpc\("save_production_entry"/);
-  assert.match(entryScreen, /p_entry_id: payload\.savedEntryId \?\? payload\.newEntryId/);
-  assert.doesNotMatch(entryScreen, /p_brick_type_id|brick_type_id|assigned_brick_type_id/);
-  assert.doesNotMatch(entryScreen, /\.from\("production_entries"\)[\s\S]{0,100}\.(?:insert|update|delete)\(/);
+  assert.match(entryScreen, /saveProductionEntryWithSessionRefresh\(payload\)/);
+  assert.match(entryService, /rpc\("save_production_entry"/);
+  assert.match(entryService, /p_entry_id: payload\.savedEntryId \?\? payload\.newEntryId/);
+  assert.doesNotMatch(`${entryScreen}\n${entryService}`, /p_brick_type_id|brick_type_id|assigned_brick_type_id/);
+  assert.doesNotMatch(`${entryScreen}\n${entryService}`, /\.from\("production_entries"\)[\s\S]{0,100}\.(?:insert|update|delete)\(/);
   assert.match(brickTypeCutover, /revoke insert, update, delete on public\.production_entries from authenticated/);
 });
 
@@ -65,6 +74,16 @@ test("database trigger still blocks insert, update, and delete through the lates
   assert.match(migration, /using errcode = 'P2520'/);
   assert.match(brickTypeCutover, /Production record identity cannot be changed/);
   assert.doesNotMatch(brickTypeCutover, /brick type snapshot/i);
+});
+
+test("the final backend guard retains both factory Mud and labourer Production cutoffs", () => {
+  assert.match(mudSettlementProtection, /mud_mode = 'SETTLEMENT'/);
+  assert.match(mudSettlementProtection, /from public\.mud_factory_settlements/);
+  assert.match(mudSettlementProtection, /p_production_date <= latest_cutoff/);
+  assert.match(mudSettlementProtection, /using errcode = 'P3306'/);
+  assert.match(mudSettlementProtection, /from public\.production_earning_settlements/);
+  assert.match(mudSettlementProtection, /settlements\.labourer_id = p_labourer_id/);
+  assert.match(mudSettlementProtection, /using errcode = 'P2520'/);
 });
 
 test("Production saves and settlements share the exact same account lock", () => {
@@ -104,7 +123,8 @@ test("Mud and every unrelated module remain outside the cutover", () => {
 });
 
 test("normal UI shows controlled settlement errors instead of raw database failures", () => {
-  assert.match(entryScreen, /failure\.code === "p2520"/);
-  assert.match(entryScreen, /You do not have access to save this Production entry/);
-  assert.match(entryScreen, /The Production save could not be completed\. Please try again/);
+  assert.match(entryScreen, /productionSaveErrorMessage\(error\)/);
+  assert.match(entryService, /\["p2520", "p3306"\]\.includes\(failure\.code\)/);
+  assert.match(entryService, /You do not have access to save this Production entry/);
+  assert.match(entryService, /The Production save could not be completed\. Please try again/);
 });

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { supabase } from "@/lib/supabase/client";
+import { getOfficeProductionHref } from "@/features/office/office-navigation";
 
 const loginFormSchema = z.object({
   email: z.string().trim().min(1, "Email is required.").email("Enter a valid email address."),
@@ -44,7 +45,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.replace("/");
+      router.replace(getOfficeProductionHref("brick"));
       router.refresh();
     } catch (error) {
       setAuthenticationError(error instanceof Error ? error.message : "Sign-in failed. Please try again.");

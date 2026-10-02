@@ -1,0 +1,301 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_dashboard" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"outline-variant":"#c0c9c1","surface":"#f9f9f7","on-primary-fixed":"#002113","surface-container-highest":"#e2e3e1","on-surface":"#1a1c1b","text-tertiary":"#989894","on-primary":"#ffffff","tertiary-fixed":"#ffdad9","surface-variant":"#e2e3e1","surface-container-low":"#f4f4f2","text-secondary":"#686864","border-strong":"#D5D5D1","border-subtle":"#E5E5E2","on-secondary":"#ffffff","inverse-on-surface":"#f1f1ef","background":"#f9f9f7","on-secondary-fixed-variant":"#404945","on-error":"#ffffff","state-success":"#047857","inverse-primary":"#96d4b2","primary":"#125238","primary-fixed":"#b1f0cd","secondary":"#57605d","on-tertiary-fixed-variant":"#6f3538","tertiary-container":"#8e4e50","on-tertiary-container":"#ffd1d1","tertiary":"#723739","tertiary-fixed-dim":"#ffb3b4","error-container":"#ffdad6","card-surface":"#FFFFFF","surface-container-lowest":"#ffffff","on-primary-fixed-variant":"#105137","on-tertiary":"#ffffff","surface-container":"#eeeeec","secondary-fixed":"#dce5e0","on-secondary-fixed":"#151d1a","secondary-fixed-dim":"#bfc9c4","on-secondary-container":"#5d6663","on-primary-container":"#aae9c6","secondary-container":"#dce5e0","surface-bright":"#f9f9f7","sidebar-surface":"#F2F3F1","surface-dim":"#dadad8","row-hover":"#F1F1EF","surface-tint":"#2d694d","text-primary":"#1F1F1D","on-error-container":"#93000a","surface-container-high":"#e8e8e6","on-surface-variant":"#404943","on-tertiary-fixed":"#390b0f","outline":"#707972","inverse-surface":"#2f3130","on-background":"#1a1c1b","primary-container":"#2f6b4f","primary-fixed-dim":"#96d4b2"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem",full:"9999px"},spacing:{"gutter-sm":"1rem","gutter-lg":"2rem","space-sm":"0.5rem","space-xs":"0.25rem",margin:"2rem","space-xl":"2.5rem","margin-mobile":"1rem","margin-desktop":"3rem","space-md":"0.875rem",gutter:"1.5rem","space-lg":"1.5rem"},fontFamily:{"label-md":["Plus Jakarta Sans"],"headline-xl-mobile":["Plus Jakarta Sans"],"body-sm":["Plus Jakarta Sans"],"body-lg":["Plus Jakarta Sans"],caption:["Plus Jakarta Sans"],"headline-sm":["Plus Jakarta Sans"],"headline-md":["Plus Jakarta Sans"],"label-sm":["Plus Jakarta Sans"],"headline-lg":["Plus Jakarta Sans"],"body-md":["Plus Jakarta Sans"],"headline-xl":["Plus Jakarta Sans"]},fontSize:{"label-md":["14px",{lineHeight:"20px",fontWeight:"500"}],"headline-xl-mobile":["26px",{lineHeight:"34px",letterSpacing:"-0.015em",fontWeight:"600"}],"body-sm":["13px",{lineHeight:"20px",fontWeight:"400"}],"body-lg":["16px",{lineHeight:"26px",fontWeight:"400"}],caption:["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"500"}],"headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],"headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],"label-sm":["12px",{lineHeight:"16px",letterSpacing:"0.01em",fontWeight:"500"}],"headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}],"body-md":["14px",{lineHeight:"22px",fontWeight:"400"}],"headline-xl":["32px",{lineHeight:"40px",letterSpacing:"-0.02em",fontWeight:"600"}]}}}};</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-sidebar-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between select-none"><div class="flex flex-col"><div class="h-16 px-6 flex items-center gap-2"><span class="font-headline-md text-headline-md tracking-tight text-text-primary">Atlas</span><span class="font-caption text-caption uppercase tracking-wider text-text-secondary bg-surface-container px-1.5 py-0.5 rounded">OFFICE</span></div><nav class="flex flex-col gap-1 px-3 mt-2" data-active-classes="bg-primary-container text-on-primary font-label-md"><a class="flex items-center gap-3 px-3 py-2 rounded-lg font-label-md text-label-md text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span><span class="">Dashboard</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg font-label-md text-label-md text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="production" href="#"><span class="material-symbols-outlined text-[20px]">precision_manufacturing</span><span class="">Production</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg font-label-md text-label-md text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="workforce" href="#"><span class="material-symbols-outlined text-[20px]">badge</span><span class="">Workforce</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg font-label-md text-label-md text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="sales" href="#"><span class="material-symbols-outlined text-[20px]">monitoring</span><span class="">Sales</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg font-label-md text-label-md text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="purchases-and-expenses" href="#"><span class="material-symbols-outlined text-[20px]">receipt_long</span><span class="">Purchases &amp; Expenses</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg font-label-md text-label-md text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cash-book" href="#"><span class="material-symbols-outlined text-[20px]">account_balance_wallet</span><span class="">Cash Book</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg font-label-md text-label-md text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="reports" href="#"><span class="material-symbols-outlined text-[20px]">bar_chart</span><span class="">Reports</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg font-label-md text-label-md text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">tune</span><span class="">Settings</span></a></nav></div><div class="p-3 bg-surface-container-low/50"><div class="flex items-center justify-between px-3 py-2.5 rounded-lg bg-card-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-2.5"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-label-md text-label-md text-on-primary">N</div><div class="flex flex-col"><span class="font-label-sm text-label-sm text-text-primary leading-none">Operator</span><span class="font-caption text-caption text-text-tertiary">Plant 04</span></div></div><a class="text-text-secondary hover:text-error flex items-center justify-center transition-colors" data-path="login" href="#" title="Log out"><span class="material-symbols-outlined text-[18px]">logout</span></a></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-14 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-8"><div class="flex items-center gap-2 font-caption text-caption text-text-secondary tracking-wider uppercase"><span class="hover:text-text-primary transition-colors">Office Workspace</span><span class="text-text-tertiary">&gt;</span><span class="text-text-primary font-label-sm text-label-sm">Purchases &amp; Expenses</span></div><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative w-full pt-14 bg-surface min-h-screen px-8 py-6"><div class="flex flex-col w-full">
+<!-- Top Category Navigation Bar -->
+<div class="flex flex-col gap-5 pb-6 border-b border-border-subtle">
+<!-- Breadcrumb & Top Level Tabs -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-8">
+<a class="font-label-md text-label-md text-text-secondary hover:text-text-primary transition-colors py-1" href="#">Coal</a>
+<a class="font-label-md text-label-md text-primary font-semibold py-1 relative" href="#">
+          Vehicle Maintenance
+          <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-container rounded-full"></span>
+</a>
+<a class="font-label-md text-label-md text-text-secondary hover:text-text-primary transition-colors py-1" href="#">Fuel Book</a>
+<a class="font-label-md text-label-md text-text-secondary hover:text-text-primary transition-colors py-1" href="#">Costs &amp; Outgoings</a>
+</div>
+<!-- Quick plant badge / status context -->
+
+</div><div class="flex items-center gap-1 mt-1"><div class="inline-flex p-1 bg-surface-container-high rounded-lg gap-1"><button type="button" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-card-surface shadow-sm font-label-sm text-label-sm text-text-primary font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>Maintenance</button><button type="button" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md font-label-sm text-label-sm text-text-secondary hover:text-text-primary transition-colors">Garage Payments</button></div></div>
+<!-- Title & Contextual Sub-Navigation -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4 pt-1">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-text-primary tracking-tight">Vehicle Maintenance</h1>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1">Record maintenance jobs and review recent vehicle work.</p>
+</div>
+<!-- Contextual Sub-Nav Tabs -->
+
+</div>
+</div>
+<!-- Main Content Canvas (Two-Column Desktop Split) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6 items-start">
+<!-- Left Column: Compact Entry Form (approx 720px / 7-8 cols) -->
+<div class="lg:col-span-8 bg-card-surface border border-border-subtle rounded-xl p-6 shadow-sm">
+<div class="flex items-center justify-between pb-4 border-b border-border-subtle">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-primary">car_repair</span>
+<h2 class="font-headline-sm text-headline-sm text-text-primary font-semibold">New Vehicle Maintenance</h2>
+</div>
+
+</div>
+<form class="mt-6 flex flex-col gap-5" id="maintenanceForm">
+<!-- Row 1: Vehicle & Date -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-text-primary font-medium flex items-center justify-between" for="vehicleInput">
+<span class="">Vehicle</span>
+
+</label>
+<div class="relative">
+<input class="w-full h-[38px] px-3 font-body-md text-body-md text-text-primary bg-card-surface border border-border-subtle rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-[#EAF3EE] transition-all pr-8" id="vehicleInput" placeholder="Search / select vehicle..." type="text" value="VW43A499052B7A">
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary text-[18px] pointer-events-none">directions_car</span>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-text-primary font-medium" for="maintenanceDate">Maintenance Date</label>
+<div class="relative">
+<input class="w-full h-[38px] px-3 font-body-md text-body-md text-text-primary bg-card-surface border border-border-subtle rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-[#EAF3EE] transition-all pr-8" id="maintenanceDate" placeholder="DD/MM/YYYY" type="text" value="30/09/2026">
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary text-[18px] pointer-events-none">calendar_today</span>
+</div>
+</div>
+</div>
+<!-- Row 2: Garage & Quick Action -->
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<label class="font-label-sm text-label-sm text-text-primary font-medium" for="garageInput">Mechanic / Garage</label>
+<button class="font-caption text-caption text-primary hover:text-primary-container font-semibold inline-flex items-center gap-0.5 transition-colors" type="button">
+<span class="material-symbols-outlined text-[14px]">add</span>
+              Add Garage
+            </button>
+</div>
+<div class="relative">
+<input class="w-full h-[38px] px-3 font-body-md text-body-md text-text-primary bg-card-surface border border-border-subtle rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-[#EAF3EE] transition-all pr-8" id="garageInput" placeholder="Search / select garage..." type="text" value="Test Garage">
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary text-[18px] pointer-events-none">storefront</span>
+</div>
+</div>
+<!-- Row 3: Work Description -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-text-primary font-medium" for="workDescription">Work / Repair</label>
+<textarea class="w-full p-3 font-body-md text-body-md text-text-primary bg-card-surface border border-border-subtle rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-[#EAF3EE] transition-all resize-none leading-relaxed" id="workDescription" placeholder="Enter work or repair description..." rows="3">Rear tyre replacement and brake inspection</textarea>
+</div>
+<!-- Row 4: Financial Calculation Block -->
+<div class="rounded-xl bg-surface-container-low p-4 border border-border-subtle flex flex-col gap-4 my-1">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Total Amount Input -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-text-primary font-medium" for="totalAmount">Maintenance Amount (₹)</label>
+<div class="relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 font-label-md text-label-md text-text-secondary select-none">₹</span>
+<input class="w-full h-[38px] pl-8 pr-3 font-label-md text-label-md text-text-primary font-semibold bg-card-surface border border-border-subtle rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-[#EAF3EE] transition-all text-right tabular-nums" id="totalAmount" type="text" value="8,000">
+</div>
+</div>
+<!-- Paid Now Input -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-text-primary font-medium" for="paidAmount">Paid now (₹)</label>
+<div class="relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 font-label-md text-label-md text-text-secondary select-none">₹</span>
+<input class="w-full h-[38px] pl-8 pr-3 font-label-md text-label-md text-text-primary font-semibold bg-card-surface border border-border-subtle rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-[#EAF3EE] transition-all text-right tabular-nums" id="paidAmount" type="text" value="0">
+</div>
+<span class="font-caption text-caption text-text-tertiary">Blank or 0 = unpaid.</span>
+</div>
+</div>
+<!-- Due Calculation Summary Readout -->
+<div class="flex items-center justify-between pt-3 border-t border-border-subtle"><span class="font-label-sm text-label-sm text-text-secondary font-medium">Amount due</span><div class="flex items-baseline gap-1"><span class="font-headline-sm text-headline-sm text-text-primary font-bold tabular-nums" id="dueAmount">₹8,000.00</span></div></div>
+</div>
+<!-- Action Row -->
+<div class="pt-2 flex items-center justify-start">
+<button class="h-10 px-6 rounded-lg bg-primary-container text-on-primary hover:bg-[#25563f] active:bg-[#214c38] font-label-md text-label-md font-medium inline-flex items-center gap-2 shadow-sm transition-colors cursor-pointer" type="submit">
+<span class="material-symbols-outlined text-[18px]">check</span>
+            Save Maintenance
+          </button>
+</div>
+</form>
+</div>
+<!-- Right Column: Recent Maintenance Panel (approx 360-400px / 4-5 cols) -->
+<div class="lg:col-span-4 bg-card-surface border border-border-subtle rounded-xl p-5 shadow-sm flex flex-col">
+<!-- Card Header -->
+<div class="flex items-center justify-between pb-3 border-b border-border-subtle">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-text-primary font-semibold leading-tight">Recent Maintenance</h3>
+<p class="font-caption text-caption text-text-secondary mt-0.5">Recently recorded vehicle jobs.</p>
+</div>
+
+</div>
+<!-- Feed / List Body -->
+<div class="flex flex-col divide-y divide-border-subtle overflow-y-auto max-h-[510px]">
+<!-- Item 1 -->
+<div class="py-3 flex flex-col gap-1.5 hover:bg-surface-container-low/60 -mx-2 px-2 rounded-lg transition-colors group">
+<div class="flex items-center justify-between">
+<span class="font-caption text-caption text-text-tertiary">14 Sep 2026</span>
+<span class="px-2 py-0.5 rounded font-caption text-caption font-semibold bg-[#EAF3EE] text-primary">Paid</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-text-primary font-semibold truncate max-w-[190px]">VW43A499052B7A</span>
+<span class="font-label-md text-label-md text-text-primary font-bold tabular-nums">₹8,000.00</span>
+</div>
+<div class="flex items-center justify-between pt-0.5">
+<span class="font-caption text-caption text-text-secondary truncate max-w-[210px]">Servicing · Test Garage</span>
+<a class="font-caption text-caption text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-transform inline-flex items-center" href="#">Open →</a>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="py-3 flex flex-col gap-1.5 hover:bg-surface-container-low/60 -mx-2 px-2 rounded-lg transition-colors group">
+<div class="flex items-center justify-between">
+<span class="font-caption text-caption text-text-tertiary">14 Sep 2026</span>
+<span class="px-2 py-0.5 rounded font-caption text-caption font-semibold bg-[#FEF3C7] text-[#92400E]">Partial</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-text-primary font-semibold truncate max-w-[190px]">VW43A499052B7A</span>
+<span class="font-label-md text-label-md text-text-primary font-bold tabular-nums">₹2,500.00</span>
+</div>
+<div class="flex items-center justify-between pt-0.5">
+<span class="font-caption text-caption text-text-secondary truncate max-w-[210px]">Self servicing · Bhalu</span>
+<a class="font-caption text-caption text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-transform inline-flex items-center" href="#">Open →</a>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="py-3 flex flex-col gap-1.5 hover:bg-surface-container-low/60 -mx-2 px-2 rounded-lg transition-colors group">
+<div class="flex items-center justify-between">
+<span class="font-caption text-caption text-text-tertiary">14 Sep 2026</span>
+<span class="px-2 py-0.5 rounded font-caption text-caption font-semibold bg-[#FEF3C7] text-[#92400E]">Partial</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-text-primary font-semibold truncate max-w-[190px]">VW43A499052B7A</span>
+<span class="font-label-md text-label-md text-text-primary font-bold tabular-nums">₹6,000.00</span>
+</div>
+<div class="flex items-center justify-between pt-0.5">
+<span class="font-caption text-caption text-text-secondary truncate max-w-[210px]">service · Test Garage</span>
+<a class="font-caption text-caption text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-transform inline-flex items-center" href="#">Open →</a>
+</div>
+</div>
+<!-- Item 4 -->
+<div class="py-3 flex flex-col gap-1.5 hover:bg-surface-container-low/60 -mx-2 px-2 rounded-lg transition-colors group">
+<div class="flex items-center justify-between">
+<span class="font-caption text-caption text-text-tertiary">14 Sep 2026</span>
+<span class="px-2 py-0.5 rounded font-caption text-caption font-semibold bg-[#EAF3EE] text-primary">Paid</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-text-primary font-semibold truncate max-w-[190px]">VW26EC4D98AFFM</span>
+<span class="font-label-md text-label-md text-text-primary font-bold tabular-nums">₹2,000.00</span>
+</div>
+<div class="flex items-center justify-between pt-0.5">
+<span class="font-caption text-caption text-text-secondary truncate max-w-[210px]">Misc. · Bhalu</span>
+<a class="font-caption text-caption text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-transform inline-flex items-center" href="#">Open →</a>
+</div>
+</div>
+<!-- Item 5 -->
+<div class="py-3 flex flex-col gap-1.5 hover:bg-surface-container-low/60 -mx-2 px-2 rounded-lg transition-colors group">
+<div class="flex items-center justify-between">
+<span class="font-caption text-caption text-text-tertiary">14 Sep 2026</span>
+<span class="px-2 py-0.5 rounded font-caption text-caption font-semibold bg-[#EAF3EE] text-primary">Paid</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-text-primary font-semibold truncate max-w-[190px]">VW43A499052B7A</span>
+<span class="font-label-md text-label-md text-text-primary font-bold tabular-nums">₹1,200.00</span>
+</div>
+<div class="flex items-center justify-between pt-0.5">
+<span class="font-caption text-caption text-text-secondary truncate max-w-[210px]">Tyre replacement · Bhalu</span>
+<a class="font-caption text-caption text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-transform inline-flex items-center" href="#">Open →</a>
+</div>
+</div>
+<!-- Item 6 -->
+<div class="py-3 flex flex-col gap-1.5 hover:bg-surface-container-low/60 -mx-2 px-2 rounded-lg transition-colors group">
+<div class="flex items-center justify-between">
+<span class="font-caption text-caption text-text-tertiary">7 Sep 2026</span>
+<span class="px-2 py-0.5 rounded font-caption text-caption font-semibold bg-[#EAF3EE] text-primary">Paid</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-text-primary font-semibold truncate max-w-[190px]">VW43A499052B7A</span>
+<span class="font-label-md text-label-md text-text-primary font-bold tabular-nums">₹5,000.00</span>
+</div>
+<div class="flex items-center justify-between pt-0.5">
+<span class="font-caption text-caption text-text-secondary truncate max-w-[210px]">services · Test Garage</span>
+<a class="font-caption text-caption text-primary hover:text-primary-container font-medium group-hover:translate-x-0.5 transition-transform inline-flex items-center" href="#">Open →</a>
+</div>
+</div>
+</div>
+<!-- Card Footer Link -->
+<div class="pt-3 mt-1 border-t border-border-subtle">
+<a class="font-label-sm text-label-sm text-primary font-semibold hover:underline block text-center transition-colors" href="#">
+          View all maintenance →
+        </a>
+</div>
+</div>
+</div>
+<!-- Historical Context Modals / Visual Reference (Hidden or accessible via click) -->
+
+<!-- Modal 1 for Image Reference 4 -->
+<div class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-6" id="ref-modal-4" onclick="this.classList.add('hidden')">
+<div class="bg-card-surface rounded-xl p-4 max-w-4xl max-h-[85vh] overflow-hidden flex flex-col shadow-xl" onclick="event.stopPropagation()">
+<div class="flex justify-between items-center pb-2 mb-2 border-b border-border-subtle">
+<span class="font-label-md text-label-md font-semibold text-text-primary">Historical Screenshot Reference (Image 4)</span>
+<button class="text-text-secondary hover:text-text-primary" onclick="document.getElementById('ref-modal-4').classList.add('hidden')">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<img alt="Historical Coal and Maintenance view" class="rounded-lg object-contain max-h-[70vh] w-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAP6THi91FPlvoxC1akq6qehbr6AnICOLFJmePWiqT8PvjnznZiHqrfkgn1xbMOLuEk90cwikPzWf-mm4rJj-WyUD1T59KopOyhQGDLlgFBqPKb2yctJ-po4N5gia87ECtDVxAXxOB_kl_l8m0UMOFPtlrHBd6JOzvZP5myw5kclKQdlJrEicTyxREr-mtQlh25guIfithvXj_4qkRbi0OEfiwC76NJmQAfxscnf4DUBI2ocQpNYQU5icaae5zig0U">
+</div>
+</div>
+<!-- Modal 2 for Image Reference 5 -->
+<div class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-6" id="ref-modal-5" onclick="this.classList.add('hidden')">
+<div class="bg-card-surface rounded-xl p-4 max-w-4xl max-h-[85vh] overflow-hidden flex flex-col shadow-xl" onclick="event.stopPropagation()">
+<div class="flex justify-between items-center pb-2 mb-2 border-b border-border-subtle">
+<span class="font-label-md text-label-md font-semibold text-text-primary">Historical Records Ledger Reference (Image 5)</span>
+<button class="text-text-secondary hover:text-text-primary" onclick="document.getElementById('ref-modal-5').classList.add('hidden')">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<img alt="Historical maintenance entries reference" class="rounded-lg object-contain max-h-[70vh] w-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdsIlvBhaImJIVGZWAvgi7CbjhfCf4Gn6vHW1_L7AptoCJ0gbeYEWBTBaS7HY0ttRPoPHUmBQ6KO61WrRrIrrtAzDwhbc7-C6l6P7FsTq71slJuV86-jha-ThUvlyaeJX5zyyb3f6tKIWFnKD31dlsiTB99EKFKCgLbHX3wycHJdBlCJ_GhYmKmVU9wh8NgQcpgg48nbyO5yKxfmCw6ffEcvQrDEfX7K5-o0A5ZB3O0euWTSSyAJWsn_wHwQNaIbU">
+</div>
+</div>
+<script>
+    (function initMaintenanceCalc() {
+      const totalInput = document.getElementById('totalAmount');
+      const paidInput = document.getElementById('paidAmount');
+      const dueDisplay = document.getElementById('dueAmount');
+
+      function parseVal(val) {
+        if (!val) return 0;
+        const cleaned = val.replace(/,/g, '').trim();
+        const num = parseFloat(cleaned);
+        return isNaN(num) ? 0 : num;
+      }
+
+      function formatINR(number) {
+        return '₹' + number.toLocaleString('en-IN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+      }
+
+      function updateDue() {
+        const total = parseVal(totalInput.value);
+        const paid = parseVal(paidInput.value);
+        const due = Math.max(0, total - paid);
+        dueDisplay.textContent = formatINR(due);
+      }
+
+      totalInput.addEventListener('input', updateDue);
+      paidInput.addEventListener('input', updateDue);
+
+      const form = document.getElementById('maintenanceForm');
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalContent = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">refresh</span> Saving...';
+        submitBtn.disabled = true;
+
+        setTimeout(() => {
+          submitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">done_all</span> Saved';
+          setTimeout(() => {
+            submitBtn.innerHTML = originalContent;
+            submitBtn.disabled = false;
+          }, 1500);
+        }, 600);
+      });
+    })();
+  </script>
+</div></main></div>
+
+</body></html>

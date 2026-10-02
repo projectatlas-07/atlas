@@ -10,55 +10,213 @@ const office = readFileSync(
   new URL("./components/office-dashboard.tsx", import.meta.url),
   "utf8",
 );
+const navigation = readFileSync(
+  new URL("./office-navigation.ts", import.meta.url),
+  "utf8",
+);
+const shell = readFileSync(
+  new URL("./components/office-shell.tsx", import.meta.url),
+  "utf8",
+);
 
 test("Production has one local navigation with the three approved operational areas", () => {
-  assert.match(workspace, /type ProductionWorkspaceArea = "brick" \| "chamber" \| "soil"/);
+  assert.match(navigation, /export type OfficeProductionAreaId/);
   for (const label of ["Brick Production", "Chamber Transport", "Soil / Trolley"]) {
-    assert.equal((workspace.match(new RegExp(`label: "${label.replace("/", "\\/")}"`, "g")) ?? []).length, 1, label);
+    assert.equal((navigation.match(new RegExp(`label: "${label.replace("/", "\\/")}"`, "g")) ?? []).length, 1, label);
   }
-  assert.match(workspace, /useState<ProductionWorkspaceArea>\("brick"\)/);
-  assert.match(workspace, /aria-label="Production workflows"/);
+  assert.match(workspace, /useState<OfficeProductionAreaId>\("brick"\)/);
+  assert.match(workspace, /OFFICE_PRODUCTION_AREAS\.map/);
+  assert.match(workspace, /aria-label="Production areas"/);
   assert.match(workspace, /aria-pressed=\{activeArea === area\.id\}/);
-  assert.match(workspace, /variant=\{activeArea === area\.id \? "primary" : "secondary"\}/);
+  assert.match(workspace, /variant=\{activeArea === area\.id \? "primary" : "ghost"\}/);
 });
 
-test("each sub-area separates its existing recording workflow from date-scoped history", () => {
-  for (const href of ["/#brick-production", "/#chamber-transport", "/#soil"]) {
-    assert.match(workspace, new RegExp(`recordingHref="${href.replace("/", "\\/")}"`));
+test("Production tabs follow canonical Office hashes and browser navigation", () => {
+  assert.match(workspace, /resolveOfficeProductionAreaFromHash\(window\.location\.hash\)/);
+  assert.match(workspace, /window\.addEventListener\("hashchange", syncProductionAreaFromHash\)/);
+  assert.match(workspace, /window\.removeEventListener\("hashchange", syncProductionAreaFromHash\)/);
+  assert.match(workspace, /window\.location\.hash = getOfficeProductionHash\(area\)/);
+  assert.match(workspace, /onClick=\{\(\) => selectProductionArea\(area\.id\)\}/);
+});
+
+test("Production starts with compact navigation and keeps the work column left aligned", () => {
+  assert.doesNotMatch(workspace, /Production workspace/);
+  assert.doesNotMatch(workspace, /<header/);
+  assert.match(workspace, /<div className="space-y-atlas-3">\s*<nav aria-label="Production areas"/);
+  assert.match(workspace, /overflow-x-auto/);
+  assert.match(workspace, /flex min-w-max gap-atlas-2/);
+  assert.match(workspace, /<div className="max-w-5xl">/);
+});
+
+test("Production removes redundant shell and tab headers while lifting every date control", () => {
+  assert.match(shell, /activeArea !== "sales" && activeArea !== "workforce" && activeArea !== "production"/);
+  for (const removedText of [
+    "Daily factory operations",
+    "Record daily raw brick quantities. Worker rates, earnings and payments remain in Workforce.",
+    "Record daily Transport Group movement, present workers and paya quantity.",
+    "Record daily trolley quantities. Worker rates, balances and payments remain in Workforce.",
+  ]) {
+    assert.doesNotMatch(workspace, new RegExp(removedText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
+  for (const area of ["Brick Production", "Chamber Transport", "Soil / Trolley"]) {
+    assert.match(workspace, new RegExp(`aria-label="${area.replace("/", "\\/")}"[\\s\\S]*?className="max-w-3xl space-y-atlas-3"`));
+  }
+  assert.equal((workspace.match(/<div className="flex justify-end">/g) ?? []).length, 3);
+  assert.equal((workspace.match(/<FormField label="Business date">/g) ?? []).length, 3);
+  assert.doesNotMatch(workspace, /brick-production-heading|chamber-transport-heading|soil-trolley-heading/);
+});
+
+test("all three Production areas record inline without a separate workflow link", () => {
+  assert.doesNotMatch(workspace, /recordingHref="\/#brick-production"/);
+  assert.doesNotMatch(workspace, /recordingHref="\/#chamber-transport"/);
+  assert.doesNotMatch(workspace, /recordingHref="\/#soil"/);
+  assert.doesNotMatch(workspace, /function WorkspacePanel/);
+});
+
+test("Brick Production follows the focused V2 recording hierarchy", () => {
   for (const label of [
-    "Record Brick Production",
-    "Record Chamber Transport",
-    "Record Soil / Trolley",
-    "Daily history / totals",
-    "Operational history / totals",
-    "Operational history",
+    "Brick Production",
+    "Business date",
+    "Record production",
+    "Labourer name",
+    "Raw quantity",
+    "Save production entries",
+    "Total Production",
+    "Labourers Recorded",
+    "Today’s saved entries",
+  ]) {
+    assert.match(workspace, new RegExp(label));
+  }
+  assert.match(workspace, /className="max-w-3xl space-y-atlas-3"/);
+  assert.match(workspace, /Blank rows will be skipped/);
+  assert.match(workspace, /inputMode="numeric"/);
+  assert.match(workspace, /loading=\{isSaving\}/);
+  assert.match(workspace, /isSavingRef\.current/);
+});
+
+test("Brick Production reuses the authoritative reader, model, schema, and save service", () => {
+  assert.match(workspace, /getTodaysProduction\(factoryId, brickDate\)/);
+  assert.match(workspace, /productionRecordSchema\.safeParse/);
+  assert.match(workspace, /buildProductionSavePayload/);
+  assert.match(workspace, /saveProductionEntryWithSessionRefresh/);
+  assert.match(workspace, /if \(!dirtyLabourerIdsRef\.current\.has\(labourer\.id\)\) continue/);
+  assert.match(workspace, /savedEntry: savedEntry \? \{ id: savedEntry\.id \} : undefined/);
+  assert.match(workspace, /newEntryId: crypto\.randomUUID\(\)/);
+  assert.doesNotMatch(workspace, /\.from\(|\.rpc\(|save_production_entry/);
+});
+
+test("Brick Production reflects factory and labourer settlement locks without hiding saved quantities", () => {
+  assert.match(workspace, /getBrickProductionEditability/);
+  assert.match(workspace, /editabilityQuery\.data\?\.isMudLocked/);
+  assert.match(workspace, /Production through \{formatDateOnly\(editabilityQuery\.data\.mudSettlementCutoff\)\} has already been settled/);
+  assert.match(workspace, /editability\?\.isLocked !== false/);
+  assert.match(workspace, /Settled through \{formatDateOnly\(editability\.settledThrough\)\}/);
+  assert.match(workspace, /value=\{quantities\[labourer\.id\] \?\? ""\}/);
+  assert.match(workspace, /if \(editabilityQuery\.data\.labourers\[labourer\.id\]\?\.isLocked !== false\) continue/);
+  assert.match(workspace, /allLabourersLocked \|\| editabilityQuery\.error/);
+  assert.match(workspace, /Production for this business date is read-only/);
+});
+
+test("Chamber Transport follows the focused V2 recording hierarchy", () => {
+  for (const label of [
+    "Chamber Transport",
+    "Business date",
+    "Record transport",
+    "Transport Group",
+    "Present workers",
+    "Paya / Chamber quantity",
+    "Save transport entry",
+    "Transport Groups Recorded",
+    "Total Paya",
+    "Workers Present",
+    "Today’s saved entries",
+    "Present count",
+    "Saved workers",
   ]) {
     assert.match(workspace, new RegExp(label.replace("/", "\\/")));
   }
-  assert.match(workspace, /<Input type="date"/);
-  assert.match(workspace, /Saved operations for the selected business date/);
+  assert.match(workspace, /function ChamberTransportWorkspace[\s\S]*className="max-w-3xl space-y-atlas-3"/);
+  assert.match(workspace, /inputMode="decimal"/);
+  assert.match(workspace, /selectedWorkerIds\.size === members\.length/);
+  assert.match(workspace, /saveInProgressRef\.current/);
+});
+
+test("Chamber Transport reuses authoritative group, attendance, paya, and save contracts", () => {
+  for (const contract of [
+    "loadActiveTransportGroups",
+    "loadTransportDailyEntrySelection",
+    "buildTransportDailyEntrySaveInput",
+    "selectAllTransportWorkers",
+    "toggleTransportWorkerSelection",
+    "saveTransportDailyEntry",
+    "listTransportDailyOperations",
+  ]) {
+    assert.match(workspace, new RegExp(contract));
+  }
+  assert.match(workspace, /transportGroupId: selectedGroupId/);
+  assert.match(workspace, /selectedWorkerIds/);
+  assert.match(workspace, /payaInput/);
+  assert.match(workspace, /Promise\.all\(\[selectionQuery\.refetch\(\), query\.refetch\(\)\]\)/);
+  assert.doesNotMatch(workspace, /ratePerPaya|dailyGroupPool|workerDailyShare|calculateTransportWeeklyWages/);
+});
+
+test("Soil Trolley follows the focused V2 recording hierarchy", () => {
+  for (const label of [
+    "Soil / Trolley",
+    "Business date",
+    "Record trolley entries",
+    "Soil worker",
+    "Trolley quantity",
+    "Save trolley entries",
+    "Workers Recorded",
+    "Total Trolleys",
+    "Today’s saved entries",
+  ]) {
+    assert.match(workspace, new RegExp(label.replace("/", "\\/"), "i"));
+  }
+  assert.match(workspace, /function SoilTrolleyWorkspace[\s\S]*className="max-w-3xl space-y-atlas-3"/);
+  assert.match(workspace, /Blank rows will be skipped/);
+  assert.match(workspace, /inputMode="decimal"/);
+  assert.match(workspace, /step="0\.001"/);
+  assert.match(workspace, /Archived · read-only/);
+  assert.match(workspace, /saveInProgressRef\.current/);
+});
+
+test("Soil Trolley reuses the authoritative form model, reader, and save service", () => {
+  for (const contract of [
+    "listActiveSoilWorkers",
+    "listSoilDailyTrolleyEntries",
+    "prepareSoilDailyEntryForm",
+    "updateSoilDailyEntryQuantity",
+    "buildSoilDailyEntrySaveInput",
+    "applySavedSoilDailyEntries",
+    "saveSoilDailyTrolleyEntries",
+    "soilDailyEntryErrorMessage",
+  ]) {
+    assert.match(workspace, new RegExp(contract));
+  }
+  assert.match(workspace, /await query\.refetch\(\)/);
+  assert.doesNotMatch(workspace, /ratePerTrolley|baseAmount|soilEarning|availableBalance|soilPayment/i);
 });
 
 test("operational histories reuse existing read services and preserve module ownership", () => {
   assert.match(workspace, /getTodaysProduction\(factoryId, brickDate\)/);
   assert.match(workspace, /listTransportDailyOperations\(\{ factoryId, workDate: chamberDate \}\)/);
   assert.match(workspace, /listSoilDailyTrolleyEntries\(\{ factoryId, workDate: soilDate \}\)/);
-  assert.match(workspace, /Transport Groups recorded/);
+  assert.match(workspace, /Transport Groups Recorded/);
   assert.doesNotMatch(workspace, /workDirection|Direction/);
-  assert.match(workspace, /Daily raw brick quantities saved against Production labourers/);
   assert.doesNotMatch(workspace, /brickType|brick_type|Brick type totals|>Brick type</i);
-  assert.doesNotMatch(workspace, /supabase|\.from\(|\.rpc\(|create|saveSoilDaily|saveTransportDaily|save_production_entry/i);
-  assert.doesNotMatch(workspace, /ratePerTrolleySnapshot|baseAmountSnapshot|totalEarned|totalPaid|availableBalance|withdrawal|wage/i);
+  assert.doesNotMatch(workspace, /supabase|\.from\(|\.rpc\(|\bcreate\w*\(|save_production_entry/i);
+  assert.doesNotMatch(workspace, /ratePerTrolleySnapshot|baseAmountSnapshot|totalEarned|totalPaid|availableBalance|withdrawal/i);
   assert.doesNotMatch(office, /listTransportDailyOperations|listSoilDailyTrolleyEntries/);
   assert.equal((office.match(/getTodaysProduction/g) ?? []).length, 2, "Workforce reuses the existing daily Production reader once");
 });
 
 test("all three histories have truthful loading, error, retry, and empty states", () => {
   for (const loadingLabel of [
-    "Loading Brick Production history...",
-    "Loading Chamber Transport history...",
-    "Loading Soil / Trolley history...",
+    "Loading Brick Production entries...",
+    "Loading Chamber Transport entries...",
+    "Loading Soil / Trolley entries...",
   ]) {
     assert.match(workspace, new RegExp(loadingLabel.replace("/", "\\/")));
   }
@@ -76,13 +234,14 @@ test("all three histories have truthful loading, error, retry, and empty states"
 });
 
 test("workspace uses V2 primitives, central formatting, and responsive touch targets", () => {
-  for (const primitive of ["Button", "Card", "EmptyState", "Feedback", "FormField", "Input", "TableContainer"]) {
+  for (const primitive of ["Button", "Card", "Checkbox", "EmptyState", "Feedback", "FormField", "Input", "Select", "TableContainer"]) {
     assert.match(workspace, new RegExp(`<${primitive}\\b`));
   }
   assert.match(workspace, /formatDateOnly/);
   assert.match(workspace, /formatIndianNumber/);
   assert.match(workspace, /min-h-atlas-12/);
-  assert.match(workspace, /sm:grid-cols-3/);
+  assert.match(workspace, /overflow-x-auto/);
+  assert.match(workspace, /min-w-max/);
   assert.match(workspace, /sm:flex-row/);
   assert.doesNotMatch(workspace, /(?:bg|text|border)-(?:slate|stone|red|amber|emerald|blue|cyan|indigo)-|#[0-9a-f]{3,8}/i);
   assert.doesNotMatch(workspace, /(?:p|m|gap|space-[xy]|rounded|shadow)-\[[^\]]+\]/);

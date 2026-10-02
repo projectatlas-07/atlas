@@ -46,7 +46,7 @@ test("Workforce removes repeated headings and begins with compact category navig
   assert.doesNotMatch(workspace, /Manage workers, wage rates/);
   assert.doesNotMatch(workspace, /<header/);
   assert.match(workspace, /<div className="space-y-atlas-4">\s*<nav aria-label="Workforce areas"/);
-  assert.match(shell, /activeArea !== "sales" && activeArea !== "workforce" && \(/);
+  assert.match(shell, /activeArea !== "sales" && activeArea !== "workforce" && activeArea !== "production" && activeArea !== "purchases-expenses" && activeArea !== "cash-book" && \(/);
 });
 
 test("Production Workers starts with actions and filters instead of a repeated banner", () => {

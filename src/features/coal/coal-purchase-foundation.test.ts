@@ -18,6 +18,7 @@ const searchChoice = readFileSync(new URL(
   "../office/components/search-choice.tsx",
   import.meta.url,
 ), "utf8");
+const model = readFileSync(new URL("./coal-purchase-model.ts", import.meta.url), "utf8");
 
 test("Coal is structured but reuses supplier obligations and immutable expense payments", () => {
   assert.match(migration, /references public\.expense_records\(id, factory_id\)/);
@@ -64,31 +65,29 @@ test("financial lifecycle blocks generic mutation and allows only unpaid correct
   assert.match(component, /Payment history locks this purchase/);
 });
 
-test("dedicated manager UI includes searchable masters, smart entry, freight opt-in, and statements", () => {
+test("dedicated manager UI includes searchable masters, smart entry, freight opt-in, and recent activity", () => {
   assert.match(dashboard, /<CoalPurchaseOfficeSection factoryId=\{factoryId!\}/);
   assert.match(searchChoice, /role="combobox"/);
   assert.match(component, /Enter any two values/);
   assert.match(component, /Add separate delivery charge/);
-  assert.match(component, /Coal Purchase history and seller statement/);
-  assert.match(component, /Seller Payment History/);
+  assert.match(component, /Recent Coal Purchases/);
+  assert.match(component, /Recent Seller Payments/);
 });
 
-test("Coal history exposes the non-persisted Payment Status filter beside existing filters", () => {
-  assert.match(component, /Payment Status/);
-  assert.match(component, /<option value="all">All<\/option>/);
-  assert.match(component, /<option value="unpaid">Unpaid<\/option>/);
-  assert.match(component, /<option value="partial">Partial<\/option>/);
-  assert.match(component, /<option value="paid">Paid<\/option>/);
-  assert.match(component, /useState<CoalPaymentStatusFilter>\("all"\)/);
+test("Coal purchase and Seller Payment history filtering remains model-owned", () => {
+  assert.match(model, /export type CoalPaymentStatusFilter = "all" \| "unpaid" \| "partial" \| "paid"/);
+  assert.match(model, /export function filterCoalPurchases/);
+  assert.match(model, /export function filterCoalPayments/);
+  assert.match(component, /View all purchases →/);
+  assert.match(component, /onClick=\{openPurchaseArchive\}/);
+  assert.match(component, /onClick=\{openPaymentArchive\}>View all payments →/);
 });
 
-test("Coal history contains only detailed purchases and grouped seller payments", () => {
+test("Coal recent activity keeps grouped seller payment allocations without a combined ledger", () => {
   assert.doesNotMatch(component, /Combined Coal Transactions/);
   assert.doesNotMatch(component, /buildCoalTransactions/);
-  assert.match(component, /Detailed Purchase History/);
-  assert.match(component, /Seller Payment History/);
-  assert.match(component, /filterCoalPayments\(payments, fromDate, toDate, sellerFilter\)/);
-  assert.match(component, /Payment Status does not/);
+  assert.match(component, /Recent Coal Purchases/);
+  assert.match(component, /Recent Seller Payments/);
   assert.match(component, /payment\.allocations\.map/);
 });
 

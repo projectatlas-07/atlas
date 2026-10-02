@@ -55,16 +55,17 @@ test("Pump payment history groups allocation rows into one immutable payment row
   assert.match(migration, /list_vehicle_fuel_batch_payments/);
   assert.match(migration, /count\(allocations\.id\)/);
   assert.match(migration, /group by payments\.id/);
-  assert.match(component, /Each payment appears once/);
+  assert.match(component, /Persisted oldest-first allocations/);
   assert.match(compactDescriptionMigration, /jsonb_agg\(jsonb_build_object/);
   assert.match(component, /payment\.allocations\.map/);
 });
 
 test("UI replaces individual dropdown payment with Pump/range Period Outstanding", () => {
-  assert.match(component, /Settle Pump Dues/);
+  assert.match(component, /Pump summary/);
+  assert.match(component, /Outstanding Fuel Entries/);
   assert.match(component, /Period Outstanding/);
-  assert.match(component, /Save Batch Payment/);
-  assert.doesNotMatch(component, /Outstanding Fuel entry/);
+  assert.match(component, /Save Pump Payment/);
+  assert.doesNotMatch(component, /type="checkbox"|<Checkbox|Pay This Time/);
 });
 
 test("rollback verifier covers deterministic allocations, one Cash Book row, isolation, and atomic failure", () => {

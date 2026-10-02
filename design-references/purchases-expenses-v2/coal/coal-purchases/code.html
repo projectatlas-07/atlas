@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"outline-variant":"#c0c9c1","surface":"#f9f9f7","on-primary-fixed":"#002113","surface-container-highest":"#e2e3e1","on-surface":"#1a1c1b","text-tertiary":"#989894","on-primary":"#ffffff","tertiary-fixed":"#ffdad9","surface-variant":"#e2e3e1","surface-container-low":"#f4f4f2","text-secondary":"#686864","border-strong":"#D5D5D1","border-subtle":"#E5E5E2","on-secondary":"#ffffff","inverse-on-surface":"#f1f1ef","background":"#f9f9f7","on-secondary-fixed-variant":"#404945","on-error":"#ffffff","state-success":"#047857","inverse-primary":"#96d4b2","primary":"#125238","primary-fixed":"#b1f0cd","secondary":"#57605d","on-tertiary-fixed-variant":"#6f3538","tertiary-container":"#8e4e50","on-tertiary-container":"#ffd1d1","tertiary":"#723739","tertiary-fixed-dim":"#ffb3b4","error-container":"#ffdad6","card-surface":"#FFFFFF","surface-container-lowest":"#ffffff","on-primary-fixed-variant":"#105137","on-tertiary":"#ffffff","surface-container":"#eeeeec","secondary-fixed":"#dce5e0","on-secondary-fixed":"#151d1a","secondary-fixed-dim":"#bfc9c4","on-secondary-container":"#5d6663","on-primary-container":"#aae9c6","secondary-container":"#dce5e0","surface-bright":"#f9f9f7","sidebar-surface":"#F2F3F1","surface-dim":"#dadad8","row-hover":"#F1F1EF","surface-tint":"#2d694d","text-primary":"#1F1F1D","on-error-container":"#93000a","surface-container-high":"#e8e8e6","on-surface-variant":"#404943","on-tertiary-fixed":"#390b0f","outline":"#707972","inverse-surface":"#2f3130","on-background":"#1a1c1b","primary-container":"#2f6b4f","primary-fixed-dim":"#96d4b2"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem",full:"9999px"},spacing:{"gutter-sm":"1rem","gutter-lg":"2rem","space-sm":"0.5rem","space-xs":"0.25rem",margin:"2rem","space-xl":"2.5rem","margin-mobile":"1rem","margin-desktop":"3rem","space-md":"0.875rem",gutter:"1.5rem","space-lg":"1.5rem"},fontFamily:{"label-md":["Plus Jakarta Sans"],"headline-xl-mobile":["Plus Jakarta Sans"],"body-sm":["Plus Jakarta Sans"],"body-lg":["Plus Jakarta Sans"],caption:["Plus Jakarta Sans"],"headline-sm":["Plus Jakarta Sans"],"headline-md":["Plus Jakarta Sans"],"label-sm":["Plus Jakarta Sans"],"headline-lg":["Plus Jakarta Sans"],"body-md":["Plus Jakarta Sans"],"headline-xl":["Plus Jakarta Sans"]},fontSize:{"label-md":["14px",{lineHeight:"20px",fontWeight:"500"}],"headline-xl-mobile":["26px",{lineHeight:"34px",letterSpacing:"-0.015em",fontWeight:"600"}],"body-sm":["13px",{lineHeight:"20px",fontWeight:"400"}],"body-lg":["16px",{lineHeight:"26px",fontWeight:"400"}],caption:["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"500"}],"headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],"headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],"label-sm":["12px",{lineHeight:"16px",letterSpacing:"0.01em",fontWeight:"500"}],"headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}],"body-md":["14px",{lineHeight:"22px",fontWeight:"400"}],"headline-xl":["32px",{lineHeight:"40px",letterSpacing:"-0.02em",fontWeight:"600"}]}}}};</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-sidebar-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between select-none"><div class="flex flex-col"><div class="h-16 px-6 flex items-center gap-2"><span class="font-headline-md text-headline-md tracking-tight text-text-primary">Atlas</span><span class="font-caption text-caption uppercase tracking-wider text-text-secondary bg-surface-container px-1.5 py-0.5 rounded">OFFICE</span></div><nav class="flex flex-col gap-1 px-3 mt-2" data-active-classes="bg-primary-container text-on-primary font-label-md"><a class="flex items-center gap-3 px-3 py-2 rounded-lg font-label-md text-label-md text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span><span>Dashboard</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg font-label-md text-label-md text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="production" href="#"><span class="material-symbols-outlined text-[20px]">precision_manufacturing</span><span>Production</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg font-label-md text-label-md text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="workforce" href="#"><span class="material-symbols-outlined text-[20px]">badge</span><span>Workforce</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg font-label-md text-label-md text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="sales" href="#"><span class="material-symbols-outlined text-[20px]">monitoring</span><span>Sales</span></a><a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors bg-primary-container text-on-primary font-label-md" data-path="purchases-and-expenses" href="#"><span class="material-symbols-outlined text-[20px]">receipt_long</span><span>Purchases &amp; Expenses</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg font-label-md text-label-md text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cash-book" href="#"><span class="material-symbols-outlined text-[20px]">account_balance_wallet</span><span>Cash Book</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg font-label-md text-label-md text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="reports" href="#"><span class="material-symbols-outlined text-[20px]">bar_chart</span><span>Reports</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-lg font-label-md text-label-md text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">tune</span><span>Settings</span></a></nav></div><div class="p-3 bg-surface-container-low/50"><div class="flex items-center justify-between px-3 py-2.5 rounded-lg bg-card-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-2.5"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-label-md text-label-md text-on-primary">N</div><div class="flex flex-col"><span class="font-label-sm text-label-sm text-text-primary leading-none">Operator</span><span class="font-caption text-caption text-text-tertiary">Plant 04</span></div></div><a class="text-text-secondary hover:text-error flex items-center justify-center transition-colors" data-path="login" href="#" title="Log out"><span class="material-symbols-outlined text-[18px]">logout</span></a></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-14 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-8"><div class="flex items-center gap-2 font-caption text-caption text-text-secondary tracking-wider uppercase"><span class="hover:text-text-primary transition-colors">Office Workspace</span><span class="text-text-tertiary">&gt;</span><span class="text-text-primary font-label-sm text-label-sm">Purchases &amp; Expenses</span></div><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative w-full pt-14 bg-surface min-h-screen px-8 py-6"><div class="flex flex-col w-full">
+<!-- Top Section: Breadcrumb & Horizontal Category Switcher -->
+<section class="flex flex-col gap-5 mb-8">
+<div class="flex items-center justify-between">
+<nav aria-label="Breadcrumb" class="flex items-center gap-2">
+<span class="font-caption text-caption tracking-wider uppercase text-text-tertiary">Purchases &amp; Expenses</span>
+<span class="font-caption text-caption text-text-tertiary">/</span>
+<span class="font-label-sm text-label-sm text-primary font-semibold tracking-wide uppercase">Coal</span>
+</nav>
+</div>
+<!-- Category Pills -->
+<div class="flex items-center justify-between border-b border-border-subtle pb-4">
+<div class="flex items-center gap-2">
+<a class="px-3.5 py-1.5 rounded-full font-label-md text-label-md bg-primary text-on-primary shadow-sm flex items-center gap-1.5 transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px]">local_fire_department</span>
+<span>Coal</span>
+</a>
+<a class="px-3.5 py-1.5 rounded-full font-label-md text-label-md text-text-secondary hover:text-text-primary hover:bg-surface-container-high transition-colors" href="#">
+          Vehicle Maintenance
+        </a>
+<a class="px-3.5 py-1.5 rounded-full font-label-md text-label-md text-text-secondary hover:text-text-primary hover:bg-surface-container-high transition-colors" href="#">
+          Fuel Book
+        </a>
+<a class="px-3.5 py-1.5 rounded-full font-label-md text-label-md text-text-secondary hover:text-text-primary hover:bg-surface-container-high transition-colors" href="#">
+          Costs &amp; Outgoings
+        </a>
+</div>
+<!-- Quick Ledger Status Indicator -->
+</div>
+<!-- Secondary Contextual Workflow Tabs -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1 p-1 bg-surface-container rounded-lg">
+<a class="px-3 py-1 rounded-md font-label-sm text-label-sm bg-card-surface text-primary shadow-sm font-semibold flex items-center gap-1.5" href="#">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+          Coal Purchases
+        </a>
+<a class="px-3 py-1 rounded-md font-label-sm text-label-sm text-text-secondary hover:text-text-primary transition-colors" href="#">
+          Seller Payments
+        </a>
+</div>
+</div>
+<!-- Title & Helper Block -->
+<div>
+<h1 class="font-headline-lg text-headline-lg text-text-primary tracking-tight">Coal Purchases</h1>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1">Record inbound coal stock deliveries, automatic rate-quantity metrics, and review plant dispatch history.</p>
+</div>
+</section>
+<!-- Main Grid Workspace -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+<!-- Left Column: Primary Entry Canvas (~65% / 7.5 cols) -->
+<div class="xl:col-span-8 flex flex-col gap-6">
+<form class="bg-card-surface border border-border-subtle rounded-xl p-6 sm:p-7 shadow-sm" id="coal-purchase-form">
+<div class="flex items-center justify-between pb-5 mb-5 border-b border-border-subtle"><div><span class="font-headline-sm text-headline-sm text-text-primary">New Coal Purchase</span></div></div>
+<div class="flex flex-col gap-5">
+<!-- Row 1: Seller & Date -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<label class="font-label-sm text-label-sm text-text-primary font-medium" for="seller-select">Seller</label>
+<button class="font-caption text-caption text-primary hover:underline flex items-center gap-0.5 font-semibold" type="button">
+<span class="material-symbols-outlined text-[14px]">add</span> Add Seller
+                </button>
+</div>
+<div class="relative">
+<select class="w-full h-[38px] bg-card-surface border border-border-subtle rounded-lg px-3 pr-8 font-body-sm text-body-sm text-text-primary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary-fixed appearance-none transition-all cursor-pointer" id="seller-select">
+<option selected="" value="jojo">Jojo Mining Syndicate (Singrauli)</option>
+<option value="tiago">Tiago Mineral Resources Ltd</option>
+<option value="eastern">Eastern Coalfields Consignment</option>
+<option value="bhuban">Bhubaneswari OCP</option>
+</select>
+<span class="material-symbols-outlined pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary text-[18px]">expand_more</span>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-text-primary font-medium" for="purchase-date">Purchase Date</label>
+<div class="relative">
+<input class="w-full h-[38px] bg-card-surface border border-border-subtle rounded-lg px-3 font-body-sm text-body-sm text-text-primary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary-fixed transition-all" id="purchase-date" type="date" value="2026-09-30"/>
+</div>
+</div>
+</div>
+<!-- Row 2: Coal Name & Source -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<label class="font-label-sm text-label-sm text-text-primary font-medium" for="coal-name">Coal Name / Grade</label>
+<button class="font-caption text-caption text-primary hover:underline flex items-center gap-0.5 font-semibold" type="button">
+<span class="material-symbols-outlined text-[14px]">add</span> Add Grade
+                </button>
+</div>
+<div class="relative">
+<select class="w-full h-[38px] bg-card-surface border border-border-subtle rounded-lg px-3 pr-8 font-body-sm text-body-sm text-text-primary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary-fixed appearance-none transition-all cursor-pointer" id="coal-name">
+<option selected="" value="jharkhand">Jharkhand Grade G11 Steam Coal</option>
+<option value="raniganj">Raniganj Rom 0-50mm</option>
+<option value="imported">Imported South African RB2 (5500)</option>
+<option value="assam">Assam High GCV Low Ash</option>
+</select>
+<span class="material-symbols-outlined pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary text-[18px]">expand_more</span>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-text-primary font-medium" for="coal-source">Coal Source / Pithead</label>
+<div class="relative">
+<select class="w-full h-[38px] bg-card-surface border border-border-subtle rounded-lg px-3 pr-8 font-body-sm text-body-sm text-text-primary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary-fixed appearance-none transition-all cursor-pointer" id="coal-source">
+<option selected="" value="dhanbad">Dhanbad Central Siding Track 4</option>
+<option value="rajmahal">Rajmahal Open Pit Colliery</option>
+<option value="haldia">Haldia Port Terminal Berth 8</option>
+<option value="kudgi">Kudgi Buffer Depot</option>
+</select>
+<span class="material-symbols-outlined pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary text-[18px]">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Row 3: Challan & Vehicle -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-text-primary font-medium" for="challan-no">
+                Coal Challan No. <span class="font-caption text-caption text-text-tertiary font-normal">(Optional)</span>
+</label>
+<input class="w-full h-[38px] bg-card-surface border border-border-subtle rounded-lg px-3 font-body-sm text-body-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary-fixed transition-all" id="challan-no" placeholder="e.g. 145 or CH-8890" type="text" value="CH-9214"/>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-text-primary font-medium" for="vehicle-no">Vehicle / Rake Number</label>
+<div class="relative">
+<input class="w-full h-[38px] bg-card-surface border border-border-subtle rounded-lg px-3 uppercase font-body-sm text-body-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary-fixed transition-all" id="vehicle-no" placeholder="e.g. WB58 A 1234" type="text" value="WB 58 A 1234"/>
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary text-[18px]">local_shipping</span>
+</div>
+</div>
+</div>
+<!-- Dynamic Calculation Unit -->
+<div class="bg-surface border border-border-subtle rounded-lg p-4 sm:p-5 mt-2">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="font-label-sm text-label-sm font-semibold uppercase tracking-wider text-text-secondary">Enter any two values</span>
+</div>
+<span class="font-caption text-caption text-text-tertiary">Editing a calculated field recalculates the oldest input</span>
+</div>
+<!-- 3 Column Triangulation Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-4">
+<div class="bg-card-surface border border-border-subtle p-3 rounded-lg flex flex-col justify-between">
+<label class="font-caption text-caption uppercase tracking-wider text-text-secondary font-medium" for="calc-quantity">Quantity (MT / Tons)</label>
+<div class="flex items-baseline gap-1.5 mt-2">
+<input class="w-full bg-transparent font-headline-md text-headline-md text-text-primary focus:outline-none focus:text-primary transition-colors text-right" id="calc-quantity" step="0.01" type="number" value="15.00"/>
+<span class="font-label-sm text-label-sm text-text-tertiary font-medium">MT</span>
+</div>
+</div>
+<div class="bg-card-surface border border-border-subtle p-3 rounded-lg flex flex-col justify-between">
+<label class="font-caption text-caption uppercase tracking-wider text-text-secondary font-medium" for="calc-rate">Rate (₹ / MT)</label>
+<div class="flex items-baseline gap-1 mt-2">
+<span class="font-label-sm text-label-sm text-text-tertiary">₹</span>
+<input class="w-full bg-transparent font-headline-md text-headline-md text-text-primary focus:outline-none focus:text-primary transition-colors text-right" id="calc-rate" step="10" type="number" value="8000"/>
+</div>
+</div>
+<div class="bg-card-surface border border-border-subtle p-3 rounded-lg flex flex-col justify-between relative overflow-hidden">
+<div class="absolute top-0 right-0 left-0 h-0.5 bg-primary"></div>
+<div class="flex items-center justify-between">
+<label class="font-caption text-caption uppercase tracking-wider text-primary font-semibold" for="calc-amount">Coal Amount (₹)</label>
+<span class="font-caption text-caption text-primary bg-primary-fixed/40 px-1.5 py-0.2 rounded font-semibold">Computed</span>
+</div>
+<div class="flex items-baseline gap-1 mt-2">
+<span class="font-headline-md text-headline-md text-primary font-semibold">₹</span>
+<input class="w-full bg-transparent font-headline-md text-headline-md text-primary font-semibold focus:outline-none transition-colors text-right" id="calc-amount" step="1" type="number" value="120000"/>
+</div>
+</div>
+</div>
+<!-- Delivery / Freight Section -->
+<div class="pt-3 border-t border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+<label class="flex items-center gap-2 cursor-pointer select-none">
+<input checked="" class="w-4 h-4 accent-primary rounded cursor-pointer" id="freight-toggle" type="checkbox"/>
+<span class="font-label-sm text-label-sm text-text-primary">Add separate delivery charge / freight to this invoice</span>
+</label>
+<div class="flex items-center gap-2 self-end sm:self-auto" id="freight-container">
+<span class="font-caption text-caption text-text-secondary">Freight (₹):</span>
+<div class="relative w-32">
+<span class="absolute left-2.5 top-1/2 -translate-y-1/2 font-body-sm text-body-sm text-text-tertiary">₹</span>
+<input class="w-full h-[32px] pl-6 pr-2 bg-card-surface border border-border-subtle rounded-md font-label-md text-label-md text-text-primary text-right focus:outline-none focus:border-primary" id="calc-freight" step="100" type="number" value="0.00"/>
+</div>
+</div>
+</div>
+<!-- Totals Strip -->
+<div class="mt-4 pt-3 border-t border-border-subtle flex flex-wrap items-center justify-between gap-4 bg-card-surface/70 px-4 py-2.5 rounded-lg">
+<div class="flex items-center gap-5 text-caption">
+<div class="flex flex-col">
+<span class="text-text-tertiary uppercase">Coal Value</span>
+<span class="font-label-sm text-label-sm text-text-primary font-medium" id="preview-coal-amount">₹1,20,000.00</span>
+</div>
+<div class="text-text-tertiary">+</div>
+<div class="flex flex-col">
+<span class="text-text-tertiary uppercase">Freight</span>
+<span class="font-label-sm text-label-sm text-text-primary font-medium" id="preview-freight-amount">₹0.00</span>
+</div>
+</div>
+<div class="flex items-baseline gap-2.5">
+<span class="font-caption text-caption uppercase text-text-secondary font-semibold">Final Purchase Total:</span>
+<span class="font-headline-md text-headline-md text-text-primary font-semibold tracking-tight" id="preview-total-amount">₹1,20,000.00</span>
+</div>
+</div>
+</div>
+<!-- Row 4: Settlement Allocation & Submit Button -->
+<div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center pt-2">
+<div class="sm:col-span-7 flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<label class="font-label-sm text-label-sm text-text-primary font-medium" for="paid-amount">Paid now at dispatch</label>
+<span class="font-caption text-caption text-text-secondary" id="balance-badge">Leaves ₹1,20,000.00 balance due</span>
+</div>
+<div class="relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 font-body-sm text-body-sm text-text-tertiary">₹</span>
+<input class="w-full h-[38px] pl-7 pr-3 bg-card-surface border border-border-subtle rounded-lg font-body-sm text-body-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary-fixed transition-all" id="paid-amount" placeholder="0 = marks as unpaid" type="number" value="0"/>
+</div>
+</div>
+<div class="sm:col-span-5 flex justify-end gap-2.5 pt-4 sm:pt-0">
+<button class="px-4 py-2 h-[40px] rounded-lg font-label-md text-label-md bg-card-surface border border-border-subtle text-text-secondary hover:text-text-primary hover:bg-surface-container transition-colors" type="reset">
+                Clear
+              </button>
+<button class="px-6 py-2 h-[40px] rounded-lg font-label-md text-label-md bg-primary hover:bg-[#255740] text-on-primary font-medium shadow-sm transition-all flex items-center justify-center gap-1.5 active:scale-[0.99]" type="submit">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+<span>Save Coal Purchase</span>
+</button>
+</div>
+</div>
+</div>
+</form>
+<!-- Context Footnote / Quick Ledger Shortcut -->
+</div>
+<!-- Right Column: Recent History Panel (~35% / 4.5 cols) -->
+<div class="xl:col-span-4 flex flex-col">
+<div class="bg-card-surface border border-border-subtle rounded-xl p-5 shadow-sm flex flex-col justify-between min-h-[580px]">
+<div>
+<!-- Header -->
+<div class="flex items-center justify-between pb-3.5 border-b border-border-subtle">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-text-primary">Recent Coal Purchases</h2>
+<span class="font-caption text-caption text-text-secondary">Last 6 saved purchases</span>
+</div>
+</div>
+<!-- History Item Rows -->
+<div class="divide-y divide-border-subtle">
+<!-- Row 1 -->
+<div class="py-3 hover:bg-surface/60 transition-colors group px-1 rounded-md flex items-center justify-between">
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-text-primary font-medium">
+<span>14 Sep 2026</span>
+<span class="text-text-tertiary">·</span>
+<span class="text-text-secondary">Jojo</span>
+</div>
+<div class="font-caption text-caption text-text-tertiary">
+                  Jharkhand Coal · 15.34 MT
+                </div>
+</div>
+<div class="flex items-center gap-3">
+<div class="text-right">
+<div class="font-label-sm text-label-sm font-semibold text-text-primary">₹80,000.00</div>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-[#EAF3EE] text-primary">Paid</span>
+</div>
+<button class="text-text-tertiary group-hover:text-primary transition-colors p-1" title="Open record" type="button">
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="py-3 hover:bg-surface/60 transition-colors group px-1 rounded-md flex items-center justify-between">
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-text-primary font-medium">
+<span>14 Sep 2026</span>
+<span class="text-text-tertiary">·</span>
+<span class="text-text-secondary">Jojo</span>
+</div>
+<div class="font-caption text-caption text-text-tertiary">
+                  Jharkhand Coal · 15.00 MT
+                </div>
+</div>
+<div class="flex items-center gap-3">
+<div class="text-right">
+<div class="font-label-sm text-label-sm font-semibold text-text-primary">₹1,20,000.00</div>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-[#FFF4E5] text-[#B76E00]">Unpaid</span>
+</div>
+<button class="text-text-tertiary group-hover:text-primary transition-colors p-1" title="Open record" type="button">
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Row 3 -->
+<div class="py-3 hover:bg-surface/60 transition-colors group px-1 rounded-md flex items-center justify-between">
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-text-primary font-medium">
+<span>14 Sep 2026</span>
+<span class="text-text-tertiary">·</span>
+<span class="text-text-secondary">Jojo</span>
+</div>
+<div class="font-caption text-caption text-text-tertiary">
+                  Jharkhand Coal · 10.00 MT
+                </div>
+</div>
+<div class="flex items-center gap-3">
+<div class="text-right">
+<div class="font-label-sm text-label-sm font-semibold text-text-primary">₹80,000.00</div>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-[#EAF3EE] text-primary">Paid</span>
+</div>
+<button class="text-text-tertiary group-hover:text-primary transition-colors p-1" title="Open record" type="button">
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Row 4 -->
+<div class="py-3 hover:bg-surface/60 transition-colors group px-1 rounded-md flex items-center justify-between">
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-text-primary font-medium">
+<span>14 Sep 2026</span>
+<span class="text-text-tertiary">·</span>
+<span class="text-text-secondary">Tiago</span>
+</div>
+<div class="font-caption text-caption text-text-tertiary">
+                  Jharkhand Coal · 10.00 MT
+                </div>
+</div>
+<div class="flex items-center gap-3">
+<div class="text-right">
+<div class="font-label-sm text-label-sm font-semibold text-text-primary">₹70,000.00</div>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-[#FFF4E5] text-[#B76E00]">Unpaid</span>
+</div>
+<button class="text-text-tertiary group-hover:text-primary transition-colors p-1" title="Open record" type="button">
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Row 5 -->
+<div class="py-3 hover:bg-surface/60 transition-colors group px-1 rounded-md flex items-center justify-between">
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-text-primary font-medium">
+<span>14 Sep 2026</span>
+<span class="text-text-tertiary">·</span>
+<span class="text-text-secondary">Jojo</span>
+</div>
+<div class="font-caption text-caption text-text-tertiary">
+                  Jharkhand Coal · 10.00 MT
+                </div>
+</div>
+<div class="flex items-center gap-3">
+<div class="text-right">
+<div class="font-label-sm text-label-sm font-semibold text-text-primary">₹82,000.00</div>
+<div class="font-caption text-caption text-text-tertiary leading-none mt-0.5">Freight ₹2,000</div>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-[#EAF3EE] text-primary mt-0.5">Paid</span>
+</div>
+<button class="text-text-tertiary group-hover:text-primary transition-colors p-1" title="Open record" type="button">
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Row 6 -->
+<div class="py-3 hover:bg-surface/60 transition-colors group px-1 rounded-md flex items-center justify-between">
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-text-primary font-medium">
+<span>8 Sep 2026</span>
+<span class="text-text-tertiary">·</span>
+<span class="text-text-secondary">Jojo</span>
+</div>
+<div class="font-caption text-caption text-text-tertiary">
+                  Jharkhand Coal · 5.00 MT
+                </div>
+</div>
+<div class="flex items-center gap-3">
+<div class="text-right">
+<div class="font-label-sm text-label-sm font-semibold text-text-primary">₹40,000.00</div>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-[#EAF3EE] text-primary">Paid</span>
+</div>
+<button class="text-text-tertiary group-hover:text-primary transition-colors p-1" title="Open record" type="button">
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Link -->
+<div class="pt-4 mt-2 border-t border-border-subtle text-center">
+<a class="inline-flex items-center gap-1.5 font-label-sm text-label-sm font-semibold text-primary hover:text-[#255740] transition-colors" href="#"><span>View all purchases</span><span class="material-symbols-outlined text-[16px]">arrow_forward</span></a>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  (function() {
+    const qtyInput = document.getElementById('calc-quantity');
+    const rateInput = document.getElementById('calc-rate');
+    const amountInput = document.getElementById('calc-amount');
+    const freightInput = document.getElementById('calc-freight');
+    const freightToggle = document.getElementById('freight-toggle');
+    const paidInput = document.getElementById('paid-amount');
+
+    const previewCoal = document.getElementById('preview-coal-amount');
+    const previewFreight = document.getElementById('preview-freight-amount');
+    const previewTotal = document.getElementById('preview-total-amount');
+    const balanceBadge = document.getElementById('balance-badge');
+
+    function formatINR(val) {
+      return '₹' + Number(val || 0).toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    function recalculate(source) {
+      let q = parseFloat(qtyInput.value) || 0;
+      let r = parseFloat(rateInput.value) || 0;
+      let a = parseFloat(amountInput.value) || 0;
+      let f = freightToggle.checked ? (parseFloat(freightInput.value) || 0) : 0;
+      let p = parseFloat(paidInput.value) || 0;
+
+      if (source === 'qty' || source === 'rate') {
+        a = q * r;
+        amountInput.value = a.toFixed(2);
+      } else if (source === 'amount') {
+        if (q > 0) {
+          r = a / q;
+          rateInput.value = r.toFixed(2);
+        } else if (r > 0) {
+          q = a / r;
+          qtyInput.value = q.toFixed(2);
+        }
+      }
+
+      const total = a + f;
+      const balance = Math.max(0, total - p);
+
+      previewCoal.textContent = formatINR(a);
+      previewFreight.textContent = formatINR(f);
+      previewTotal.textContent = formatINR(total);
+
+      if (p <= 0) {
+        balanceBadge.textContent = 'Leaves ' + formatINR(total) + ' balance due';
+        balanceBadge.className = 'font-caption text-caption text-text-secondary';
+      } else if (balance === 0) {
+        balanceBadge.textContent = 'Paid in full at dispatch';
+        balanceBadge.className = 'font-caption text-caption text-primary font-semibold';
+      } else {
+        balanceBadge.textContent = 'Leaves ' + formatINR(balance) + ' balance due';
+        balanceBadge.className = 'font-caption text-caption text-[#B76E00] font-semibold';
+      }
+    }
+
+    qtyInput.addEventListener('input', () => recalculate('qty'));
+    rateInput.addEventListener('input', () => recalculate('rate'));
+    amountInput.addEventListener('input', () => recalculate('amount'));
+    freightInput.addEventListener('input', () => recalculate('freight'));
+    paidInput.addEventListener('input', () => recalculate('paid'));
+
+    freightToggle.addEventListener('change', () => {
+      freightInput.disabled = !freightToggle.checked;
+      if (!freightToggle.checked) {
+        freightInput.value = '0.00';
+      }
+      recalculate('freight');
+    });
+
+    // Form submit interaction toast simulation
+    const form = document.getElementById('coal-purchase-form');
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const saveBtn = form.querySelector('button[type="submit"]');
+      const prevHTML = saveBtn.innerHTML;
+      saveBtn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span><span>Saving...</span>';
+      saveBtn.disabled = true;
+
+      setTimeout(() => {
+        saveBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">done</span><span>Saved to Ledger</span>';
+        saveBtn.classList.remove('bg-primary');
+        saveBtn.classList.add('bg-state-success');
+
+        setTimeout(() => {
+          saveBtn.innerHTML = prevHTML;
+          saveBtn.disabled = false;
+          saveBtn.classList.remove('bg-state-success');
+          saveBtn.classList.add('bg-primary');
+        }, 1800);
+      }, 700);
+    });
+
+    recalculate('qty');
+  })();
+</script></main></div></body></html>

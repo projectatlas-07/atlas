@@ -21,10 +21,12 @@ import {
 } from "@/components/ui/table";
 import { SalesRegisterSection } from "@/features/office/components/sales-register-section";
 import { CustomerPaymentsSection } from "@/features/office/components/customer-payments-section";
+import { BrickTypeManagementDrawer } from "@/features/office/components/brick-type-management-drawer";
 import {
   SalesOfficeWorkspace,
   type SalesWorkspaceArea,
 } from "@/features/office/components/sales-office-workspace";
+import { useOfficePageScrollReset } from "@/features/office/components/office-shell";
 import { AllChallansExpandedView } from "@/features/office/components/all-challans-expanded-view";
 import { AllCustomerPaymentsExpandedView } from "@/features/office/components/all-customer-payments-expanded-view";
 import { VehicleDeliveryWageOverview } from "@/features/office/components/vehicle-delivery-wage-overview";
@@ -43,6 +45,7 @@ import {
   calculateChallanTotalPreview,
   calculateFlexibleLineAmountPreview,
   challanFormFromSaved,
+  clearBrickTypeFromUnsavedChallanDraft,
   customerFormFromSaved,
   emptyChallanLine,
   emptyChallanReceivedPaymentForm,
@@ -92,6 +95,7 @@ import {
   getChallanPaymentState,
   listCustomerPayments,
 } from "@/features/sales/services/customer-payment-service";
+import type { BrickType } from "@/features/sales/services/brick-type-service";
 import {
   archiveVehicle,
   findOrCreateVehicle,
@@ -128,7 +132,6 @@ import {
 } from "@/lib/statuses";
 import { ATLAS_UI_STRINGS } from "@/lib/strings";
 
-type SalesBrickType = { id: string; name: string; isActive: boolean };
 type WorkspaceMode = "create" | "detail" | "edit";
 type ChallansWorkspaceView = "main" | "all";
 type CustomerPaymentsWorkspaceView = "main" | "all";
@@ -218,14 +221,16 @@ export function SalesOfficeSection({
   brickTypes,
   isLoadingBrickTypes,
   brickTypesError,
+  onBrickTypesChanged,
   showVehicleWages,
 }: Readonly<{
   activeArea: OfficeAreaId;
   navigationTarget: "new-challan" | null;
   factoryId: string;
-  brickTypes: readonly SalesBrickType[];
+  brickTypes: readonly BrickType[];
   isLoadingBrickTypes: boolean;
   brickTypesError: string;
+  onBrickTypesChanged: () => Promise<void>;
   showVehicleWages: boolean;
 }>) {
   const queryClient = useQueryClient();
@@ -256,6 +261,19 @@ export function SalesOfficeSection({
   const [challansView, setChallansView] = useState<ChallansWorkspaceView>("main");
   const [customerPaymentsView, setCustomerPaymentsView] =
     useState<CustomerPaymentsWorkspaceView>("main");
+  const resetOfficePageScroll = useOfficePageScrollReset();
+
+  function showChallansView(view: ChallansWorkspaceView) {
+    if (view === challansView) return;
+    setChallansView(view);
+    resetOfficePageScroll();
+  }
+
+  function showCustomerPaymentsView(view: CustomerPaymentsWorkspaceView) {
+    if (view === customerPaymentsView) return;
+    setCustomerPaymentsView(view);
+    resetOfficePageScroll();
+  }
 
   useEffect(() => {
     if (activeArea !== "sales" || navigationTarget !== "new-challan") return;
@@ -477,6 +495,7 @@ export function SalesOfficeSection({
             brickTypes={brickTypes}
             isLoadingBrickTypes={isLoadingBrickTypes}
             brickTypesError={brickTypesError}
+            onBrickTypesChanged={onBrickTypesChanged}
             profileComplete={profileComplete}
             isLoadingFactoryProfile={factoryProfileQuery.isLoading}
             onCustomerSaved={cacheSavedCustomer}
@@ -496,6 +515,7 @@ export function SalesOfficeSection({
             brickTypes={brickTypes}
             isLoadingBrickTypes={isLoadingBrickTypes}
             brickTypesError={brickTypesError}
+            onBrickTypesChanged={onBrickTypesChanged}
             profileComplete={profileComplete}
             isLoadingFactoryProfile={factoryProfileQuery.isLoading}
             challan={selectedChallan}
@@ -530,7 +550,7 @@ export function SalesOfficeSection({
                 <h3 id="challan-history-heading" className="text-atlas-lg font-atlas-semibold text-atlas-text">Challan history</h3>
                 <p className="mt-atlas-1 text-atlas-sm text-atlas-text-muted">Operational history, newest first.</p>
               </div>
-              <Button variant="ghost" onClick={() => setChallansView("all")}>View all Challans</Button>
+              <Button variant="ghost" onClick={() => showChallansView("all")}>View all Challans</Button>
             </div>
             <div className="mt-atlas-4">
               <FormField label="Search Challan No.">
@@ -618,10 +638,11 @@ export function SalesOfficeSection({
             ? salesOfficeErrorMessage(challansQuery.error, "Could not load Challans.")
             : ""}
           selectedChallanId={selectedChallanId}
-          onBack={() => setChallansView("main")}
+          onBack={() => showChallansView("main")}
           onOpen={(challanId) => {
             openChallan(challanId);
             setChallansView("main");
+            resetOfficePageScroll();
           }}
           onRetry={() => { void challansQuery.refetch(); }}
         />
@@ -633,14 +654,14 @@ export function SalesOfficeSection({
         factoryId={factoryId}
         customers={customers}
         onPaymentSaved={cacheSavedPayment}
-        onViewAll={() => setCustomerPaymentsView("all")}
+        onViewAll={() => showCustomerPaymentsView("all")}
       />
       </div>
       <div hidden={customerPaymentsView !== "all"}>
         <AllCustomerPaymentsExpandedView
           factoryId={factoryId}
           isActive={salesArea === "customer-payments" && customerPaymentsView === "all"}
-          onBack={() => setCustomerPaymentsView("main")}
+          onBack={() => showCustomerPaymentsView("main")}
         />
       </div>
       </div>
@@ -860,6 +881,7 @@ function ChallanEditor({
   brickTypes,
   isLoadingBrickTypes,
   brickTypesError,
+  onBrickTypesChanged,
   profileComplete,
   isLoadingFactoryProfile,
   challan,
@@ -875,9 +897,10 @@ function ChallanEditor({
   vehicles: readonly Vehicle[];
   vehiclesUnavailable: boolean;
   vehiclesError: Error | null;
-  brickTypes: readonly SalesBrickType[];
+  brickTypes: readonly BrickType[];
   isLoadingBrickTypes: boolean;
   brickTypesError: string;
+  onBrickTypesChanged: () => Promise<void>;
   profileComplete: boolean;
   isLoadingFactoryProfile: boolean;
   challan?: Challan;
@@ -917,6 +940,7 @@ function ChallanEditor({
   const [quickVehicleTracksWage, setQuickVehicleTracksWage] = useState(false);
   const [isCreatingVehicle, setIsCreatingVehicle] = useState(false);
   const [vehicleError, setVehicleError] = useState("");
+  const [isManagingBrickTypes, setIsManagingBrickTypes] = useState(false);
   const challanNumberInputRef = useRef<HTMLInputElement>(null);
   const challanDateInputRef = useRef<HTMLInputElement>(null);
   const vehicleInputRef = useRef<HTMLInputElement>(null);
@@ -1014,6 +1038,12 @@ function ChallanEditor({
       ...current,
       lines: updateChallanLineField(current.lines, key, field, value),
     }));
+    setError("");
+  }
+
+  function handleBrickTypeUnavailable(brickTypeId: string) {
+    if (challan) return;
+    setForm((current) => clearBrickTypeFromUnsavedChallanDraft(current, brickTypeId));
     setError("");
   }
 
@@ -1383,29 +1413,41 @@ function ChallanEditor({
               <h4 className="text-atlas-lg font-atlas-semibold text-atlas-text">Brick items</h4>
               <p className="mt-atlas-1 text-atlas-xs text-atlas-text-muted">{challan ? "Edit Rate or Amount. The last one you edit controls the row." : "Enter Rate to derive Amount, or edit Amount to make it authoritative."}</p>
             </div>
-            <ChallanButton
-              v2
-              variant="secondary"
-              legacyClassName={secondaryButton}
-              type="button"
-              onClick={() => {
-                const key = `new-line-${nextLineNumber.current}`;
-                nextLineNumber.current += 1;
-                setForm((current) => ({ ...current, lines: addChallanLine(current.lines, key) }));
-                setError("");
-                if (!challan) {
-                  focusSoon(() => brickTypeInputRefs.current.get(key) ?? null);
-                }
-              }}
-              disabled={isSaving || form.lines.length >= 100 || !brickTypes.some((brickType) => brickType.isActive)}
-            >
-              Add brick row
-            </ChallanButton>
+            <div className="flex flex-wrap items-center gap-atlas-2">
+              {!challan && <ChallanButton
+                v2
+                variant="secondary"
+                legacyClassName={secondaryButton}
+                type="button"
+                onClick={() => setIsManagingBrickTypes(true)}
+                disabled={isSaving}
+              >
+                Manage brick types
+              </ChallanButton>}
+              <ChallanButton
+                v2
+                variant="secondary"
+                legacyClassName={secondaryButton}
+                type="button"
+                onClick={() => {
+                  const key = `new-line-${nextLineNumber.current}`;
+                  nextLineNumber.current += 1;
+                  setForm((current) => ({ ...current, lines: addChallanLine(current.lines, key) }));
+                  setError("");
+                  if (!challan) {
+                    focusSoon(() => brickTypeInputRefs.current.get(key) ?? null);
+                  }
+                }}
+                disabled={isSaving || form.lines.length >= 100 || !brickTypes.some((brickType) => brickType.isActive)}
+              >
+                Add brick row
+              </ChallanButton>
+            </div>
           </div>
 
           {isLoadingBrickTypes && <div className="mt-atlas-3"><Feedback tone="neutral">Loading brick types...</Feedback></div>}
           {brickTypesError && <div className="mt-atlas-3"><Feedback role="alert" tone="danger">Could not load brick types: {brickTypesError}</Feedback></div>}
-          {!isLoadingBrickTypes && !brickTypesError && !brickTypes.some((brickType) => brickType.isActive) && <div className="mt-atlas-3"><Feedback tone="warning">No active brick type is available. Activate one in Brick Types first.</Feedback></div>}
+          {!isLoadingBrickTypes && !brickTypesError && !brickTypes.some((brickType) => brickType.isActive) && <div className="mt-atlas-3"><Feedback tone="warning">No active brick type is available. Use Manage brick types to add or reactivate one.</Feedback></div>}
           {form.lines.length === 0 && <EmptyState title="No brick items" description="Add a brick row, or use a note or extra charge for a manual Challan." />}
 
           <div className="mt-atlas-4 space-y-atlas-3">
@@ -1570,6 +1612,17 @@ function ChallanEditor({
           </div>
         </div>
       </form>
+      {isManagingBrickTypes && !challan && (
+        <BrickTypeManagementDrawer
+          factoryId={factoryId}
+          brickTypes={brickTypes}
+          isLoading={isLoadingBrickTypes}
+          loadError={brickTypesError}
+          onBrickTypesChanged={onBrickTypesChanged}
+          onBrickTypeUnavailable={handleBrickTypeUnavailable}
+          onClose={() => setIsManagingBrickTypes(false)}
+        />
+      )}
     </section>
   );
 }
@@ -1776,7 +1829,7 @@ function BrickTypeCombobox({
   onSelectionComplete,
 }: Readonly<{
   v2: boolean;
-  brickTypes: readonly SalesBrickType[];
+  brickTypes: readonly BrickType[];
   selectedBrickTypeId: string;
   label: string;
   focusName: string;

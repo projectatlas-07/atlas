@@ -9,6 +9,7 @@ const migration = readFileSync(
 const entryModel = readFileSync(new URL("./production-entry-model.ts", import.meta.url), "utf8");
 const entrySchema = readFileSync(new URL("./schemas/production-record-schema.ts", import.meta.url), "utf8");
 const entryScreen = readFileSync(new URL("./components/production-entry-screen.tsx", import.meta.url), "utf8");
+const entryService = readFileSync(new URL("./services/production-entry-service.ts", import.meta.url), "utf8");
 const office = readFileSync(new URL("../office/components/office-dashboard.tsx", import.meta.url), "utf8");
 const productionWorkspace = readFileSync(new URL("../office/components/production-office-workspace.tsx", import.meta.url), "utf8");
 const productionReader = readFileSync(new URL("../office/services/todays-production-service.ts", import.meta.url), "utf8");
@@ -49,11 +50,11 @@ test("labourer writes remain factory-isolated without a finished Brick Type chec
 });
 
 test("daily Production records and edits only worker, date, and raw quantity", () => {
-  const runtime = `${entryModel}\n${entrySchema}\n${entryScreen}`;
+  const runtime = `${entryModel}\n${entrySchema}\n${entryScreen}\n${entryService}`;
   assert.doesNotMatch(runtime, /brickType|brick_type|assigned_brick_type/i);
   assert.match(entryScreen, /select\("id, factory_id, name"\)/);
   assert.match(entryScreen, /select\("id, labourer_id, quantity"\)/);
-  assert.match(entryScreen, /p_quantity: payload\.quantity/);
+  assert.match(entryService, /p_quantity: payload\.quantity/);
   assert.match(migration, /unique \(factory_id, labourer_id, production_date\)|on conflict \(factory_id, labourer_id, production_date\)/);
   assert.match(migration, /do update set quantity = excluded\.quantity/);
 });
@@ -67,7 +68,8 @@ test("worker creation and V2 presentation contain no Production Brick Type depen
 });
 
 test("Production history reports raw quantity without finished-type lookups or grouping", () => {
-  assert.match(productionWorkspace, /Daily raw brick quantities saved against Production labourers/);
+  assert.match(productionWorkspace, /id="record-production-heading"[\s\S]*Record production/);
+  assert.match(productionWorkspace, /Raw brick quantity for/);
   assert.match(productionWorkspace, /TableHeaderCell numeric>Raw quantity/);
   assert.doesNotMatch(`${productionWorkspace}\n${productionReader}`, /brickType|brick_type|brick type totals|from\("brick_types"\)/i);
 });

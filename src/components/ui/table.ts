@@ -10,16 +10,20 @@ type WithoutClassName<T> = Readonly<Omit<T, "className">>;
 
 export type TableContainerProps = WithoutClassName<
   HTMLAttributes<HTMLDivElement>
->;
+> & Readonly<{
+  bounded?: boolean;
+}>;
 
 /** Provides the shared surface and horizontal overflow for wide tables. */
-export function TableContainer({ children, ...props }: TableContainerProps) {
+export function TableContainer({ children, bounded = false, ...props }: TableContainerProps) {
   return createElement(
     "div",
     {
       ...props,
-      className:
-        "w-full overflow-x-auto rounded-atlas-card border border-atlas-border bg-atlas-surface",
+      className: [
+        "w-full rounded-atlas-card border border-atlas-border bg-atlas-surface",
+        bounded ? "max-h-96 overflow-auto" : "overflow-x-auto",
+      ].join(" "),
     },
     children,
   );

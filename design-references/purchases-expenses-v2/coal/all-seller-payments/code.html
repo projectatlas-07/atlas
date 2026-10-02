@@ -1,0 +1,362 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_dashboard" name="shell-type"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "on-error-container": "#93000a",
+          "secondary-fixed-dim": "#bfc9c4",
+          "primary": "#125238",
+          "text-tertiary": "#989894",
+          "border-subtle": "#E5E5E2",
+          "on-primary-container": "#aae9c6",
+          "surface-container-lowest": "#ffffff",
+          "border-strong": "#D5D5D1",
+          "text-primary": "#1F1F1D",
+          "outline": "#707972",
+          "inverse-primary": "#96d4b2",
+          "inverse-surface": "#2f3130",
+          "on-tertiary-container": "#ffd1d1",
+          "secondary-fixed": "#dce5e0",
+          "error": "#ba1a1a",
+          "surface-tint": "#2d694d",
+          "on-primary-fixed": "#002113",
+          "on-error": "#ffffff",
+          "inverse-on-surface": "#f1f1ef",
+          "tertiary-fixed-dim": "#ffb3b4",
+          "on-secondary-fixed": "#151d1a",
+          "surface-variant": "#e2e3e1",
+          "tertiary": "#723739",
+          "tertiary-fixed": "#ffdad9",
+          "outline-variant": "#c0c9c1",
+          "surface-container-low": "#f4f4f2",
+          "background": "#f9f9f7",
+          "secondary": "#57605d",
+          "surface-container": "#eeeeec",
+          "surface-container-highest": "#e2e3e1",
+          "surface": "#f9f9f7",
+          "state-success": "#047857",
+          "on-secondary-fixed-variant": "#404945",
+          "primary-fixed": "#b1f0cd",
+          "on-surface-variant": "#404943",
+          "primary-fixed-dim": "#96d4b2",
+          "error-container": "#ffdad6",
+          "primary-container": "#2f6b4f",
+          "on-tertiary": "#ffffff",
+          "surface-dim": "#dadad8",
+          "on-primary": "#ffffff",
+          "on-secondary-container": "#5d6663",
+          "row-hover": "#F1F1EF",
+          "on-tertiary-fixed-variant": "#6f3538",
+          "on-background": "#1a1c1b",
+          "on-tertiary-fixed": "#390b0f",
+          "on-primary-fixed-variant": "#105137",
+          "on-surface": "#1a1c1b",
+          "on-secondary": "#ffffff",
+          "surface-container-high": "#e8e8e6",
+          "tertiary-container": "#8e4e50",
+          "card-surface": "#FFFFFF",
+          "sidebar-surface": "#F2F3F1",
+          "surface-bright": "#f9f9f7",
+          "text-secondary": "#686864",
+          "secondary-container": "#dce5e0"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "gutter-lg": "2rem",
+          "gutter-sm": "1rem",
+          "margin-mobile": "1rem",
+          "margin-desktop": "3rem",
+          "space-xs": "0.25rem",
+          "space-xl": "2.5rem",
+          "space-sm": "0.5rem",
+          "gutter": "1.5rem",
+          "margin": "2rem",
+          "space-md": "0.875rem",
+          "space-lg": "1.5rem"
+        },
+        "fontFamily": {
+          "caption": ["Plus Jakarta Sans"],
+          "headline-md": ["Plus Jakarta Sans"],
+          "headline-xl-mobile": ["Plus Jakarta Sans"],
+          "body-md": ["Plus Jakarta Sans"],
+          "body-sm": ["Plus Jakarta Sans"],
+          "label-md": ["Plus Jakarta Sans"],
+          "body-lg": ["Plus Jakarta Sans"],
+          "headline-lg": ["Plus Jakarta Sans"],
+          "label-sm": ["Plus Jakarta Sans"],
+          "headline-sm": ["Plus Jakarta Sans"],
+          "headline-xl": ["Plus Jakarta Sans"]
+        },
+        "fontSize": {
+          "caption": ["11px", {"lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+          "headline-md": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+          "headline-xl-mobile": ["26px", {"lineHeight": "34px", "letterSpacing": "-0.015em", "fontWeight": "600"}],
+          "body-md": ["14px", {"lineHeight": "22px", "fontWeight": "400"}],
+          "body-sm": ["13px", {"lineHeight": "20px", "fontWeight": "400"}],
+          "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+          "body-lg": ["16px", {"lineHeight": "26px", "fontWeight": "400"}],
+          "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "600"}],
+          "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+          "headline-sm": ["16px", {"lineHeight": "24px", "letterSpacing": "-0.005em", "fontWeight": "600"}],
+          "headline-xl": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+        }
+      }
+    }
+  }</script></head><body class="bg-background font-body-md text-body-md text-text-primary antialiased selection:bg-primary-fixed selection:text-on-primary-fixed"><aside class="fixed left-0 top-0 h-full w-64 bg-sidebar-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between select-none"><div class="flex flex-col"><div class="h-16 px-gutter flex items-center gap-space-sm"><div class="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center text-on-primary font-headline-sm text-headline-sm">A</div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-text-primary tracking-tight leading-none font-semibold">Atlas</span><span class="font-caption text-caption text-text-tertiary uppercase tracking-wider mt-space-xs">OFFICE</span></div></div><div class="px-gutter-sm mt-space-sm"><nav class="flex flex-col gap-space-xs" data-active-classes="bg-primary-container text-on-primary font-label-md text-label-md shadow-[0_1px_4px_rgba(0,0,0,0.08)]"><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container hover:text-text-primary transition-colors font-body-md text-body-md" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span>Dashboard</a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container hover:text-text-primary transition-colors font-body-md text-body-md" data-path="production" href="#"><span class="material-symbols-outlined text-[20px]">precision_manufacturing</span>Production</a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container hover:text-text-primary transition-colors font-body-md text-body-md" data-path="workforce" href="#"><span class="material-symbols-outlined text-[20px]">badge</span>Workforce</a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container hover:text-text-primary transition-colors font-body-md text-body-md" data-path="sales" href="#"><span class="material-symbols-outlined text-[20px]">point_of_sale</span>Sales</a><a aria-current="page" class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg transition-colors bg-primary-container text-on-primary font-label-md text-label-md shadow-[0_1px_4px_rgba(0,0,0,0.08)]" data-path="seller-payments" href="#"><span class="material-symbols-outlined text-[20px]">receipt_long</span>Purchases &amp; Expenses</a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container hover:text-text-primary transition-colors font-body-md text-body-md" data-path="cash-book" href="#"><span class="material-symbols-outlined text-[20px]">menu_book</span>Cash Book</a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container hover:text-text-primary transition-colors font-body-md text-body-md" data-path="reports" href="#"><span class="material-symbols-outlined text-[20px]">bar_chart</span>Reports</a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-text-secondary hover:bg-surface-container hover:text-text-primary transition-colors font-body-md text-body-md" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span>Settings</a></nav></div></div><div class="p-space-md m-gutter-sm bg-surface-container rounded-xl flex items-center justify-between shadow-[0_1px_4px_rgba(0,0,0,0.02)]"><div class="flex items-center gap-space-sm min-w-0"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="flex flex-col truncate"><span class="font-label-md text-label-md text-text-primary truncate leading-tight">Operator</span><span class="font-caption text-caption text-text-tertiary truncate leading-none mt-space-xs">Plant 04</span></div></div><button class="text-text-tertiary hover:text-text-primary transition-colors flex items-center justify-center" type="button"><span class="material-symbols-outlined text-[18px] shrink-0">logout</span></button></div></aside><div class="pl-64 flex flex-col min-h-screen"><header class="sticky top-0 bg-surface/95 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.03)] z-40 flex flex-col justify-between px-margin pb-3"><div class="h-16 flex items-center justify-between"><div class="flex items-center gap-space-sm"><span class="font-caption text-caption text-text-tertiary uppercase tracking-wider">Office Workspace</span><span class="material-symbols-outlined text-text-tertiary text-[14px]">chevron_right</span><span class="font-caption text-caption text-primary-container font-semibold uppercase tracking-wider">Purchases &amp; Expenses</span></div><div class="flex items-center gap-gutter-sm"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div><div class="flex items-center justify-between pb-space-xs"><div class="flex flex-col gap-2 pb-space-xs w-full"><nav class="flex items-center gap-gutter"><a class="text-primary-container font-label-md text-label-md border-b-2 border-primary-container pb-space-xs" data-path="coal-purchases" href="#">Coal</a><a class="text-text-secondary hover:text-text-primary transition-colors font-body-sm text-body-sm pb-space-xs" data-path="vehicle-maintenance" href="#">Vehicle Maintenance</a><a class="text-text-secondary hover:text-text-primary transition-colors font-body-sm text-body-sm pb-space-xs" data-path="fuel-book" href="#">Fuel Book</a><a class="text-text-secondary hover:text-text-primary transition-colors font-body-sm text-body-sm pb-space-xs" data-path="costs-and-outgoings" href="#">Costs &amp; Outgoings</a></nav><nav class="flex items-center gap-space-xs p-1 bg-surface-container rounded-lg w-fit mt-1"><a class="px-space-md py-space-xs text-text-secondary hover:text-text-primary transition-colors font-body-sm text-body-sm rounded-md" data-path="coal-purchases" href="#">Coal Purchases</a><a aria-current="page" class="px-space-md py-space-xs transition-colors bg-secondary-container text-on-secondary-container font-label-sm text-label-sm rounded-md inline-flex items-center gap-1.5" data-path="seller-payments" href="#"><span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span><span class="">Seller Payments</span></a></nav></div></div></header><main class="w-full px-margin bg-background relative flex-1 py-gutter-sm"><div class="flex flex-col w-full pb-gutter">
+<!-- Top Navigation & Title Bar -->
+<div class="flex flex-col gap-space-xs mb-space-md">
+<a class="inline-flex items-center gap-space-xs text-text-secondary hover:text-text-primary transition-colors font-body-sm text-body-sm w-fit group" href="#">
+<span class="material-symbols-outlined text-[16px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+<span class="">Back to Seller Payments</span>
+</a>
+<div class="flex items-baseline justify-between mt-space-xs">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-text-primary tracking-tight">All Seller Payments</h1>
+<p class="font-body-sm text-body-sm text-text-secondary mt-0.5">Search and review historical payments made to coal sellers.</p>
+</div>
+</div>
+</div>
+<!-- Filter Bar -->
+<div class="bg-card-surface rounded-xl p-2 mb-space-md flex flex-wrap items-center gap-space-sm shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+<!-- Search Field -->
+<div class="relative flex-1 min-w-[240px]">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-text-tertiary pointer-events-none">search</span>
+<input class="w-full bg-surface-container-lowest rounded-lg pl-9 pr-3 py-2 font-body-sm text-body-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:bg-surface-container-lowest" id="sellerSearchInput" placeholder="Search seller..." type="text">
+</div>
+<!-- Dropdown: Period -->
+<div class="relative">
+<select class="appearance-none bg-surface-container-low hover:bg-surface-container text-text-primary font-body-sm text-body-sm rounded-lg pl-3 pr-8 py-2 cursor-pointer focus:outline-none transition-colors" id="filterPeriod">
+<option value="all">Period: All</option>
+<option value="today">Today</option>
+<option value="yesterday">Yesterday</option>
+<option value="week">This Week</option>
+<option value="month">This Month</option>
+<option value="custom">Custom</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[16px] text-text-secondary pointer-events-none">expand_more</span>
+</div>
+<!-- Dropdown: Seller -->
+<div class="relative">
+<select class="appearance-none bg-surface-container-low hover:bg-surface-container text-text-primary font-body-sm text-body-sm rounded-lg pl-3 pr-8 py-2 cursor-pointer focus:outline-none transition-colors" id="filterSeller">
+<option value="all">All Sellers</option>
+<option value="Jojo">Jojo</option>
+<option value="Tiago">Tiago</option>
+<option value="Dhanbad Minerals">Dhanbad Minerals</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[16px] text-text-secondary pointer-events-none">expand_more</span>
+</div>
+<!-- Dropdown: Payment Mode -->
+<div class="relative">
+<select class="appearance-none bg-surface-container-low hover:bg-surface-container text-text-primary font-body-sm text-body-sm rounded-lg pl-3 pr-8 py-2 cursor-pointer focus:outline-none transition-colors" id="filterMode">
+<option value="all">Payment mode: All modes</option>
+<option value="Bank Transfer">Bank Transfer</option>
+<option value="Cheque">Cheque</option>
+<option value="Cash">Cash</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[16px] text-text-secondary pointer-events-none">expand_more</span>
+</div>
+<!-- Dropdown: Sort -->
+<div class="relative">
+<select class="appearance-none bg-surface-container-low hover:bg-surface-container text-text-primary font-body-sm text-body-sm rounded-lg pl-3 pr-8 py-2 cursor-pointer focus:outline-none transition-colors" id="filterSort">
+<option value="newest">Sort: Newest first</option>
+<option value="oldest">Sort: Oldest first</option>
+<option value="amount-high">Amount: High to Low</option>
+<option value="amount-low">Amount: Low to High</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[16px] text-text-secondary pointer-events-none">expand_more</span>
+</div>
+</div>
+<!-- Historical Payments Table (Fixed Height Container with Sticky Header) -->
+<div class="bg-card-surface rounded-xl overflow-hidden shadow-none flex flex-col">
+<div class="overflow-y-auto w-full">
+<table class="w-full text-left border-collapse">
+<thead class="sticky top-0 bg-surface-container-low z-20">
+<tr>
+<th class="py-3 px-4 font-caption text-caption text-text-secondary uppercase tracking-wider font-medium" scope="col">Date</th>
+<th class="py-3 px-4 font-caption text-caption text-text-secondary uppercase tracking-wider font-medium" scope="col">Seller</th>
+<th class="py-3 px-4 font-caption text-caption text-text-secondary uppercase tracking-wider font-medium text-right" scope="col">Amount</th>
+<th class="py-3 px-4 font-caption text-caption text-text-secondary uppercase tracking-wider font-medium" scope="col">Payment Mode</th>
+<th class="py-3 px-4 font-caption text-caption text-text-secondary uppercase tracking-wider font-medium" scope="col">Allocation</th>
+<th class="py-3 px-4 font-caption text-caption text-text-secondary uppercase tracking-wider font-medium" scope="col">Note</th>
+<th class="py-3 px-4 text-right text-xs font-semibold text-stone-500 uppercase tracking-wider">ACTION</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm" id="paymentTableBody"><!-- Row 1 -->
+<tr class="hover:bg-row-hover transition-colors group" data-mode="Bank Transfer" data-raw-amount="180000" data-seller="Jojo">
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">14 Sep 2026</td>
+<td class="py-3 px-4 font-label-md text-label-md text-text-primary whitespace-nowrap">Jojo</td>
+<td class="py-3 px-4 text-right font-medium text-text-primary tabular-nums whitespace-nowrap">₹1,80,000.00</td>
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">Bank Transfer</td>
+<td class="py-3 px-4 whitespace-nowrap">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-container text-text-secondary font-caption text-caption">2 purchases</span>
+</td>
+<td class="py-3 px-4 text-text-tertiary truncate max-w-xs">—</td>
+<td class="py-3.5 px-4 text-right whitespace-nowrap text-xs font-medium text-emerald-800 hover:text-emerald-900 cursor-pointer">Open payment →</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-row-hover transition-colors group" data-mode="Bank Transfer" data-raw-amount="32000" data-seller="Jojo">
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">14 Sep 2026</td>
+<td class="py-3 px-4 font-label-md text-label-md text-text-primary whitespace-nowrap">Jojo</td>
+<td class="py-3 px-4 text-right font-medium text-text-primary tabular-nums whitespace-nowrap">₹32,000.00</td>
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">Bank Transfer</td>
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">Challan 1 · ₹32,000.00</td>
+<td class="py-3 px-4 text-text-tertiary truncate max-w-xs">—</td>
+<td class="py-3.5 px-4 text-right whitespace-nowrap text-xs font-medium text-emerald-800 hover:text-emerald-900 cursor-pointer">Open payment →</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-row-hover transition-colors group" data-mode="Bank Transfer" data-raw-amount="50000" data-seller="Jojo">
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">14 Sep 2026</td>
+<td class="py-3 px-4 font-label-md text-label-md text-text-primary whitespace-nowrap">Jojo</td>
+<td class="py-3 px-4 text-right font-medium text-text-primary tabular-nums whitespace-nowrap">₹50,000.00</td>
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">Bank Transfer</td>
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">Challan 1 · ₹50,000.00</td>
+<td class="py-3 px-4 text-text-primary truncate max-w-xs">Initial Coal Purchase payment</td>
+<td class="py-3.5 px-4 text-right whitespace-nowrap text-xs font-medium text-emerald-800 hover:text-emerald-900 cursor-pointer">Open payment →</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-row-hover transition-colors group" data-mode="Cheque" data-raw-amount="70000" data-seller="Tiago">
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">10 Sep 2026</td>
+<td class="py-3 px-4 font-label-md text-label-md text-text-primary whitespace-nowrap">Tiago</td>
+<td class="py-3 px-4 text-right font-medium text-text-primary tabular-nums whitespace-nowrap">₹70,000.00</td>
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">Cheque</td>
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">Challan 12 · ₹70,000.00</td>
+<td class="py-3 px-4 text-text-primary truncate max-w-xs">Full clearance against pithead load · Cheque #402198</td>
+<td class="py-3.5 px-4 text-right whitespace-nowrap text-xs font-medium text-emerald-800 hover:text-emerald-900 cursor-pointer">Open payment →</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-row-hover transition-colors group" data-mode="Bank Transfer" data-raw-amount="150000" data-seller="Dhanbad Minerals">
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">05 Sep 2026</td>
+<td class="py-3 px-4 font-label-md text-label-md text-text-primary whitespace-nowrap">Dhanbad Minerals</td>
+<td class="py-3 px-4 text-right font-medium text-text-primary tabular-nums whitespace-nowrap">₹1,50,000.00</td>
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">Bank Transfer</td>
+<td class="py-3 px-4 whitespace-nowrap">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-container text-text-secondary font-caption text-caption">3 purchases</span>
+</td>
+<td class="py-3 px-4 text-text-primary truncate max-w-xs">Advance tranche (RTGS)</td>
+<td class="py-3.5 px-4 text-right whitespace-nowrap text-xs font-medium text-emerald-800 hover:text-emerald-900 cursor-pointer">Open payment →</td>
+</tr>
+<!-- Row 6 -->
+<tr class="hover:bg-row-hover transition-colors group" data-mode="Bank Transfer" data-raw-amount="82000" data-seller="Jojo">
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">01 Sep 2026</td>
+<td class="py-3 px-4 font-label-md text-label-md text-text-primary whitespace-nowrap">Jojo</td>
+<td class="py-3 px-4 text-right font-medium text-text-primary tabular-nums whitespace-nowrap">₹82,000.00</td>
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">Bank Transfer</td>
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">Challan 01 · ₹82,000.00</td>
+<td class="py-3 px-4 text-text-primary truncate max-w-xs">Freight settlement included</td>
+<td class="py-3.5 px-4 text-right whitespace-nowrap text-xs font-medium text-emerald-800 hover:text-emerald-900 cursor-pointer">Open payment →</td>
+</tr>
+<!-- Row 7 -->
+<tr class="hover:bg-row-hover transition-colors group" data-mode="Bank Transfer" data-raw-amount="220000" data-seller="Dhanbad Minerals">
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">28 Aug 2026</td>
+<td class="py-3 px-4 font-label-md text-label-md text-text-primary whitespace-nowrap">Dhanbad Minerals</td>
+<td class="py-3 px-4 text-right font-medium text-text-primary tabular-nums whitespace-nowrap">₹2,20,000.00</td>
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">Bank Transfer</td>
+<td class="py-3 px-4 whitespace-nowrap">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-container text-text-secondary font-caption text-caption">4 purchases</span>
+</td>
+<td class="py-3 px-4 text-text-primary truncate max-w-xs">Monthly consignment clearance</td>
+<td class="py-3.5 px-4 text-right whitespace-nowrap text-xs font-medium text-emerald-800 hover:text-emerald-900 cursor-pointer">Open payment →</td>
+</tr>
+<!-- Row 8 -->
+<tr class="hover:bg-row-hover transition-colors group" data-mode="Cash" data-raw-amount="40000" data-seller="Jojo">
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">24 Aug 2026</td>
+<td class="py-3 px-4 font-label-md text-label-md text-text-primary whitespace-nowrap">Jojo</td>
+<td class="py-3 px-4 text-right font-medium text-text-primary tabular-nums whitespace-nowrap">₹40,000.00</td>
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">Cash</td>
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">Challan 13 · ₹40,000.00</td>
+<td class="py-3 px-4 text-text-primary truncate max-w-xs">Spot cash against weighbridge ticket</td>
+<td class="py-3.5 px-4 text-right whitespace-nowrap text-xs font-medium text-emerald-800 hover:text-emerald-900 cursor-pointer">Open payment →</td>
+</tr>
+<!-- Row 9 -->
+<tr class="hover:bg-row-hover transition-colors group" data-mode="Cheque" data-raw-amount="115000" data-seller="Tiago">
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">18 Aug 2026</td>
+<td class="py-3 px-4 font-label-md text-label-md text-text-primary whitespace-nowrap">Tiago</td>
+<td class="py-3 px-4 text-right font-medium text-text-primary tabular-nums whitespace-nowrap">₹1,15,000.00</td>
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">Cheque</td>
+<td class="py-3 px-4 whitespace-nowrap">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-container text-text-secondary font-caption text-caption">2 purchases</span>
+</td>
+<td class="py-3 px-4 text-text-primary truncate max-w-xs">Part payment · Cheque #398112</td>
+<td class="py-3.5 px-4 text-right whitespace-nowrap text-xs font-medium text-emerald-800 hover:text-emerald-900 cursor-pointer">Open payment →</td>
+</tr>
+<!-- Row 10 -->
+<tr class="hover:bg-row-hover transition-colors group" data-mode="Bank Transfer" data-raw-amount="95000" data-seller="Jojo">
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">12 Aug 2026</td>
+<td class="py-3 px-4 font-label-md text-label-md text-text-primary whitespace-nowrap">Jojo</td>
+<td class="py-3 px-4 text-right font-medium text-text-primary tabular-nums whitespace-nowrap">₹95,000.00</td>
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">Bank Transfer</td>
+<td class="py-3 px-4 text-text-secondary whitespace-nowrap">Challan 09 · ₹95,000.00</td>
+<td class="py-3 px-4 text-text-tertiary truncate max-w-xs">—</td>
+<td class="py-3.5 px-4 text-right whitespace-nowrap text-xs font-medium text-emerald-800 hover:text-emerald-900 cursor-pointer">Open payment →</td>
+</tr></tbody>
+</table>
+</div>
+</div>
+</div>
+<script>
+  (function() {
+    const searchInput = document.getElementById('sellerSearchInput');
+    const sellerFilter = document.getElementById('filterSeller');
+    const modeFilter = document.getElementById('filterMode');
+    const sortFilter = document.getElementById('filterSort');
+    const tableBody = document.getElementById('paymentTableBody');
+
+    function applyFilters() {
+      if (!tableBody) return;
+      const rows = Array.from(tableBody.querySelectorAll('tr'));
+      const query = (searchInput?.value || '').toLowerCase().trim();
+      const selectedSeller = sellerFilter?.value || 'all';
+      const selectedMode = modeFilter?.value || 'all';
+
+      rows.forEach(row => {
+        const seller = row.getAttribute('data-seller') || '';
+        const mode = row.getAttribute('data-mode') || '';
+        const fullText = row.innerText.toLowerCase();
+
+        const matchesQuery = !query || fullText.includes(query);
+        const matchesSeller = selectedSeller === 'all' || seller.toLowerCase() === selectedSeller.toLowerCase();
+        const matchesMode = selectedMode === 'all' || mode.toLowerCase().includes(selectedMode.toLowerCase());
+
+        if (matchesQuery && matchesSeller && matchesMode) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+
+    function applySorting() {
+      if (!tableBody || !sortFilter) return;
+      const rows = Array.from(tableBody.querySelectorAll('tr'));
+      const sortType = sortFilter.value;
+
+      rows.sort((a, b) => {
+        const valA = parseFloat(a.getAttribute('data-raw-amount') || '0');
+        const valB = parseFloat(b.getAttribute('data-raw-amount') || '0');
+
+        if (sortType === 'amount-high') return valB - valA;
+        if (sortType === 'amount-low') return valA - valB;
+        return 0; // Default natural list order
+      });
+
+      rows.forEach(r => tableBody.appendChild(r));
+    }
+
+    searchInput?.addEventListener('input', applyFilters);
+    sellerFilter?.addEventListener('change', applyFilters);
+    modeFilter?.addEventListener('change', applyFilters);
+    sortFilter?.addEventListener('change', () => {
+      applySorting();
+      applyFilters();
+    });
+  })();
+</script></main></div>
+
+
+</body></html>

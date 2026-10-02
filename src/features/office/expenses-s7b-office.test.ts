@@ -16,12 +16,13 @@ const migration = readFileSync(
 );
 
 test("S7B adds one coherent Expenses & Purchases Office workflow and stops before later accounting", () => {
-  assert.match(dashboard, /<ExpensesOfficeSection activeArea=\{activeArea\} factoryId=/);
-  assert.match(component, /Record Purchase/);
-  assert.match(component, /Record Expense/);
-  assert.match(component, /Expense \/ Purchase Register/);
-  assert.match(component, /Record outgoing payment/);
-  assert.match(component, /Outgoing payment history/);
+  assert.match(dashboard, /<ExpensesOfficeSection[\s\S]*activeArea=\{activeArea\}[\s\S]*factoryId=\{factoryId!\}[\s\S]*showCostsOutgoings=/);
+  assert.match(component, /New Cost/);
+  assert.match(component, /<option value="purchase">Purchase<\/option>/);
+  assert.match(component, /<option value="expense">Expense<\/option>/);
+  assert.match(component, /Recent Costs/);
+  assert.match(component, /Payment Details/);
+  assert.match(component, /Recent Outgoing Payments/);
   assert.doesNotMatch(component, /general ledger|chart of accounts|balance sheet|stock valuation|vehicle delivery wage/i);
 });
 
@@ -39,20 +40,12 @@ test("source and Settings supplier forms use only the completed controlled S7A s
   assert.match(component, /Supplier \/ counterparty/);
 });
 
-test("register exposes local date and kind filters plus authoritative totals", () => {
-  for (const label of ["Today", "Yesterday", "This week", "This month", "Custom range"]) {
-    assert.match(component, new RegExp(label));
-  }
-  for (const label of ["All", "Purchases", "Expenses"]) {
-    assert.match(component, new RegExp(`label: "${label}"`));
-  }
-  for (const label of ["Total Purchases", "Total Expenses", "Total Paid", "Total Outstanding"]) {
-    assert.match(component, new RegExp(label));
-  }
+test("recent costs preserves authoritative identity, amount, due, and payment state", () => {
+  assert.match(component, /records\.slice\(0, 10\)/);
   assert.match(component, /counterpartyNameSnapshot/);
-  assert.match(component, /record\.totalPaid/);
   assert.match(component, /record\.outstandingAmount/);
-  assert.match(component, /expensePaymentStateLabel/);
+  assert.match(component, /EXPENSE_PAYMENT_STATUS/);
+  assert.match(component, /EXPENSE_RECORD_STATUS/);
 });
 
 test("record detail preserves snapshots and exposes only backend-eligible correction and void", () => {
@@ -67,10 +60,10 @@ test("record detail preserves snapshots and exposes only backend-eligible correc
 });
 
 test("payment UI is explicit, supports multiple sources, and has duplicate-submit protection", () => {
-  assert.match(component, /Nothing is selected or allocated automatically/);
+  assert.match(component, /Nothing is selected automatically/);
   assert.match(component, /toggleExpensePaymentAllocation/);
-  assert.match(component, /fillExpenseOutstandingAllocation/);
-  assert.match(component, /Pay full due/);
+  assert.match(component, /setExpensePaymentAllocation/);
+  assert.doesNotMatch(component, /Use outstanding/);
   assert.match(component, /Payment amount/);
   assert.match(component, /Allocated/);
   assert.match(component, /Remaining/);
@@ -88,10 +81,10 @@ test("successful payment refreshes source state, history, summary query, and Cas
   assert.match(component, /Cash Book Money Out updates automatically/);
 });
 
-test("payment history renders one immutable event with nested allocations and no mutation controls", () => {
+test("recent payment history renders persisted events with nested allocations and no mutation controls", () => {
   assert.match(component, /payments\.map\(\(payment\)/);
-  assert.match(component, /payment\.allocations\.map/);
-  assert.match(component, />Immutable</);
+  assert.match(component, /payment\.allocations\.slice\(0, 2\)\.map/);
+  assert.match(component, /payment\.allocations\.length/);
   assert.doesNotMatch(component, /Edit Payment|Delete Payment|voidExpensePayment/i);
 });
 

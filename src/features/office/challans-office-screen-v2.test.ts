@@ -86,7 +86,7 @@ test("main Challans screen delegates expansion without changing its compact hist
 test("compact history keeps its expansion action in the heading row", () => {
   const headingIndex = challansScreen.indexOf('id="challan-history-heading"');
   const viewAllIndex = challansScreen.indexOf(
-    '<Button variant="ghost" onClick={() => setChallansView("all")}>View all Challans</Button>',
+    '<Button variant="ghost" onClick={() => showChallansView("all")}>View all Challans</Button>',
   );
   const searchIndex = challansScreen.indexOf('<FormField label="Search Challan No.">');
 

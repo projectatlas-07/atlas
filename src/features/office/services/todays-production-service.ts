@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase/client";
 
 export type TodayProductionRow = {
+  id: string;
   labourerId: string;
   labourerName: string;
   quantity: number;
@@ -9,7 +10,7 @@ export type TodayProductionRow = {
 export async function getTodaysProduction(factoryId: string, productionDate: string): Promise<TodayProductionRow[]> {
   const { data: productionEntries, error: productionError } = await supabase
     .from("production_entries")
-    .select("labourer_id, quantity")
+    .select("id, labourer_id, quantity")
     .eq("factory_id", factoryId)
     .eq("production_date", productionDate);
   if (productionError) throw new Error(productionError.message);
@@ -25,6 +26,7 @@ export async function getTodaysProduction(factoryId: string, productionDate: str
 
   const labourerNamesById = new Map((labourers ?? []).map((labourer) => [labourer.id, labourer.name]));
   return productionEntries.map((entry) => ({
+    id: entry.id,
     labourerId: entry.labourer_id,
     labourerName: labourerNamesById.get(entry.labourer_id) ?? "Unknown labourer",
     quantity: entry.quantity,

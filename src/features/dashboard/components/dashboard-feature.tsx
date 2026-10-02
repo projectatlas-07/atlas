@@ -27,7 +27,7 @@ export function DashboardFeature({ factoryId }: Readonly<DashboardFeatureProps>)
           <p className="mt-atlas-1 text-atlas-sm text-atlas-text-muted">{formatDateOnly(ranges.today.dateTo)}</p>
         </div>
         <nav aria-label="Dashboard shortcuts" className="grid gap-atlas-2 sm:flex">
-          <Link href="/" className={`${SHORTCUT_CLASSES} border-atlas-border-strong bg-atlas-surface text-atlas-text hover:bg-atlas-surface-hover`}>Record Production</Link>
+          <Link href="/office#brick-production" className={`${SHORTCUT_CLASSES} border-atlas-border-strong bg-atlas-surface text-atlas-text hover:bg-atlas-surface-hover`}>Record Production</Link>
           <a href="#new-challan" className={`${SHORTCUT_CLASSES} border-atlas-primary bg-atlas-primary text-atlas-primary-foreground hover:bg-atlas-primary-hover`}>New Challan</a>
         </nav>
       </header>

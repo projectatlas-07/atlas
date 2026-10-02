@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+
+<html lang="en" style=""><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "text-secondary": "#686864",
+          "on-tertiary-container": "#ffd1d1",
+          "on-primary": "#ffffff",
+          "on-tertiary-fixed": "#390b0f",
+          "background": "#f9f9f7",
+          "card-surface": "#FFFFFF",
+          "inverse-on-surface": "#f1f1ef",
+          "tertiary-container": "#8e4e50",
+          "secondary-container": "#dce5e0",
+          "outline-variant": "#c0c9c1",
+          "surface-tint": "#2d694d",
+          "on-surface": "#1a1c1b",
+          "row-hover": "#F1F1EF",
+          "on-background": "#1a1c1b",
+          "on-secondary-container": "#5d6663",
+          "primary-container": "#2f6b4f",
+          "surface-variant": "#e2e3e1",
+          "outline": "#707972",
+          "primary-fixed": "#b1f0cd",
+          "state-success": "#047857",
+          "on-primary-container": "#aae9c6",
+          "tertiary-fixed": "#ffdad9",
+          "on-secondary-fixed-variant": "#404945",
+          "on-secondary": "#ffffff",
+          "on-tertiary": "#ffffff",
+          "sidebar-surface": "#F2F3F1",
+          "on-error": "#ffffff",
+          "on-surface-variant": "#404943",
+          "inverse-primary": "#96d4b2",
+          "error-container": "#ffdad6",
+          "primary-fixed-dim": "#96d4b2",
+          "surface-container-high": "#e8e8e6",
+          "surface-container-low": "#f4f4f2",
+          "surface-dim": "#dadad8",
+          "on-error-container": "#93000a",
+          "surface-container-lowest": "#ffffff",
+          "surface-container-highest": "#e2e3e1",
+          "on-primary-fixed": "#002113",
+          "tertiary-fixed-dim": "#ffb3b4",
+          "error": "#ba1a1a",
+          "border-strong": "#D5D5D1",
+          "text-tertiary": "#989894",
+          "surface": "#f9f9f7",
+          "on-primary-fixed-variant": "#105137",
+          "secondary-fixed": "#dce5e0",
+          "text-primary": "#1F1F1D",
+          "tertiary": "#723739",
+          "inverse-surface": "#2f3130",
+          "secondary": "#57605d",
+          "secondary-fixed-dim": "#bfc9c4",
+          "on-secondary-fixed": "#151d1a",
+          "surface-container": "#eeeeec",
+          "on-tertiary-fixed-variant": "#6f3538",
+          "border-subtle": "#E5E5E2",
+          "primary": "#125238",
+          "surface-bright": "#f9f9f7"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "margin-mobile": "1rem",
+          "gutter-sm": "1rem",
+          "gutter-lg": "2rem",
+          "margin": "2rem",
+          "space-sm": "0.5rem",
+          "gutter": "1.5rem",
+          "margin-desktop": "3rem",
+          "space-xl": "2.5rem",
+          "space-xs": "0.25rem",
+          "space-lg": "1.5rem",
+          "space-md": "0.875rem"
+        },
+        "fontFamily": {
+          "headline-xl-mobile": [
+            "Plus Jakarta Sans"
+          ],
+          "headline-xl": [
+            "Plus Jakarta Sans"
+          ],
+          "caption": [
+            "Plus Jakarta Sans"
+          ],
+          "body-md": [
+            "Plus Jakarta Sans"
+          ],
+          "label-sm": [
+            "Plus Jakarta Sans"
+          ],
+          "headline-lg": [
+            "Plus Jakarta Sans"
+          ],
+          "label-md": [
+            "Plus Jakarta Sans"
+          ],
+          "body-lg": [
+            "Plus Jakarta Sans"
+          ],
+          "body-sm": [
+            "Plus Jakarta Sans"
+          ],
+          "headline-sm": [
+            "Plus Jakarta Sans"
+          ],
+          "headline-md": [
+            "Plus Jakarta Sans"
+          ]
+        },
+        "fontSize": {
+          "headline-xl-mobile": [
+            "26px",
+            {
+              "lineHeight": "34px",
+              "letterSpacing": "-0.015em",
+              "fontWeight": "600"
+            }
+          ],
+          "headline-xl": [
+            "32px",
+            {
+              "lineHeight": "40px",
+              "letterSpacing": "-0.02em",
+              "fontWeight": "600"
+            }
+          ],
+          "caption": [
+            "11px",
+            {
+              "lineHeight": "14px",
+              "letterSpacing": "0.02em",
+              "fontWeight": "500"
+            }
+          ],
+          "body-md": [
+            "14px",
+            {
+              "lineHeight": "22px",
+              "fontWeight": "400"
+            }
+          ],
+          "label-sm": [
+            "12px",
+            {
+              "lineHeight": "16px",
+              "letterSpacing": "0.01em",
+              "fontWeight": "500"
+            }
+          ],
+          "headline-lg": [
+            "24px",
+            {
+              "lineHeight": "32px",
+              "letterSpacing": "-0.015em",
+              "fontWeight": "600"
+            }
+          ],
+          "label-md": [
+            "14px",
+            {
+              "lineHeight": "20px",
+              "fontWeight": "500"
+            }
+          ],
+          "body-lg": [
+            "16px",
+            {
+              "lineHeight": "26px",
+              "fontWeight": "400"
+            }
+          ],
+          "body-sm": [
+            "13px",
+            {
+              "lineHeight": "20px",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-sm": [
+            "16px",
+            {
+              "lineHeight": "24px",
+              "letterSpacing": "-0.005em",
+              "fontWeight": "600"
+            }
+          ],
+          "headline-md": [
+            "20px",
+            {
+              "lineHeight": "28px",
+              "letterSpacing": "-0.01em",
+              "fontWeight": "600"
+            }
+          ]
+        }
+      },
+    },
+  }</script></head><body class="bg-background font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-sidebar-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between"><div class="flex flex-col flex-1 overflow-y-auto"><div class="h-16 flex items-center px-space-lg gap-space-sm"><div class="w-7 h-7 rounded-lg bg-primary-container flex items-center justify-center text-on-primary font-headline-sm text-headline-sm">A</div><div class="flex items-baseline gap-space-xs"><span class="font-headline-sm text-headline-sm text-text-primary tracking-tight">Atlas</span><span class="font-label-sm text-label-sm text-text-secondary uppercase tracking-wider font-semibold">OFFICE</span></div></div><div class="px-space-md py-space-xs"><div class="font-caption text-caption uppercase text-text-tertiary tracking-wider px-space-sm mb-space-xs">Workspace</div><nav class="flex flex-col gap-1" data-active-classes="bg-secondary-container text-primary font-label-md rounded-lg"><a class="flex items-center gap-space-md px-space-md py-2 text-text-secondary hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors font-label-md text-label-md" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span>Dashboard</a><a class="flex items-center gap-space-md px-space-md py-2 text-text-secondary hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors font-label-md text-label-md" data-path="production" href="#"><span class="material-symbols-outlined text-[20px]">precision_manufacturing</span>Production</a><a class="flex items-center gap-space-md px-space-md py-2 text-text-secondary hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors font-label-md text-label-md" data-path="workforce" href="#"><span class="material-symbols-outlined text-[20px]">group</span>Workforce</a><a class="flex items-center gap-space-md px-space-md py-2 text-text-secondary hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors font-label-md text-label-md" data-path="sales-workspace" href="#"><span class="material-symbols-outlined text-[20px]">point_of_sale</span>Sales</a><a class="flex items-center gap-space-md px-space-md py-2 text-text-secondary hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors font-label-md text-label-md" data-path="purchases-and-expenses" href="#"><span class="material-symbols-outlined text-[20px]">receipt_long</span>Purchases &amp; Expenses</a><a class="flex items-center gap-space-md px-space-md py-2 text-text-secondary hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors font-label-md text-label-md" data-path="cash-book" href="#"><span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>Cash Book</a><a class="flex items-center gap-space-md px-space-md py-2 text-text-secondary hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors font-label-md text-label-md" data-path="reports" href="#"><span class="material-symbols-outlined text-[20px]">analytics</span>Reports</a><a class="flex items-center gap-space-md px-space-md py-2 text-text-secondary hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors font-label-md text-label-md" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span>Settings</a></nav></div></div><div class="p-space-md mt-auto"><div class="bg-surface-container-low rounded-lg p-space-sm flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-8 h-8 rounded-full bg-primary-container text-on-primary font-label-md text-label-md flex items-center justify-center font-semibold">N</div><div class="flex flex-col"><span class="font-label-md text-label-md text-text-primary leading-tight">Operator Admin</span><span class="font-caption text-caption text-text-secondary">Atlas Console</span></div></div><a class="p-1.5 rounded-lg text-text-secondary hover:text-error hover:bg-surface-container-high transition-colors flex items-center justify-center" data-path="login" href="#" title="Log out"><span class="material-symbols-outlined text-[18px]">logout</span></a></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-16 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-sm"><span class="font-caption text-caption uppercase text-text-tertiary tracking-wider font-semibold">SALES</span><span class="font-caption text-caption text-text-tertiary">/</span><span class="font-label-sm text-label-sm text-text-primary font-semibold tracking-wide">CHALLANS</span></div><div class="flex items-center gap-space-md"><button aria-label="Help" class="w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">help_outline</span></button><button aria-label="Notifications" class="w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:bg-surface-container-high hover:text-on-surface transition-colors relative"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-2 right-2 w-1.5 h-1.5 bg-state-success rounded-full"></span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-16 bg-background min-h-screen w-full px-space-lg"><div class="flex flex-col w-full relative">
+<!-- Top Sub-Navigation Ribbon (Under header) -->
+<div class="flex items-center justify-between pb-space-md pt-space-xs border-b border-border-subtle mb-space-lg">
+<div class="flex items-center gap-space-md">
+<nav class="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg">
+<a class="px-space-md py-1.5 rounded bg-card-surface shadow-sm font-label-md text-label-md text-text-primary font-semibold flex items-center gap-space-xs" href="#">
+<span class="material-symbols-outlined text-[18px] text-primary">local_shipping</span>
+          Challans
+        </a>
+<a class="px-space-md py-1.5 rounded hover:bg-card-surface/60 text-text-secondary font-label-md text-label-md transition-colors flex items-center gap-space-xs" href="#">
+<span class="material-symbols-outlined text-[18px]">payments</span>
+          Customer Payments
+        </a>
+<a class="px-space-md py-1.5 rounded hover:bg-card-surface/60 text-text-secondary font-label-md text-label-md transition-colors flex items-center gap-space-xs" href="#">
+<span class="material-symbols-outlined text-[18px]">menu_book</span>
+          Sales Register
+        </a>
+</nav>
+</div>
+<div class="flex items-center gap-space-sm text-text-secondary font-caption text-caption">
+<span class="inline-block w-2 h-2 rounded-full bg-state-success"></span>
+      Kiln Site 04 • Ready to dispatch
+    </div>
+</div>
+<!-- Main Underlying Content: Create Challan Form Flow -->
+<div class="grid grid-cols-12 gap-space-lg max-w-6xl pb-space-xl opacity-40 pointer-events-none select-none filter blur-[0.3px] transition-all">
+<!-- Form Header -->
+<div class="col-span-12 flex flex-col gap-0.5">
+<div class="flex items-center gap-space-sm text-text-tertiary font-label-sm text-label-sm">
+<span class="hover:underline cursor-pointer">Challans</span>
+<span>/</span>
+<span class="text-text-primary font-semibold">New Entry</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-text-primary tracking-tight font-semibold">Create Challan</h1>
+<p class="font-body-md text-body-md text-text-secondary">Enter the sale in order, verify the total, then save.</p>
+</div>
+<!-- Header Form Card -->
+<div class="col-span-12 bg-card-surface border border-border-subtle rounded-xl p-space-lg shadow-sm">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-space-lg">
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-text-secondary font-medium">Customer <span class="text-error">*</span></label>
+<div class="h-10 px-space-md bg-surface-container-low border border-border-subtle rounded-lg flex items-center justify-between">
+<span class="font-label-md text-label-md text-text-primary font-medium">Davidoff Brick Trading Co.</span>
+<span class="material-symbols-outlined text-[18px] text-text-tertiary">expand_more</span>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-text-secondary font-medium">Challan No.</label>
+<div class="h-10 px-space-md bg-surface-container-low border border-border-subtle rounded-lg flex items-center">
+<span class="font-body-md text-body-md text-text-primary font-mono">CH-2024-0891</span>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-text-secondary font-medium">Challan Date</label>
+<div class="h-10 px-space-md bg-surface-container-low border border-border-subtle rounded-lg flex items-center justify-between">
+<span class="font-body-md text-body-md text-text-primary">24 Oct 2024</span>
+<span class="material-symbols-outlined text-[18px] text-text-tertiary">calendar_today</span>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-text-secondary font-medium">Vehicle / Reg No.</label>
+<div class="h-10 px-space-md bg-surface-container-low border border-border-subtle rounded-lg flex items-center justify-between">
+<span class="font-body-md text-body-md text-text-primary">TR-04-A-9921</span>
+<span class="material-symbols-outlined text-[18px] text-text-tertiary">local_shipping</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Brick Items Table Card -->
+<div class="col-span-12 bg-card-surface border border-border-subtle rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-text-primary">Brick items</h2>
+<p class="font-caption text-caption text-text-secondary">Enter Rate to derive Amount, or edit Amount to make it authoritative.</p>
+</div>
+<button class="flex items-center gap-1.5 text-primary hover:text-primary-container font-label-md text-label-md font-semibold transition-colors py-1.5 px-space-sm rounded-lg hover:bg-secondary-container/40">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+          Manage brick types
+        </button>
+</div>
+<!-- Preview Table Mock -->
+<div class="border border-border-subtle rounded-lg overflow-hidden">
+<table class="w-full text-left font-body-sm text-body-sm">
+<thead class="bg-surface-container-low border-b border-border-subtle text-text-secondary uppercase font-caption text-caption font-semibold">
+<tr>
+<th class="py-2.5 px-space-md">Brick Type</th>
+<th class="py-2.5 px-space-md text-right">Quantity</th>
+<th class="py-2.5 px-space-md text-right">Unit Rate (₹)</th>
+<th class="py-2.5 px-space-md text-right">Amount (₹)</th>
+<th class="py-2.5 px-space-sm text-center w-12"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-subtle">
+<tr>
+<td class="py-3 px-space-md font-medium text-text-primary">1st Class Modular</td>
+<td class="py-3 px-space-md text-right font-mono">4,000</td>
+<td class="py-3 px-space-md text-right font-mono">11.50</td>
+<td class="py-3 px-space-md text-right font-mono font-semibold">46,000.00</td>
+<td class="py-3 px-space-sm text-center text-text-tertiary">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</td>
+</tr>
+<tr>
+<td class="py-3 px-space-md font-medium text-text-primary">2nd Class Standard</td>
+<td class="py-3 px-space-md text-right font-mono">1,500</td>
+<td class="py-3 px-space-md text-right font-mono">9.20</td>
+<td class="py-3 px-space-md text-right font-mono font-semibold">13,800.00</td>
+<td class="py-3 px-space-sm text-center text-text-tertiary">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Dimmed Backdrop Overlay -->
+<div class="fixed inset-0 top-16 left-64 bg-on-surface/40 backdrop-blur-[1px] z-50 transition-opacity" id="drawerBackdrop"></div>
+<!-- RIGHT-SIDE DRAWER: Manage Brick Types -->
+<aside class="fixed top-16 right-0 bottom-0 w-[450px] bg-card-surface border-l border-border-subtle shadow-[-10px_0_30px_rgba(0,0,0,0.06)] z-50 flex flex-col justify-between overflow-hidden" id="brickDrawer">
+<!-- Drawer Header -->
+<div class="p-space-lg border-b border-border-subtle bg-surface-bright flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[20px] text-primary">category</span>
+<h2 class="font-headline-sm text-headline-sm text-text-primary tracking-tight">Brick Types</h2>
+</div>
+<button aria-label="Close drawer" class="w-8 h-8 rounded-lg flex items-center justify-center text-text-secondary hover:bg-surface-container-high hover:text-text-primary transition-colors" id="closeDrawerBtn">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<p class="font-caption text-caption text-text-secondary">Add and manage the finished brick types available in Challans.</p>
+</div>
+<!-- Drawer Body (Scrollable) -->
+<div class="flex-1 overflow-y-auto p-space-lg flex flex-col gap-space-lg">
+<!-- SECTION 1: ADD BRICK TYPE -->
+<section class="flex flex-col gap-space-sm bg-surface-container-low/60 p-space-md rounded-xl border border-border-subtle/80">
+<span class="font-caption text-caption uppercase text-text-tertiary font-bold tracking-wider">Add brick type</span>
+<div class="flex items-center gap-2">
+<div class="relative flex-1">
+<input class="w-full h-9 px-space-md bg-card-surface border border-border-subtle rounded-lg font-body-sm text-body-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-primary focus:ring-2 focus:ring-secondary-container" id="newBrickInput" placeholder="e.g. 1st Class Modular, Paver Brick..." type="text"/>
+</div>
+<button class="h-9 px-space-md bg-primary-container hover:bg-primary text-on-primary font-label-sm text-label-sm rounded-lg transition-colors font-medium whitespace-nowrap shadow-sm">
+            Add type
+          </button>
+</div>
+</section>
+<!-- SECTION 2: EXISTING BRICK TYPES LIST -->
+<section class="flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="font-caption text-caption uppercase text-text-tertiary font-bold tracking-wider">Configured types</span>
+<span class="font-caption text-caption px-2 py-0.5 rounded-full bg-surface-container text-text-secondary font-semibold">4 total</span>
+</div>
+<span class="font-caption text-caption text-text-tertiary">Finished stock only</span>
+</div>
+<div class="flex flex-col gap-space-sm">
+<!-- Row 1: Active, historically used in Challans -->
+<div class="border border-border-subtle rounded-lg p-space-md bg-card-surface hover:bg-surface-container-low/30 transition-all group flex flex-col gap-2 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="font-headline-sm text-[15px] font-semibold text-text-primary">1st Class</span>
+<span class="font-caption text-caption text-text-tertiary mt-0.5">Used in 42 Challans</span>
+</div>
+<span class="inline-flex items-center gap-1 font-caption text-caption px-2 py-0.5 rounded-full bg-secondary-container text-primary font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+                Active
+              </span>
+</div>
+<div class="flex items-center justify-end gap-space-sm pt-1 border-t border-border-subtle/40">
+<button class="font-label-sm text-label-sm text-text-secondary hover:text-text-primary px-2 py-1 rounded transition-colors font-medium">
+                Edit
+              </button>
+<button class="font-label-sm text-label-sm text-text-secondary hover:text-error px-2 py-1 rounded transition-colors font-medium" id="triggerDeactivateBtn">
+                Deactivate
+              </button>
+</div>
+</div>
+<!-- Row 2: Inline editing state demonstrated -->
+<div class="border-2 border-primary-container rounded-lg p-space-md bg-card-surface shadow-sm flex flex-col gap-2.5 relative">
+<div class="flex items-center justify-between">
+<span class="font-caption text-caption uppercase text-primary font-bold tracking-wider flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">edit</span>
+                Editing name
+              </span>
+<span class="inline-flex items-center gap-1 font-caption text-caption px-2 py-0.5 rounded-full bg-secondary-container text-primary font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+                Active
+              </span>
+</div>
+<div class="flex items-center gap-2">
+<input class="flex-1 h-8 px-2.5 bg-card-surface border border-primary-container rounded font-body-sm text-body-sm font-semibold text-text-primary focus:outline-none ring-1 ring-primary-container" type="text" value="2nd Class"/>
+<button class="h-8 px-3 bg-primary-container hover:bg-primary text-on-primary font-label-sm text-label-sm rounded font-medium transition-colors">
+                Save
+              </button>
+<button class="h-8 px-2.5 text-text-secondary hover:text-text-primary font-label-sm text-label-sm transition-colors">
+                Cancel
+              </button>
+</div>
+<p class="font-caption text-caption text-text-secondary italic">
+              Renaming updates future and historical Challan display.
+            </p>
+</div>
+<!-- Row 3: Inactive / Deactivated item -->
+<div class="border border-border-subtle rounded-lg p-space-md bg-surface-container-low/50 hover:bg-surface-container-low transition-all flex flex-col gap-2 opacity-90">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="font-headline-sm text-[15px] font-semibold text-text-secondary">BATS</span>
+<span class="font-caption text-caption text-text-tertiary mt-0.5">Deactivated · Used in 5 Challans</span>
+</div>
+<span class="inline-flex items-center gap-1 font-caption text-caption px-2 py-0.5 rounded-full bg-surface-container-high text-text-secondary font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-text-tertiary"></span>
+                Inactive
+              </span>
+</div>
+<div class="flex items-center justify-end gap-space-sm pt-1 border-t border-border-subtle/40">
+<button class="font-label-sm text-label-sm text-text-secondary hover:text-text-primary px-2 py-1 rounded transition-colors font-medium">
+                Edit
+              </button>
+<button class="font-label-sm text-label-sm text-primary hover:text-primary-container px-2 py-1 rounded transition-colors font-semibold">
+                Reactivate
+              </button>
+</div>
+</div>
+<!-- Row 4: New un-used brick type with Delete allowed -->
+<div class="border border-border-subtle rounded-lg p-space-md bg-card-surface hover:bg-surface-container-low/30 transition-all flex flex-col gap-2 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="font-headline-sm text-[15px] font-semibold text-text-primary">Hollow Clay Block</span>
+<span class="font-caption text-caption text-text-tertiary mt-0.5">Never used in Challans</span>
+</div>
+<span class="inline-flex items-center gap-1 font-caption text-caption px-2 py-0.5 rounded-full bg-secondary-container text-primary font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+                Active
+              </span>
+</div>
+<div class="flex items-center justify-end gap-space-sm pt-1 border-t border-border-subtle/40">
+<button class="font-label-sm text-label-sm text-text-secondary hover:text-text-primary px-2 py-1 rounded transition-colors font-medium">
+                Edit
+              </button>
+<button class="font-label-sm text-label-sm text-text-secondary hover:text-error px-2 py-1 rounded transition-colors font-medium">
+                Deactivate
+              </button>
+<button class="font-label-sm text-label-sm text-error/80 hover:text-error px-2 py-1 rounded transition-colors font-medium">
+                Delete
+              </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom System Notice / Policy Guard -->
+<div class="bg-surface-container-low p-space-md rounded-lg border border-border-subtle flex items-start gap-space-sm text-text-secondary">
+<span class="material-symbols-outlined text-[18px] text-text-tertiary mt-0.5">info</span>
+<div class="flex flex-col gap-0.5 font-caption text-caption">
+<span class="font-semibold text-text-primary">Delete Rule</span>
+<span>A brick type can only be deleted permanently if it has never been referenced in any saved Challan.</span>
+</div>
+</div>
+</div>
+<!-- Drawer Footer -->
+<div class="p-space-md border-t border-border-subtle bg-surface-container-low flex items-center justify-between">
+<span class="font-caption text-caption text-text-tertiary">Changes sync automatically</span>
+<button class="h-9 px-space-lg bg-card-surface border border-border-subtle hover:bg-surface-container-high text-text-primary font-label-md text-label-md rounded-lg transition-colors font-medium shadow-sm" id="closeDrawerFooterBtn">
+        Close
+      </button>
+</div>
+<!-- AUTHORITATIVE ATLAS CONFIRMATION MODAL (Overlaid Inside Drawer) -->
+<div class="absolute inset-0 bg-on-surface/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-space-md" id="deactivateModal">
+<div class="bg-card-surface border border-border-subtle rounded-xl p-space-lg shadow-xl max-w-sm w-full flex flex-col gap-space-md animate-in fade-in zoom-in-95 duration-150">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-lg bg-error-container text-error flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">warning</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-text-primary font-semibold">Deactivate brick type?</h3>
+</div>
+<button aria-label="Dismiss confirmation" class="text-text-tertiary hover:text-text-primary transition-colors" id="closeModalBtn">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary leading-relaxed">
+          This brick type will no longer be available for new Challans. Existing Challans that already use it will remain unchanged.
+        </p>
+<div class="flex items-center justify-end gap-space-sm pt-2">
+<button class="h-9 px-space-md bg-card-surface border border-border-subtle hover:bg-surface-container-high text-text-primary font-label-sm text-label-sm rounded-lg transition-colors font-medium" id="cancelModalBtn">
+            Cancel
+          </button>
+<button class="h-9 px-space-md bg-text-primary hover:bg-on-surface text-on-primary font-label-sm text-label-sm rounded-lg transition-colors font-medium shadow-sm" id="confirmDeactivateBtn">
+            Deactivate brick type
+          </button>
+</div>
+</div>
+</div>
+</aside>
+<script>
+    // Lightweight interaction controller for drawer toggling and dialog state
+    const deactivateModal = document.getElementById('deactivateModal');
+    const triggerDeactivateBtn = document.getElementById('triggerDeactivateBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const cancelModalBtn = document.getElementById('cancelModalBtn');
+    const confirmDeactivateBtn = document.getElementById('confirmDeactivateBtn');
+
+    const brickDrawer = document.getElementById('brickDrawer');
+    const drawerBackdrop = document.getElementById('drawerBackdrop');
+    const closeDrawerBtn = document.getElementById('closeDrawerBtn');
+    const closeDrawerFooterBtn = document.getElementById('closeDrawerFooterBtn');
+
+    function hideModal() {
+      if (deactivateModal) deactivateModal.classList.add('hidden');
+    }
+
+    function showModal() {
+      if (deactivateModal) deactivateModal.classList.remove('hidden');
+    }
+
+    if (triggerDeactivateBtn) triggerDeactivateBtn.addEventListener('click', showModal);
+    if (closeModalBtn) closeModalBtn.addEventListener('click', hideModal);
+    if (cancelModalBtn) cancelModalBtn.addEventListener('click', hideModal);
+    if (confirmDeactivateBtn) confirmDeactivateBtn.addEventListener('click', hideModal);
+
+    function closeDrawer() {
+      if (brickDrawer) brickDrawer.classList.add('translate-x-full');
+      if (drawerBackdrop) drawerBackdrop.classList.add('hidden');
+    }
+
+    if (closeDrawerBtn) closeDrawerBtn.addEventListener('click', closeDrawer);
+    if (closeDrawerFooterBtn) closeDrawerFooterBtn.addEventListener('click', closeDrawer);
+    if (drawerBackdrop) drawerBackdrop.addEventListener('click', closeDrawer);
+  </script>
+</div></main></div>
+</body></html>

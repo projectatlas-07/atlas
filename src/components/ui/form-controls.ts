@@ -3,6 +3,7 @@ import {
   forwardRef,
   type InputHTMLAttributes,
   type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
 } from "react";
 
 type WithoutClassName<T> = Readonly<Omit<T, "className">>;
@@ -106,6 +107,34 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
     },
     children,
   );
+});
+
+export type TextareaProps = WithoutClassName<
+  TextareaHTMLAttributes<HTMLTextAreaElement>
+>;
+
+/** Native Atlas multiline input styling. Labels and validation rules remain with callers. */
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
+  {
+    disabled = false,
+    readOnly = false,
+    "aria-invalid": ariaInvalid,
+    ...props
+  },
+  ref,
+) {
+  return createElement("textarea", {
+    ...props,
+    ref,
+    disabled,
+    readOnly,
+    "aria-invalid": ariaInvalid,
+    className: [
+      BASE_CONTROL_CLASSES,
+      "resize-y",
+      controlStateClasses({ disabled, readOnly, ariaInvalid }),
+    ].join(" "),
+  });
 });
 
 export type CheckboxProps = WithoutClassName<

@@ -51,13 +51,12 @@ test("existing Office capabilities remain single mounted instances grouped by ar
     "ProductionOfficeWorkspace",
     "WorkforceOfficeWorkspace",
     "SalesOfficeSection",
+    "PurchasesExpensesOfficeWorkspace",
     "CoalPurchaseOfficeSection",
     "VehicleMaintenanceOfficeSection",
     "VehicleFuelOfficeSection",
     "ExpensesOfficeSection",
     "CashBookOfficeSection",
-    "AddBrickTypeForm",
-    "BrickTypeManagement",
     "LabourerManagement",
     "MudGroupManagement",
     "SoilOfficeSection",
@@ -74,12 +73,12 @@ test("existing Office capabilities remain single mounted instances grouped by ar
   }
   assert.match(sales, /<section id="sales"[\s\S]*?hidden=\{activeArea !== "sales"\}/);
   assert.match(sales, /<section id="settings"[\s\S]*?hidden=\{activeArea !== "settings"\}/);
-  assert.match(expenses, /hidden=\{activeArea !== "purchases-expenses"\}/);
+  assert.match(expenses, /hidden=\{activeArea !== "purchases-expenses" \|\| !showCostsOutgoings\}/);
   assert.match(expenses, /hidden=\{activeArea !== "settings"\}/);
 });
 
 test("Office groups operational work, workforce accounts, and master data without duplicate owners", () => {
-  assert.match(office, /id="production"[\s\S]*<ProductionOfficeWorkspace factoryId=\{factoryId!\} \/>/);
+  assert.match(office, /id="production"[\s\S]*<ProductionOfficeWorkspace[\s\S]*factoryId=\{factoryId!\}[\s\S]*labourers=\{labourers\}/);
   assert.match(office, /id="workforce"[\s\S]*WorkforceOfficeWorkspace[\s\S]*LabourerManagement[\s\S]*MudGroupManagement[\s\S]*TransportOfficeSection[\s\S]*SoilOfficeSection[\s\S]*StaffOfficeSection/);
   assert.equal((office.match(/<AddProductionLabourerDrawer\b/g) ?? []).length, 1);
   assert.match(sales, /hidden=\{!showVehicleWages\}[\s\S]*VehicleDeliveryWageOverview/);
@@ -89,10 +88,12 @@ test("Office groups operational work, workforce accounts, and master data withou
   assert.doesNotMatch(purchasesArea, /SupplierManagementSection|onOpenSupplierCreate|onOpenSupplierEdit/);
   assert.equal((office.match(/<SalesOfficeSection\b/g) ?? []).length, 1);
   assert.equal((office.match(/<ExpensesOfficeSection\b/g) ?? []).length, 1);
+  assert.doesNotMatch(office, /AddBrickTypeForm|BrickTypeManagement|Brick type settings/);
 });
 
 test("Office preserves hash deep links and browser back navigation without a second router", () => {
   assert.match(office, /const hash = window\.location\.hash;[\s\S]*resolveOfficeAreaFromHash\(hash\)/);
+  assert.match(office, /resolveOfficePurchasesExpensesAreaFromHash\(hash\) \?\? "coal"/);
   assert.match(office, /window\.addEventListener\("hashchange", syncAreaFromHash\)/);
   assert.match(office, /window\.removeEventListener\("hashchange", syncAreaFromHash\)/);
   assert.doesNotMatch(office, /router\.push\([^)]*#|useSearchParams|URLSearchParams/);

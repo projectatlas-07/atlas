@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+
+<html lang="en" style=""><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link class="" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"secondary-fixed-dim":"#bfc9c4","surface-container-highest":"#e2e3e1","tertiary":"#723739","surface-tint":"#2d694d","tertiary-container":"#8e4e50","primary-fixed":"#b1f0cd","surface-container":"#eeeeec","on-background":"#1a1c1b","text-secondary":"#686864","on-tertiary-container":"#ffd1d1","text-tertiary":"#989894","on-primary":"#ffffff","surface":"#f9f9f7","border-strong":"#D5D5D1","on-primary-container":"#aae9c6","on-surface":"#1a1c1b","surface-dim":"#dadad8","outline":"#707972","on-tertiary-fixed":"#390b0f","on-error":"#ffffff","on-tertiary":"#ffffff","state-success":"#047857","primary-fixed-dim":"#96d4b2","on-primary-fixed":"#002113","surface-container-lowest":"#ffffff","surface-variant":"#e2e3e1","inverse-surface":"#2f3130","secondary":"#57605d","primary":"#125238","surface-container-high":"#e8e8e6","secondary-fixed":"#dce5e0","on-secondary-fixed-variant":"#404945","on-secondary-container":"#5d6663","tertiary-fixed-dim":"#ffb3b4","on-surface-variant":"#404943","surface-bright":"#f9f9f7","secondary-container":"#dce5e0","primary-container":"#2f6b4f","tertiary-fixed":"#ffdad9","card-surface":"#FFFFFF","on-tertiary-fixed-variant":"#6f3538","text-primary":"#1F1F1D","inverse-on-surface":"#f1f1ef","sidebar-surface":"#F2F3F1","error-container":"#ffdad6","on-error-container":"#93000a","row-hover":"#F1F1EF","outline-variant":"#c0c9c1","surface-container-low":"#f4f4f2","background":"#f9f9f7","inverse-primary":"#96d4b2","on-secondary":"#ffffff","border-subtle":"#E5E5E2","on-secondary-fixed":"#151d1a","on-primary-fixed-variant":"#105137","error":"#ba1a1a"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem",full:"9999px"},spacing:{"gutter-sm":"1rem","margin-desktop":"3rem",margin:"2rem","space-md":"0.875rem","space-xl":"2.5rem",gutter:"1.5rem","space-xs":"0.25rem","space-lg":"1.5rem","margin-mobile":"1rem","space-sm":"0.5rem","gutter-lg":"2rem"},fontFamily:{"headline-md":["Plus Jakarta Sans"],"headline-sm":["Plus Jakarta Sans"],"body-md":["Plus Jakarta Sans"],"headline-lg":["Plus Jakarta Sans"],"body-sm":["Plus Jakarta Sans"],caption:["Plus Jakarta Sans"],"label-sm":["Plus Jakarta Sans"],"headline-xl-mobile":["Plus Jakarta Sans"],"headline-xl":["Plus Jakarta Sans"],"label-md":["Plus Jakarta Sans"],"body-lg":["Plus Jakarta Sans"]},fontSize:{"headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],"headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],"body-md":["14px",{lineHeight:"22px",fontWeight:"400"}],"headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}],"body-sm":["13px",{lineHeight:"20px",fontWeight:"400"}],caption:["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"500"}],"label-sm":["12px",{lineHeight:"16px",letterSpacing:"0.01em",fontWeight:"500"}],"headline-xl-mobile":["26px",{lineHeight:"34px",letterSpacing:"-0.015em",fontWeight:"600"}],"headline-xl":["32px",{lineHeight:"40px",letterSpacing:"-0.02em",fontWeight:"600"}],"label-md":["14px",{lineHeight:"20px",fontWeight:"500"}],"body-lg":["16px",{lineHeight:"26px",fontWeight:"400"}]}}}}</script></head><body class="bg-surface font-body-md text-on-surface antialiased" style='font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-feature-settings: "tnum";'><aside class="fixed left-0 top-0 h-screen w-64 bg-sidebar-surface z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col"><div class="h-16 px-gutter flex items-center gap-space-sm"><div class="w-7 h-7 rounded-lg bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">deployed_code</span></div><span class="font-headline-sm text-headline-sm text-text-primary tracking-tight">Atlas OFFICE</span></div><nav class="flex flex-col gap-space-xs px-space-sm pt-space-sm" data-active-classes="bg-secondary-container text-primary font-label-md text-label-md"><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant font-body-md text-body-md hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span><span class="">Dashboard</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant font-body-md text-body-md hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="production" href="#"><span class="material-symbols-outlined text-[20px]">precision_manufacturing</span><span class="">Production</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant font-body-md text-body-md hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="workforce" href="#"><span class="material-symbols-outlined text-[20px]">groups</span><span class="">Workforce</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant font-body-md text-body-md hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="sales" href="#"><span class="material-symbols-outlined text-[20px]">point_of_sale</span><span class="">Sales</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant font-body-md text-body-md hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="purchases-and-expenses" href="#"><span class="material-symbols-outlined text-[20px]">receipt_long</span><span class="">Purchases &amp; Expenses</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant font-body-md text-body-md hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cash-book" href="#"><span class="material-symbols-outlined text-[20px]">menu_book</span><span class="">Cash Book</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant font-body-md text-body-md hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="reports" href="#"><span class="material-symbols-outlined text-[20px]">analytics</span><span class="">Reports</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant font-body-md text-body-md hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="">Settings</span></a></nav></div><div class="p-space-md bg-sidebar-surface flex flex-col gap-space-sm"><a class="flex items-center justify-center gap-space-xs py-space-sm px-space-md rounded-lg text-text-secondary font-label-md text-label-md hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="login" href="#"><span class="material-symbols-outlined text-[18px]">logout</span><span class="">Log out</span></a></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 z-40 bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-28 flex flex-col justify-between px-gutter-lg"><div class="h-16 flex items-center justify-between"><nav class="flex items-center gap-space-sm" data-active-classes="bg-secondary-container text-primary font-label-md text-label-md"><a class="px-space-md py-space-sm rounded-lg text-on-surface-variant font-body-md text-body-md hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="coal-management" href="#">Coal</a><a class="px-space-md py-space-sm rounded-lg text-on-surface-variant font-body-md text-body-md hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="vehicle-maintenance" href="#">Vehicle Maintenance</a><a class="px-space-md py-space-sm rounded-lg text-on-surface-variant font-body-md text-body-md hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="fuel-book" href="#">Fuel Book</a><a class="px-space-md py-space-sm rounded-lg text-on-surface-variant font-body-md text-body-md hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="purchases-and-expenses" href="#">Costs &amp; Outgoings</a></nav><div class="flex items-center gap-space-md"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div><div class="h-12 flex items-center justify-between"><nav class="flex items-center gap-space-xs" data-active-classes="bg-primary-container text-on-primary font-label-md text-label-md"><a class="px-space-md py-1.5 rounded-lg text-on-surface-variant font-body-sm text-body-sm hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="costs-workflow" href="#">Costs</a><a class="px-space-md py-1.5 rounded-lg text-on-surface-variant font-body-sm text-body-sm hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="outgoing-payments" href="#">Outgoing Payments</a></nav></div></div></header><main class="w-full pt-28 px-gutter-lg pb-margin-desktop bg-surface min-h-screen"><div class="flex flex-col w-full">
+<!-- Content Header Area -->
+<div class="flex flex-col gap-1 pb-6">
+<div class="flex items-baseline justify-between pt-1">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-text-primary tracking-tight">Outgoing Payments</h1>
+<p class="font-body-sm text-body-sm text-text-secondary mt-0.5">Record a payment and allocate it to outstanding purchases or expenses.</p>
+</div>
+</div>
+</div>
+<!-- Primary Workspace Grid (Split View Layout) -->
+<div class="grid grid-cols-12 gap-6 items-start">
+<!-- LEFT / MAIN WORKFLOW COLUMN (8 Cols) -->
+<div class="col-span-12 xl:col-span-8 flex flex-col gap-6">
+<!-- A. Payment Details Card -->
+<div class="bg-card-surface rounded-xl p-5 shadow-sm border border-border-subtle">
+<div class="flex items-center justify-between pb-4 mb-4 border-b border-border-subtle">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">payments</span>
+<h2 class="font-headline-sm text-headline-sm text-text-primary">Payment Details</h2>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- Payment Date -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-text-secondary">Payment date</label>
+<div class="relative flex items-center">
+<input class="w-full h-[38px] px-3 bg-surface-container-lowest border border-border-subtle rounded-lg font-body-sm text-body-sm text-text-primary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-colors" id="payment-date-input" type="date" value="2026-09-30"/>
+</div>
+</div>
+<!-- Payment Amount -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-text-secondary">Payment amount</label>
+<div class="relative flex items-center">
+<span class="absolute left-3 font-body-sm text-body-sm text-text-secondary select-none">₹</span>
+<input class="w-full h-[38px] pl-7 pr-3 bg-surface-container-lowest border border-border-subtle rounded-lg font-body-sm text-body-sm text-text-primary font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-colors [font-feature-settings:'tnum']" id="main-payment-input" type="text" value="20,500.00"/>
+</div>
+</div>
+<!-- Payment Mode -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-text-secondary">Payment mode</label>
+<div class="relative">
+<select class="w-full h-[38px] px-3 pr-8 bg-surface-container-lowest border border-border-subtle rounded-lg font-body-sm text-body-sm text-text-primary appearance-none focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-colors cursor-pointer">
+<option selected="" value="bank">Bank Transfer (NEFT)</option>
+<option value="cash">Cash</option>
+<option value="cheque">Cheque</option>
+<option value="upi">UPI</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-2.5 text-text-tertiary pointer-events-none text-[18px]">expand_more</span>
+</div>
+</div>
+<!-- Reference / Note -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-text-secondary">Reference / note (optional)</label>
+<input class="w-full h-[38px] px-3 bg-surface-container-lowest border border-border-subtle rounded-lg font-body-sm text-body-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-colors" placeholder="e.g. Sept cost settlement" type="text" value="Sept cost settlement / vendor clearance"/>
+</div>
+</div>
+</div>
+<!-- B. Outstanding Costs Section -->
+<div class="bg-card-surface rounded-xl shadow-sm border border-border-subtle flex flex-col overflow-hidden">
+<!-- Header & Filter Bar -->
+<div class="p-5 pb-4 border-b border-border-subtle flex flex-col gap-3">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">assignment_turned_in</span>
+<h2 class="font-headline-sm text-headline-sm text-text-primary">Outstanding Costs</h2>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary mt-0.5">Choose the purchases or expenses this payment clears.</p>
+</div>
+</div>
+<!-- Filters Row -->
+<div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+<div class="flex items-center gap-2">
+<!-- Type Filter -->
+<div class="relative">
+<select class="h-8 pl-3 pr-7 bg-surface-container-low border border-border-subtle rounded-md font-label-sm text-label-sm text-text-primary appearance-none cursor-pointer focus:outline-none focus:border-primary">
+<option>Type: All</option>
+<option>Purchases only</option>
+<option>Expenses only</option>
+</select>
+<span class="material-symbols-outlined absolute right-1.5 top-1.5 text-text-tertiary pointer-events-none text-[16px]">expand_more</span>
+</div>
+<!-- Period Filter -->
+<div class="relative">
+<select class="h-8 pl-3 pr-7 bg-surface-container-low border border-border-subtle rounded-md font-label-sm text-label-sm text-text-primary appearance-none cursor-pointer focus:outline-none focus:border-primary">
+<option>Period: All</option>
+<option>This month</option>
+<option>Previous month</option>
+<option>Custom range</option>
+</select>
+<span class="material-symbols-outlined absolute right-1.5 top-1.5 text-text-tertiary pointer-events-none text-[16px]">expand_more</span>
+</div>
+</div>
+<!-- Sort Bar -->
+<div class="flex items-center gap-1.5">
+<span class="font-label-sm text-label-sm text-text-tertiary">Sort:</span>
+<div class="relative">
+<select class="h-8 pl-2.5 pr-7 bg-transparent border border-border-subtle rounded-md font-label-sm text-label-sm text-text-primary appearance-none cursor-pointer focus:outline-none focus:border-primary">
+<option>Newest first</option>
+<option>Highest due first</option>
+<option>Lowest due first</option>
+<option>Oldest first</option>
+</select>
+<span class="material-symbols-outlined absolute right-1.5 top-1.5 text-text-tertiary pointer-events-none text-[16px]">expand_more</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Scrollable Outstanding Rows List -->
+<div class="max-h-[380px] overflow-y-auto divide-y divide-border-subtle bg-card-surface" id="cost-allocation-list">
+<!-- Row 1: Selected (Jojo) -->
+<div class="p-4 hover:bg-row-hover transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3 bg-primary/5 border-l-[3px] border-l-primary" data-due="20000.00" data-row-id="row-1">
+<div class="flex items-start gap-3 min-w-0">
+<input checked="" class="cost-checkbox mt-1 w-4 h-4 rounded text-primary focus:ring-primary/20 accent-primary cursor-pointer" onchange="toggleRowAllocation('row-1')" type="checkbox"/>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2 flex-wrap">
+<span class="px-2 py-0.5 rounded text-[11px] font-medium tracking-wide uppercase bg-secondary-container text-on-secondary-fixed">Purchase</span>
+<span class="font-label-md text-label-md text-text-primary font-semibold">Jojo</span>
+<span class="text-text-tertiary text-body-sm">·</span>
+<span class="font-body-sm text-body-sm text-text-secondary truncate">Jharkhand Coal</span>
+</div>
+<div class="flex items-center gap-3 mt-1 text-text-secondary font-body-sm text-body-sm [font-feature-settings:'tnum']">
+<span>14 Sep 2026</span>
+<span class="text-text-tertiary">·</span>
+<span>Total ₹80,000</span>
+<span class="text-text-tertiary">·</span>
+<span>Paid ₹60,000</span>
+<span class="text-text-tertiary">·</span>
+<span class="font-medium text-text-primary">Due: <strong class="font-semibold text-text-primary">₹20,000.00</strong></span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3 self-end md:self-center pl-7 md:pl-0 shrink-0">
+<div class="relative flex items-center">
+<span class="absolute left-2.5 font-body-sm text-body-sm text-text-secondary select-none">₹</span>
+<input class="w-32 h-[34px] pl-6 pr-2.5 text-right bg-card-surface border border-border-subtle rounded-md font-body-sm text-body-sm text-text-primary font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary [font-feature-settings:'tnum']" id="alloc-input-row-1" oninput="recalculateTotals()" type="text" value="20,000.00"/>
+</div>
+<button class="px-2.5 py-1.5 rounded-md text-primary font-label-sm text-label-sm hover:bg-primary/10 transition-colors whitespace-nowrap" onclick="applyMaxDue('row-1', '20000.00')" type="button">
+                Use outstanding
+              </button>
+</div>
+</div>
+<!-- Row 2: Selected (Bhalu) -->
+<div class="p-4 hover:bg-row-hover transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3 bg-primary/5 border-l-[3px] border-l-primary" data-due="500.00" data-row-id="row-2">
+<div class="flex items-start gap-3 min-w-0">
+<input checked="" class="cost-checkbox mt-1 w-4 h-4 rounded text-primary focus:ring-primary/20 accent-primary cursor-pointer" onchange="toggleRowAllocation('row-2')" type="checkbox"/>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2 flex-wrap">
+<span class="px-2 py-0.5 rounded text-[11px] font-medium tracking-wide uppercase bg-surface-container-high text-on-surface-variant">Expense</span>
+<span class="font-label-md text-label-md text-text-primary font-semibold">Bhalu</span>
+<span class="text-text-tertiary text-body-sm">·</span>
+<span class="font-body-sm text-body-sm text-text-secondary truncate">Self servicing</span>
+</div>
+<div class="flex items-center gap-3 mt-1 text-text-secondary font-body-sm text-body-sm [font-feature-settings:'tnum']">
+<span>14 Sep 2026</span>
+<span class="text-text-tertiary">·</span>
+<span>Total ₹2,500</span>
+<span class="text-text-tertiary">·</span>
+<span>Paid ₹2,000</span>
+<span class="text-text-tertiary">·</span>
+<span class="font-medium text-text-primary">Due: <strong class="font-semibold text-text-primary">₹500.00</strong></span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3 self-end md:self-center pl-7 md:pl-0 shrink-0">
+<div class="relative flex items-center">
+<span class="absolute left-2.5 font-body-sm text-body-sm text-text-secondary select-none">₹</span>
+<input class="w-32 h-[34px] pl-6 pr-2.5 text-right bg-card-surface border border-border-subtle rounded-md font-body-sm text-body-sm text-text-primary font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary [font-feature-settings:'tnum']" id="alloc-input-row-2" oninput="recalculateTotals()" type="text" value="500.00"/>
+</div>
+<button class="px-2.5 py-1.5 rounded-md text-primary font-label-sm text-label-sm hover:bg-primary/10 transition-colors whitespace-nowrap" onclick="applyMaxDue('row-2', '500.00')" type="button">
+                Use outstanding
+              </button>
+</div>
+</div>
+<!-- Row 3: Unselected (HP Pump) -->
+<div class="p-4 hover:bg-row-hover transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3" data-due="1110.00" data-row-id="row-3">
+<div class="flex items-start gap-3 min-w-0">
+<input class="cost-checkbox mt-1 w-4 h-4 rounded text-primary focus:ring-primary/20 accent-primary cursor-pointer" onchange="toggleRowAllocation('row-3')" type="checkbox"/>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2 flex-wrap">
+<span class="px-2 py-0.5 rounded text-[11px] font-medium tracking-wide uppercase bg-surface-container-high text-on-surface-variant">Expense</span>
+<span class="font-label-md text-label-md text-text-primary font-semibold">HP Pump</span>
+<span class="text-text-tertiary text-body-sm">·</span>
+<span class="font-body-sm text-body-sm text-text-secondary truncate">Diesel fuel for VW43A499052B7A</span>
+</div>
+<div class="flex items-center gap-3 mt-1 text-text-secondary font-body-sm text-body-sm [font-feature-settings:'tnum']">
+<span>14 Sep 2026</span>
+<span class="text-text-tertiary">·</span>
+<span>Total ₹4,000</span>
+<span class="text-text-tertiary">·</span>
+<span>Paid ₹2,890</span>
+<span class="text-text-tertiary">·</span>
+<span class="font-medium text-text-primary">Due: <strong class="font-semibold text-text-primary">₹1,110.00</strong></span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3 self-end md:self-center pl-7 md:pl-0 shrink-0">
+<div class="relative flex items-center">
+<span class="absolute left-2.5 font-body-sm text-body-sm text-text-secondary select-none">₹</span>
+<input class="w-32 h-[34px] pl-6 pr-2.5 text-right bg-card-surface border border-border-subtle rounded-md font-body-sm text-body-sm text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary [font-feature-settings:'tnum'] text-text-tertiary" id="alloc-input-row-3" oninput="recalculateTotals()" type="text" value="0.00"/>
+</div>
+<button class="px-2.5 py-1.5 rounded-md text-primary font-label-sm text-label-sm hover:bg-primary/10 transition-colors whitespace-nowrap" onclick="applyMaxDue('row-3', '1110.00')" type="button">
+                Use outstanding
+              </button>
+</div>
+</div>
+<!-- Row 4: Unselected (Test Garage) -->
+<div class="p-4 hover:bg-row-hover transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3" data-due="4000.00" data-row-id="row-4">
+<div class="flex items-start gap-3 min-w-0">
+<input class="cost-checkbox mt-1 w-4 h-4 rounded text-primary focus:ring-primary/20 accent-primary cursor-pointer" onchange="toggleRowAllocation('row-4')" type="checkbox"/>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2 flex-wrap">
+<span class="px-2 py-0.5 rounded text-[11px] font-medium tracking-wide uppercase bg-surface-container-high text-on-surface-variant">Expense</span>
+<span class="font-label-md text-label-md text-text-primary font-semibold">Test Garage</span>
+<span class="text-text-tertiary text-body-sm">·</span>
+<span class="font-body-sm text-body-sm text-text-secondary truncate">Servicing</span>
+</div>
+<div class="flex items-center gap-3 mt-1 text-text-secondary font-body-sm text-body-sm [font-feature-settings:'tnum']">
+<span>14 Sep 2026</span>
+<span class="text-text-tertiary">·</span>
+<span>Total ₹9,000</span>
+<span class="text-text-tertiary">·</span>
+<span>Paid ₹5,000</span>
+<span class="text-text-tertiary">·</span>
+<span class="font-medium text-text-primary">Due: <strong class="font-semibold text-text-primary">₹4,000.00</strong></span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3 self-end md:self-center pl-7 md:pl-0 shrink-0">
+<div class="relative flex items-center">
+<span class="absolute left-2.5 font-body-sm text-body-sm text-text-secondary select-none">₹</span>
+<input class="w-32 h-[34px] pl-6 pr-2.5 text-right bg-card-surface border border-border-subtle rounded-md font-body-sm text-body-sm text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary [font-feature-settings:'tnum'] text-text-tertiary" id="alloc-input-row-4" oninput="recalculateTotals()" type="text" value="0.00"/>
+</div>
+<button class="px-2.5 py-1.5 rounded-md text-primary font-label-sm text-label-sm hover:bg-primary/10 transition-colors whitespace-nowrap" onclick="applyMaxDue('row-4', '4000.00')" type="button">
+                Use outstanding
+              </button>
+</div>
+</div>
+<!-- Row 5: Unselected (Dhanbad Minerals) -->
+<div class="p-4 hover:bg-row-hover transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3" data-due="30000.00" data-row-id="row-5">
+<div class="flex items-start gap-3 min-w-0">
+<input class="cost-checkbox mt-1 w-4 h-4 rounded text-primary focus:ring-primary/20 accent-primary cursor-pointer" onchange="toggleRowAllocation('row-5')" type="checkbox"/>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2 flex-wrap">
+<span class="px-2 py-0.5 rounded text-[11px] font-medium tracking-wide uppercase bg-secondary-container text-on-secondary-fixed">Purchase</span>
+<span class="font-label-md text-label-md text-text-primary font-semibold">Dhanbad Minerals</span>
+<span class="text-text-tertiary text-body-sm">·</span>
+<span class="font-body-sm text-body-sm text-text-secondary truncate">Grade G11 Steam Coal</span>
+</div>
+<div class="flex items-center gap-3 mt-1 text-text-secondary font-body-sm text-body-sm [font-feature-settings:'tnum']">
+<span>10 Sep 2026</span>
+<span class="text-text-tertiary">·</span>
+<span>Total ₹1,50,000</span>
+<span class="text-text-tertiary">·</span>
+<span>Paid ₹1,20,000</span>
+<span class="text-text-tertiary">·</span>
+<span class="font-medium text-text-primary">Due: <strong class="font-semibold text-text-primary">₹30,000.00</strong></span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3 self-end md:self-center pl-7 md:pl-0 shrink-0">
+<div class="relative flex items-center">
+<span class="absolute left-2.5 font-body-sm text-body-sm text-text-secondary select-none">₹</span>
+<input class="w-32 h-[34px] pl-6 pr-2.5 text-right bg-card-surface border border-border-subtle rounded-md font-body-sm text-body-sm text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary [font-feature-settings:'tnum'] text-text-tertiary" id="alloc-input-row-5" oninput="recalculateTotals()" type="text" value="0.00"/>
+</div>
+<button class="px-2.5 py-1.5 rounded-md text-primary font-label-sm text-label-sm hover:bg-primary/10 transition-colors whitespace-nowrap" onclick="applyMaxDue('row-5', '30000.00')" type="button">
+                Use outstanding
+              </button>
+</div>
+</div>
+</div>
+<!-- C. Pinned Reconciliation Footer -->
+<div class="p-4 sm:p-5 bg-surface-container-low border-t border-border-subtle flex flex-col md:flex-row md:items-center justify-between gap-4">
+<!-- Summary Metrics -->
+<div class="flex items-center gap-6 sm:gap-8 flex-wrap [font-feature-settings:'tnum']">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-text-primary" id="metric-payment">₹20,500.00</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-text-primary" id="metric-allocated">₹20,500.00</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-state-success text-[15px]" id="remaining-check">check_circle</span>
+</div>
+<span class="font-headline-sm text-headline-sm text-state-success font-semibold" id="metric-remaining">₹0.00</span>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex items-center gap-3 justify-end">
+<button class="h-[38px] px-4 rounded-lg bg-card-surface border border-border-subtle font-label-md text-label-md text-text-primary hover:bg-row-hover hover:border-border-strong transition-colors" onclick="resetAllocations()" type="button">
+              Reset
+            </button>
+<button class="h-[38px] px-6 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container active:bg-[#214C38] transition-colors flex items-center gap-2 shadow-sm" id="save-payment-btn" onclick="handleSavePayment()" type="button">
+<span class="material-symbols-outlined text-[18px]">done</span>
+<span>Save Payment</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT / SECONDARY COLUMN: Recent Outgoing Payments (4 Cols) -->
+<div class="col-span-12 xl:col-span-4 flex flex-col">
+<div class="bg-card-surface rounded-xl shadow-sm border border-border-subtle flex flex-col h-[680px]">
+<!-- Header -->
+<div class="p-4 px-5 border-b border-border-subtle flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-text-secondary text-[20px]">history</span>
+<h2 class="font-headline-sm text-headline-sm text-text-primary">Recent Outgoing Payments</h2>
+</div>
+<span class="w-2 h-2 rounded-full bg-border-strong"></span>
+</div>
+<!-- Scrollable Payment Entries List -->
+<div class="flex-1 overflow-y-auto divide-y divide-border-subtle"><!-- Payment Item 1 -->
+<div class="p-4 hover:bg-row-hover transition-colors group">
+<div class="flex items-start justify-between">
+<div>
+<div class="font-headline-sm text-headline-sm text-text-primary [font-feature-settings:'tnum'] font-semibold">
+                  ₹20,500.00
+                </div>
+<div class="font-body-sm text-body-sm text-text-secondary mt-0.5">
+                  30 Sep 2026 · Bank Transfer
+                </div>
+</div>
+<a class="inline-flex items-center gap-0.5 text-primary font-label-sm text-label-sm hover:underline group-hover:translate-x-0.5 transition-transform" href="#">
+                Open payment <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+</a>
+</div>
+<div class="mt-2.5 flex items-center gap-1.5 text-text-secondary font-label-sm text-label-sm">
+<span>2 costs allocated</span>
+</div>
+</div>
+<!-- Payment Item 2 -->
+<div class="p-4 hover:bg-row-hover transition-colors group">
+<div class="flex items-start justify-between">
+<div>
+<div class="font-headline-sm text-headline-sm text-text-primary [font-feature-settings:'tnum'] font-semibold">
+                  ₹4,000.00
+                </div>
+<div class="font-body-sm text-body-sm text-text-secondary mt-0.5">
+                  14 Sep 2026 · Cash
+                </div>
+</div>
+<a class="inline-flex items-center gap-0.5 text-primary font-label-sm text-label-sm hover:underline group-hover:translate-x-0.5 transition-transform" href="#">
+                Open payment <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+</a>
+</div>
+<div class="mt-2.5 flex items-center gap-1.5 text-text-secondary font-label-sm text-label-sm">
+<span>1 cost allocated</span>
+</div>
+</div>
+<!-- Payment Item 3 -->
+<div class="p-4 hover:bg-row-hover transition-colors group">
+<div class="flex items-start justify-between">
+<div>
+<div class="font-headline-sm text-headline-sm text-text-primary [font-feature-settings:'tnum'] font-semibold">
+                  ₹2,000.00
+                </div>
+<div class="font-body-sm text-body-sm text-text-secondary mt-0.5">
+                  14 Sep 2026 · Cash
+                </div>
+</div>
+<a class="inline-flex items-center gap-0.5 text-primary font-label-sm text-label-sm hover:underline group-hover:translate-x-0.5 transition-transform" href="#">
+                Open payment <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+</a>
+</div>
+<div class="mt-2.5 flex items-center gap-1.5 text-text-secondary font-label-sm text-label-sm">
+<span>1 cost allocated</span>
+</div>
+</div>
+<!-- Payment Item 4 -->
+<div class="p-4 hover:bg-row-hover transition-colors group">
+<div class="flex items-start justify-between">
+<div>
+<div class="font-headline-sm text-headline-sm text-text-primary [font-feature-settings:'tnum'] font-semibold">
+                  ₹9,000.00
+                </div>
+<div class="font-body-sm text-body-sm text-text-secondary mt-0.5">
+                  14 Sep 2026 · Bank Transfer
+                </div>
+</div>
+<a class="inline-flex items-center gap-0.5 text-primary font-label-sm text-label-sm hover:underline group-hover:translate-x-0.5 transition-transform" href="#">
+                Open payment <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+</a>
+</div>
+<div class="mt-2.5 flex items-center gap-1.5 text-text-secondary font-label-sm text-label-sm">
+<span>2 costs allocated</span>
+</div>
+</div>
+<!-- Payment Item 5 -->
+<div class="p-4 hover:bg-row-hover transition-colors group">
+<div class="flex items-start justify-between">
+<div>
+<div class="font-headline-sm text-headline-sm text-text-primary [font-feature-settings:'tnum'] font-semibold">
+                  ₹10,000.00
+                </div>
+<div class="font-body-sm text-body-sm text-text-secondary mt-0.5">
+                  14 Sep 2026 · Cheque
+                </div>
+</div>
+<a class="inline-flex items-center gap-0.5 text-primary font-label-sm text-label-sm hover:underline group-hover:translate-x-0.5 transition-transform" href="#">
+                Open payment <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+</a>
+</div>
+<div class="mt-2.5 flex items-center gap-1.5 text-text-secondary font-label-sm text-label-sm">
+<span>2 costs allocated</span>
+</div>
+</div>
+<!-- Payment Item 6 -->
+<div class="p-4 hover:bg-row-hover transition-colors group">
+<div class="flex items-start justify-between">
+<div>
+<div class="font-headline-sm text-headline-sm text-text-primary [font-feature-settings:'tnum'] font-semibold">
+                  ₹1,012.25
+                </div>
+<div class="font-body-sm text-body-sm text-text-secondary mt-0.5">
+                  10 Sep 2026 · UPI
+                </div>
+</div>
+<a class="inline-flex items-center gap-0.5 text-primary font-label-sm text-label-sm hover:underline group-hover:translate-x-0.5 transition-transform" href="#">
+                Open payment <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+</a>
+</div>
+<div class="mt-2.5 flex items-center gap-1.5 text-text-secondary font-label-sm text-label-sm">
+<span>1 cost allocated</span>
+</div>
+</div></div>
+<!-- Pinned Bottom Link -->
+<div class="p-3.5 px-5 bg-surface-container-low border-t border-border-subtle flex items-center justify-between">
+<a class="w-full text-center text-primary font-label-sm text-label-sm hover:underline font-medium flex items-center justify-center gap-1" href="#">
+<span>View all payments</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  function parseAmount(val) {
+    if (!val) return 0;
+    const clean = String(val).replace(/,/g, '').trim();
+    const num = parseFloat(clean);
+    return isNaN(num) ? 0 : num;
+  }
+
+  function formatCurrency(val) {
+    return '₹' + Number(val).toLocaleString('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  function recalculateTotals() {
+    const mainPaymentInput = document.getElementById('main-payment-input');
+    const paymentVal = parseAmount(mainPaymentInput ? mainPaymentInput.value : 0);
+
+    let allocatedTotal = 0;
+    let allocatedCount = 0;
+
+    const rows = document.querySelectorAll('#cost-allocation-list > [data-row-id]');
+    rows.forEach(row => {
+      const rowId = row.getAttribute('data-row-id');
+      const input = document.getElementById('alloc-input-' + rowId);
+      const checkbox = row.querySelector('.cost-checkbox');
+      const allocVal = parseAmount(input ? input.value : 0);
+
+      if (allocVal > 0) {
+        allocatedTotal += allocVal;
+        allocatedCount++;
+        if (checkbox) checkbox.checked = true;
+        row.classList.add('bg-primary/5', 'border-l-[3px]', 'border-l-primary');
+        if (input) input.classList.remove('text-text-tertiary');
+      } else {
+        if (checkbox && !checkbox.checked) {
+          row.classList.remove('bg-primary/5', 'border-l-[3px]', 'border-l-primary');
+        }
+      }
+    });
+
+    const remaining = paymentVal - allocatedTotal;
+
+    const metricPayment = document.getElementById('metric-payment');
+    const metricAllocated = document.getElementById('metric-allocated');
+    const metricRemaining = document.getElementById('metric-remaining');
+    const remainingCheck = document.getElementById('remaining-check');
+    const badge = document.getElementById('allocated-count-badge');
+
+    if (metricPayment) metricPayment.innerText = formatCurrency(paymentVal);
+    if (metricAllocated) metricAllocated.innerText = formatCurrency(allocatedTotal);
+    if (metricRemaining) metricRemaining.innerText = formatCurrency(Math.max(0, remaining));
+
+    if (badge) {
+      badge.innerText = `${allocatedCount} cost${allocatedCount === 1 ? '' : 's'} allocated`;
+    }
+
+    if (Math.abs(remaining) < 0.01) {
+      if (metricRemaining) {
+        metricRemaining.className = 'font-headline-sm text-headline-sm text-state-success font-semibold';
+      }
+      if (remainingCheck) remainingCheck.classList.remove('hidden');
+    } else if (remaining < 0) {
+      if (metricRemaining) {
+        metricRemaining.innerText = '-' + formatCurrency(Math.abs(remaining));
+        metricRemaining.className = 'font-headline-sm text-headline-sm text-error font-semibold';
+      }
+      if (remainingCheck) remainingCheck.classList.add('hidden');
+    } else {
+      if (metricRemaining) {
+        metricRemaining.className = 'font-headline-sm text-headline-sm text-text-primary font-semibold';
+      }
+      if (remainingCheck) remainingCheck.classList.add('hidden');
+    }
+  }
+
+  function toggleRowAllocation(rowId) {
+    const row = document.querySelector(`[data-row-id="${rowId}"]`);
+    if (!row) return;
+    const checkbox = row.querySelector('.cost-checkbox');
+    const input = document.getElementById('alloc-input-' + rowId);
+    const dueAmount = parseFloat(row.getAttribute('data-due') || '0');
+
+    if (checkbox.checked) {
+      // Calculate how much remaining payment we can allocate
+      const mainPaymentInput = document.getElementById('main-payment-input');
+      const paymentVal = parseAmount(mainPaymentInput ? mainPaymentInput.value : 0);
+
+      let otherAllocated = 0;
+      const allRows = document.querySelectorAll('#cost-allocation-list > [data-row-id]');
+      allRows.forEach(r => {
+        const id = r.getAttribute('data-row-id');
+        if (id !== rowId) {
+          const inp = document.getElementById('alloc-input-' + id);
+          otherAllocated += parseAmount(inp ? inp.value : 0);
+        }
+      });
+
+      const remainingAvailable = Math.max(0, paymentVal - otherAllocated);
+      const allocatedForThis = Math.min(dueAmount, remainingAvailable > 0 ? remainingAvailable : dueAmount);
+
+      if (input) {
+        input.value = allocatedForThis.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        input.classList.remove('text-text-tertiary');
+      }
+      row.classList.add('bg-primary/5', 'border-l-[3px]', 'border-l-primary');
+    } else {
+      if (input) {
+        input.value = '0.00';
+        input.classList.add('text-text-tertiary');
+      }
+      row.classList.remove('bg-primary/5', 'border-l-[3px]', 'border-l-primary');
+    }
+    recalculateTotals();
+  }
+
+  function applyMaxDue(rowId, maxDueVal) {
+    const row = document.querySelector(`[data-row-id="${rowId}"]`);
+    const input = document.getElementById('alloc-input-' + rowId);
+    const checkbox = row ? row.querySelector('.cost-checkbox') : null;
+
+    const num = parseFloat(maxDueVal);
+    if (input) {
+      input.value = num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      input.classList.remove('text-text-tertiary');
+    }
+    if (checkbox) checkbox.checked = true;
+    if (row) row.classList.add('bg-primary/5', 'border-l-[3px]', 'border-l-primary');
+
+    recalculateTotals();
+  }
+
+  function resetAllocations() {
+    const allRows = document.querySelectorAll('#cost-allocation-list > [data-row-id]');
+    allRows.forEach(row => {
+      const rowId = row.getAttribute('data-row-id');
+      const input = document.getElementById('alloc-input-' + rowId);
+      const checkbox = row.querySelector('.cost-checkbox');
+      if (input) {
+        input.value = '0.00';
+        input.classList.add('text-text-tertiary');
+      }
+      if (checkbox) checkbox.checked = false;
+      row.classList.remove('bg-primary/5', 'border-l-[3px]', 'border-l-primary');
+    });
+    recalculateTotals();
+  }
+
+  function handleSavePayment() {
+    const saveBtn = document.getElementById('save-payment-btn');
+    if (!saveBtn) return;
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span><span>Saving...</span>';
+    saveBtn.disabled = true;
+
+    setTimeout(() => {
+      saveBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">check_circle</span><span>Recorded</span>';
+      saveBtn.classList.remove('bg-primary');
+      saveBtn.classList.add('bg-state-success');
+
+      setTimeout(() => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.classList.add('bg-primary');
+        saveBtn.classList.remove('bg-state-success');
+        saveBtn.disabled = false;
+      }, 1600);
+    }, 700);
+  }
+
+  // Bind payment amount input
+  const mainInput = document.getElementById('main-payment-input');
+  if (mainInput) {
+    mainInput.addEventListener('input', recalculateTotals);
+  }
+</script></main></div>
+</body></html>

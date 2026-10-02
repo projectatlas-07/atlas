@@ -17,12 +17,12 @@ const model = readFileSync(
 
 test("main Challans history opens and returns from one mounted expanded view", () => {
   assert.match(sales, /useState<ChallansWorkspaceView>\("main"\)/);
-  assert.match(sales, /onClick=\{\(\) => setChallansView\("all"\)\}>View all Challans/);
+  assert.match(sales, /onClick=\{\(\) => showChallansView\("all"\)\}>View all Challans/);
   assert.equal((sales.match(/<AllChallansExpandedView\b/g) ?? []).length, 1);
   assert.match(sales, /hidden=\{challansView !== "main"\}/);
   assert.match(sales, /hidden=\{challansView !== "all"\}/);
   assert.match(expanded, /← Back to Challans/);
-  assert.match(sales, /onBack=\{\(\) => setChallansView\("main"\)\}/);
+  assert.match(sales, /onBack=\{\(\) => showChallansView\("main"\)\}/);
 });
 
 test("expanded rows open the authoritative UUID through the existing detail flow", () => {

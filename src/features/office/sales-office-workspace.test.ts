@@ -36,7 +36,7 @@ test("Sales removes repeated workspace headings and starts with its navigation",
   assert.match(workspace, /<div className="space-y-atlas-4">\s*<nav aria-label="Sales areas"/);
   assert.match(
     shell,
-    /activeArea !== "sales" && activeArea !== "workforce" && \([\s\S]*Office workspace[\s\S]*\{activeAreaLabel\}/,
+    /activeArea !== "sales" && activeArea !== "workforce" && activeArea !== "production" && activeArea !== "purchases-expenses" && activeArea !== "cash-book" && \([\s\S]*Office workspace[\s\S]*\{activeAreaLabel\}/,
   );
 });
 

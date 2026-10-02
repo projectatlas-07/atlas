@@ -69,7 +69,7 @@ test("Cash Book runtime and UI render Vehicle wage payments without a second ent
   assert.match(cashBookService, /"vehicle_wage_payment"/);
   assert.match(cashBookUi, /entry\.sourceType === "vehicle_wage_payment"/);
   assert.match(cashBookUi, /Vehicle Wage Payment/);
-  assert.match(cashBookUi, /Vehicle wage payments appear automatically/);
+  assert.match(cashBookUi, /dayQuery\.data\.moneyOut/);
   assert.doesNotMatch(cashBookUi, /recordVehicleWagePayment|vehicle_wage_payments/);
   assert.match(vehicleWageUi, /\["office-cash-book-day", factoryId\]/);
   assert.doesNotMatch(vehicleWageUi, /createCashBookManualEntry|cash_book_manual_entries/);

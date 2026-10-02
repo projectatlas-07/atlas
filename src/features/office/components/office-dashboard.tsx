@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Feedback } from "@/components/ui/feedback";
 import { FormField } from "@/components/ui/form-field";
@@ -24,6 +22,7 @@ import { DashboardFeature } from "@/features/dashboard/components/dashboard-feat
 import { resolveAuthenticatedFactoryId } from "@/features/auth/services/factory-access-service";
 import { OfficeShell } from "@/features/office/components/office-shell";
 import { ProductionOfficeWorkspace } from "@/features/office/components/production-office-workspace";
+import { PurchasesExpensesOfficeWorkspace } from "@/features/office/components/purchases-expenses-office-workspace";
 import {
   WorkforceOfficeWorkspace,
   type WorkforceWorkspaceArea,
@@ -38,8 +37,11 @@ import { ProductionBulkRateSetting } from "@/features/office/components/producti
 import { formatProductionWorkerLastPaid } from "@/features/office/production-worker-account-model";
 import { getTodaysProduction } from "@/features/office/services/todays-production-service";
 import {
+  getOfficePurchasesExpensesHash,
   resolveOfficeAreaFromHash,
+  resolveOfficePurchasesExpensesAreaFromHash,
   type OfficeAreaId,
+  type OfficePurchasesExpensesAreaId,
 } from "@/features/office/office-navigation";
 import { TransportOfficeSection } from "@/features/office/components/transport-office-section";
 import { StaffOfficeSection } from "@/features/office/components/staff-office-section";
@@ -65,12 +67,10 @@ import {
 } from "@/lib/statuses";
 import { ATLAS_UI_STRINGS } from "@/lib/strings";
 import { supabase } from "@/lib/supabase/client";
-
-type BrickType = { id: string; name: string; isActive: boolean };
-
-const brickTypeFormSchema = z.object({ name: z.string().trim().min(1, "Brick type name is required.") });
-
-type BrickTypeFormValues = z.infer<typeof brickTypeFormSchema>;
+import {
+  listBrickTypes,
+  type BrickType,
+} from "@/features/sales/services/brick-type-service";
 
 type ManagedLabourer = {
   id: string;
@@ -82,6 +82,7 @@ type ManagedLabourer = {
 export function OfficeDashboard() {
   const router = useRouter();
   const [activeArea, setActiveArea] = useState<OfficeAreaId>("dashboard");
+  const [purchasesExpensesArea, setPurchasesExpensesArea] = useState<OfficePurchasesExpensesAreaId>("coal");
   const [workforceArea, setWorkforceArea] = useState<WorkforceWorkspaceArea>("production-workers");
   const [salesNavigationTarget, setSalesNavigationTarget] = useState<"new-challan" | null>(null);
   const [factoryId, setFactoryId] = useState<string | null>(null);
@@ -92,9 +93,9 @@ export function OfficeDashboard() {
   const [labourers, setLabourers] = useState<readonly ManagedLabourer[]>([]);
   const [isLoadingLabourers, setIsLoadingLabourers] = useState(true);
   const [labourersError, setLabourersError] = useState("");
+  const [isLoadingBrickTypes, setIsLoadingBrickTypes] = useState(true);
   const [brickTypesError, setBrickTypesError] = useState("");
   const [updatingLabourerId, setUpdatingLabourerId] = useState("");
-  const [updatingBrickTypeId, setUpdatingBrickTypeId] = useState("");
 
   useEffect(() => {
     let isCancelled = false;
@@ -126,6 +127,7 @@ export function OfficeDashboard() {
     function syncAreaFromHash() {
       const hash = window.location.hash;
       setActiveArea(resolveOfficeAreaFromHash(hash));
+      setPurchasesExpensesArea(resolveOfficePurchasesExpensesAreaFromHash(hash) ?? "coal");
       setSalesNavigationTarget(hash === "#new-challan" ? "new-challan" : null);
     }
 
@@ -134,16 +136,21 @@ export function OfficeDashboard() {
     return () => window.removeEventListener("hashchange", syncAreaFromHash);
   }, []);
 
+  function selectPurchasesExpensesArea(area: OfficePurchasesExpensesAreaId) {
+    setPurchasesExpensesArea(area);
+    window.location.hash = getOfficePurchasesExpensesHash(area);
+  }
+
   const loadLabourers = useCallback(async () => {
     if (!factoryId) return;
 
     setIsLoadingLabourers(true);
     setLabourersError("");
-    setBrickTypesError("");
-    const [{ data: labourerRows, error: labourerError }, { data: brickTypeRows, error: brickTypeError }] = await Promise.all([
-      supabase.from("labourers").select("id, name, production_origin_label, is_active").eq("factory_id", factoryId).order("name"),
-      supabase.from("brick_types").select("id, name, is_active").eq("factory_id", factoryId).order("name"),
-    ]);
+    const { data: labourerRows, error: labourerError } = await supabase
+      .from("labourers")
+      .select("id, name, production_origin_label, is_active")
+      .eq("factory_id", factoryId)
+      .order("name");
     if (labourerError) {
       console.error({ context: "Failed to load Production workers", message: labourerError.message, code: labourerError.code, details: labourerError.details, hint: labourerError.hint });
       setLabourersError(labourerError.message);
@@ -155,20 +162,32 @@ export function OfficeDashboard() {
         isActive: labourer.is_active,
       })));
     }
-    if (brickTypeError) {
-      console.error({ context: "Failed to load Sales Brick Types", message: brickTypeError.message, code: brickTypeError.code, details: brickTypeError.details, hint: brickTypeError.hint });
-      setBrickTypesError(brickTypeError.message);
-    } else {
-      setBrickTypes((brickTypeRows ?? []).map((brickType) => ({
-        id: brickType.id,
-        name: brickType.name,
-        isActive: brickType.is_active,
-      })));
-    }
     setIsLoadingLabourers(false);
   }, [factoryId]);
 
-  useEffect(() => { if (factoryId) void loadLabourers(); }, [factoryId, loadLabourers]);
+  const loadBrickTypes = useCallback(async () => {
+    if (!factoryId) return;
+
+    setIsLoadingBrickTypes(true);
+    setBrickTypesError("");
+    try {
+      setBrickTypes(await listBrickTypes(factoryId));
+    } catch (brickTypeError) {
+      console.error({
+        context: "Failed to load Sales Brick Types",
+        message: brickTypeError instanceof Error ? brickTypeError.message : String(brickTypeError),
+      });
+      setBrickTypesError(brickTypeError instanceof Error ? brickTypeError.message : "Could not load Brick Types.");
+    } finally {
+      setIsLoadingBrickTypes(false);
+    }
+  }, [factoryId]);
+
+  useEffect(() => {
+    if (!factoryId) return;
+    void loadLabourers();
+    void loadBrickTypes();
+  }, [factoryId, loadBrickTypes, loadLabourers]);
 
   async function toggleLabourer(labourer: ManagedLabourer): Promise<string | null> {
     if (!factoryId) return "Factory is unavailable.";
@@ -190,27 +209,6 @@ export function OfficeDashboard() {
     setLabourers((current) => current.map((item) => item.id === labourer.id ? { ...item, isActive: !item.isActive } : item));
     setUpdatingLabourerId("");
     return null;
-  }
-
-  async function toggleBrickType(brickType: BrickType) {
-    if (!factoryId) return;
-
-    setBrickTypesError("");
-    setUpdatingBrickTypeId(brickType.id);
-    const { error } = await supabase
-      .from("brick_types")
-      .update({ is_active: !brickType.isActive })
-      .eq("id", brickType.id)
-      .eq("factory_id", factoryId);
-    if (error) {
-      console.error({ context: "Failed to update brick type", message: error.message, code: error.code, details: error.details, hint: error.hint });
-      setBrickTypesError(error.message);
-      setUpdatingBrickTypeId("");
-      return;
-    }
-
-    setBrickTypes((current) => current.map((item) => item.id === brickType.id ? { ...item, isActive: !item.isActive } : item));
-    setUpdatingBrickTypeId("");
   }
 
   async function saveLabourerName(labourer: ManagedLabourer, name: string): Promise<string | null> {
@@ -281,7 +279,12 @@ export function OfficeDashboard() {
       </section>
 
       <section id="production" aria-label="Production" hidden={activeArea !== "production"}>
-        <ProductionOfficeWorkspace factoryId={factoryId!} />
+        <ProductionOfficeWorkspace
+          factoryId={factoryId!}
+          labourers={labourers}
+          isLoadingLabourers={isLoadingLabourers}
+          labourersError={labourersError}
+        />
       </section>
 
       <section id="workforce" aria-label="Workforce" hidden={activeArea !== "workforce"}>
@@ -311,18 +314,28 @@ export function OfficeDashboard() {
         navigationTarget={salesNavigationTarget}
         factoryId={factoryId!}
         brickTypes={brickTypes}
-        isLoadingBrickTypes={isLoadingLabourers}
+        isLoadingBrickTypes={isLoadingBrickTypes}
         brickTypesError={brickTypesError}
+        onBrickTypesChanged={loadBrickTypes}
         showVehicleWages={activeArea === "workforce" && workforceArea === "vehicle-delivery-wages"}
       />
 
       <section id="purchases-expenses" aria-label="Purchases and Expenses" hidden={activeArea !== "purchases-expenses"}>
-        <CoalPurchaseOfficeSection factoryId={factoryId!} />
-        <VehicleMaintenanceOfficeSection factoryId={factoryId!} />
-        <VehicleFuelOfficeSection factoryId={factoryId!} />
+        <PurchasesExpensesOfficeWorkspace
+          activeArea={purchasesExpensesArea}
+          onAreaChange={selectPurchasesExpensesArea}
+        >
+          <div hidden={purchasesExpensesArea !== "coal"}><CoalPurchaseOfficeSection factoryId={factoryId!} /></div>
+          <div hidden={purchasesExpensesArea !== "vehicle-maintenance"}><VehicleMaintenanceOfficeSection factoryId={factoryId!} /></div>
+          <div hidden={purchasesExpensesArea !== "fuel-book"}><VehicleFuelOfficeSection factoryId={factoryId!} /></div>
+        </PurchasesExpensesOfficeWorkspace>
       </section>
 
-      <ExpensesOfficeSection activeArea={activeArea} factoryId={factoryId!} />
+      <ExpensesOfficeSection
+        activeArea={activeArea}
+        factoryId={factoryId!}
+        showCostsOutgoings={purchasesExpensesArea === "costs-outgoings"}
+      />
 
       <section id="cash-book" aria-label="Cash Book" hidden={activeArea !== "cash-book"}>
         <CashBookOfficeSection factoryId={factoryId!} />
@@ -342,15 +355,6 @@ export function OfficeDashboard() {
         </div>
       </section>
 
-      <section aria-label="Brick type settings" hidden={activeArea !== "settings"}>
-        <AddBrickTypeForm factoryId={factoryId!} onAdded={loadLabourers} />
-        <BrickTypeManagement
-          brickTypes={brickTypes}
-          error={brickTypesError}
-          updatingBrickTypeId={updatingBrickTypeId}
-          onToggle={toggleBrickType}
-        />
-      </section>
     </OfficeShell>
   );
 }
@@ -572,82 +576,6 @@ function ProductionRateHistory({ title, rates, asOfDate }: Readonly<{ title: str
   );
 }
 
-
-function AddBrickTypeForm({ factoryId, onAdded }: Readonly<{ factoryId: string; onAdded: () => Promise<void> }>) {
-  const [submitError, setSubmitError] = useState("");
-  const [isSaved, setIsSaved] = useState(false);
-  const { register, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<BrickTypeFormValues>({ defaultValues: { name: "" } });
-
-  async function addBrickType(values: BrickTypeFormValues) {
-    const parsed = brickTypeFormSchema.safeParse(values);
-    if (!parsed.success) {
-      setError("name", { message: parsed.error.issues[0]?.message });
-      return;
-    }
-
-    setSubmitError("");
-    const { error } = await supabase.from("brick_types").insert({
-      factory_id: factoryId,
-      name: parsed.data.name,
-      is_active: true,
-    });
-    if (error) {
-      console.error({ context: "Failed to add brick type", message: error.message, code: error.code, details: error.details, hint: error.hint });
-      setSubmitError(error.message);
-      return;
-    }
-
-    reset();
-    setIsSaved(true);
-    await onAdded();
-  }
-
-  return (
-    <section className="mt-8 max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-xl font-bold">Add Brick Type</h2>
-      <form className="mt-5 space-y-4" onSubmit={handleSubmit(addBrickType)}>
-        <label className="block text-sm font-medium text-slate-700">
-          Brick-type name
-          <input {...register("name", { onChange: () => setIsSaved(false) })} className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-950" />
-        </label>
-        {errors.name && <p role="alert" className="text-sm font-medium text-red-700">{errors.name.message}</p>}
-        {submitError && <p role="alert" className="text-sm font-medium text-red-700">{submitError}</p>}
-        <button type="submit" disabled={isSubmitting} className="h-11 rounded-lg bg-slate-950 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Adding..." : "Add Brick Type"}</button>
-        {isSaved && <p role="status" className="text-sm font-medium text-emerald-700">Brick type added.</p>}
-      </form>
-    </section>
-  );
-}
-
-function BrickTypeManagement({ brickTypes, error, updatingBrickTypeId, onToggle }: Readonly<{
-  brickTypes: readonly BrickType[];
-  error: string;
-  updatingBrickTypeId: string;
-  onToggle: (brickType: BrickType) => Promise<void>;
-}>) {
-  return (
-    <section className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-xl font-bold">Brick Types</h2>
-      {error && <p role="alert" className="mt-3 text-sm font-medium text-red-700">{error}</p>}
-      <div className="mt-4 space-y-3">
-        {brickTypes.map((brickType) => {
-          const isUpdating = updatingBrickTypeId === brickType.id;
-          return (
-            <article key={brickType.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="font-semibold">{brickType.name}</h3>
-                <p className={`mt-1 text-sm font-medium ${brickType.isActive ? "text-emerald-700" : "text-slate-500"}`}>{brickType.isActive ? "Active" : "Inactive"}</p>
-              </div>
-              <button type="button" disabled={isUpdating} onClick={() => void onToggle(brickType)} className="h-10 rounded-lg border border-slate-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-60">
-                {isUpdating ? "Updating..." : brickType.isActive ? "Deactivate" : "Reactivate"}
-              </button>
-            </article>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
 
 function LabourerManagement({ factoryId, labourers, isLoading, error, updatingLabourerId, onToggle, onSaveName, onOriginChanged, onCreateLabourer }: Readonly<{
   factoryId: string;

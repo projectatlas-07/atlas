@@ -19,6 +19,30 @@ export const EXPENSE_SECTION_HEADING = "Expenses & Purchases";
 
 export type ExpenseDatePreset = SalesDatePreset;
 export type ExpenseKindFilter = "all" | ExpenseRecordKind;
+export type ExpenseArchiveStateFilter = "all" | ExpenseRecord["paymentState"] | "void";
+
+export type ExpenseArchiveFilters = {
+  search: string;
+  fromDate: string;
+  toDate: string;
+  kind: ExpenseKindFilter;
+  counterparty: string;
+  state: ExpenseArchiveStateFilter;
+};
+
+export type ExpensePaymentArchiveFilters = {
+  search: string;
+  fromDate: string;
+  toDate: string;
+  kind: ExpenseKindFilter;
+  paymentMode: ExpensePayment["paymentMode"] | "";
+};
+
+export type ExpensePaymentAllocationReconciliation = {
+  allocatedAmount: number;
+  remainingAmount: number;
+  reconciles: boolean;
+};
 
 export type ExpenseRecordForm = {
   kind: ExpenseRecordKind;
@@ -158,6 +182,36 @@ export function filterExpenseRecords(
     && (kind === "all" || record.kind === kind));
 }
 
+export function filterExpenseArchiveRecords(
+  records: readonly ExpenseRecord[],
+  filters: ExpenseArchiveFilters,
+): ExpenseRecord[] {
+  const search = normalizeText(filters.search).toLocaleLowerCase("en-IN");
+  const counterparty = normalizeText(filters.counterparty).toLocaleLowerCase("en-IN");
+  const hasInvalidDates = (filters.fromDate !== "" && !isLocalDate(filters.fromDate))
+    || (filters.toDate !== "" && !isLocalDate(filters.toDate))
+    || (filters.fromDate !== "" && filters.toDate !== "" && filters.fromDate > filters.toDate);
+  if (hasInvalidDates) return [];
+
+  return records.filter((record) => {
+    const matchesSearch = !search || [
+      record.counterpartyNameSnapshot,
+      record.description,
+      record.note ?? "",
+    ].some((value) => value.toLocaleLowerCase("en-IN").includes(search));
+    const matchesState = filters.state === "all"
+      || (filters.state === "void"
+        ? record.status === "void"
+        : record.status === "active" && record.paymentState === filters.state);
+    return (!filters.fromDate || record.businessDate >= filters.fromDate)
+      && (!filters.toDate || record.businessDate <= filters.toDate)
+      && (filters.kind === "all" || record.kind === filters.kind)
+      && (!counterparty || record.counterpartyNameSnapshot.toLocaleLowerCase("en-IN") === counterparty)
+      && matchesState
+      && matchesSearch;
+  });
+}
+
 export function summarizeExpenseRecords(
   records: readonly ExpenseRecord[],
 ): ExpenseRegisterSummary {
@@ -177,6 +231,49 @@ export function summarizeExpenseRecords(
     totalExpenses: expensePaise / 100,
     totalPaid: paidPaise / 100,
     totalOutstanding: outstandingPaise / 100,
+  };
+}
+
+export function filterExpensePayments(
+  payments: readonly ExpensePayment[],
+  filters: ExpensePaymentArchiveFilters,
+): ExpensePayment[] {
+  const search = normalizeText(filters.search).toLocaleLowerCase("en-IN");
+  const hasInvalidDates = (filters.fromDate !== "" && !isLocalDate(filters.fromDate))
+    || (filters.toDate !== "" && !isLocalDate(filters.toDate))
+    || (filters.fromDate !== "" && filters.toDate !== "" && filters.fromDate > filters.toDate);
+  if (hasInvalidDates) return [];
+
+  return payments.filter((payment) => {
+    const matchesSearch = !search || [
+      payment.note ?? "",
+      ...payment.allocations.flatMap((allocation) => [
+        allocation.counterpartyNameSnapshot,
+        allocation.description,
+      ]),
+    ].some((value) => value.toLocaleLowerCase("en-IN").includes(search));
+    const matchesKind = filters.kind === "all"
+      || payment.allocations.some((allocation) => allocation.expenseKind === filters.kind);
+    return (!filters.fromDate || payment.paymentDate >= filters.fromDate)
+      && (!filters.toDate || payment.paymentDate <= filters.toDate)
+      && (!filters.paymentMode || payment.paymentMode === filters.paymentMode)
+      && matchesKind
+      && matchesSearch;
+  });
+}
+
+export function getExpensePaymentAllocationReconciliation(
+  payment: Pick<ExpensePayment, "amount" | "allocations">,
+): ExpensePaymentAllocationReconciliation {
+  const paymentPaise = toPaise(payment.amount);
+  const allocatedPaise = payment.allocations.reduce(
+    (total, allocation) => total + toPaise(allocation.allocatedAmount),
+    0,
+  );
+  return {
+    allocatedAmount: allocatedPaise / 100,
+    remainingAmount: (paymentPaise - allocatedPaise) / 100,
+    reconciles: paymentPaise === allocatedPaise,
   };
 }
 
@@ -206,32 +303,34 @@ export function setExpensePaymentAmount(
   form: ExpensePaymentForm,
   amount: string,
 ): ExpensePaymentForm {
-  return { ...form, amount };
+  const selectedRecordIds = Object.keys(form.allocations);
+  if (selectedRecordIds.length !== 1) return { ...form, amount };
+  return {
+    ...form,
+    amount,
+    allocations: { [selectedRecordIds[0]!]: amount },
+  };
 }
 
 export function toggleExpensePaymentAllocation(
   form: ExpensePaymentForm,
-  expenseRecordId: string,
+  record: ExpenseRecord,
   selected: boolean,
 ): ExpensePaymentForm {
   const allocations = { ...form.allocations };
-  if (selected) allocations[expenseRecordId] = allocations[expenseRecordId] ?? "";
-  else delete allocations[expenseRecordId];
-  return { ...form, allocations };
+  if (selected) allocations[record.id] = formatEditableMoney(record.outstandingAmount);
+  else delete allocations[record.id];
+  return { ...form, amount: formatExpenseAllocationTotal(allocations), allocations };
 }
 
-export function fillExpenseOutstandingAllocation(
+export function setExpensePaymentAllocation(
   form: ExpensePaymentForm,
-  record: ExpenseRecord,
+  expenseRecordId: string,
+  amount: string,
 ): ExpensePaymentForm {
-  if (!Object.prototype.hasOwnProperty.call(form.allocations, record.id)) return form;
-  return {
-    ...form,
-    allocations: {
-      ...form.allocations,
-      [record.id]: formatEditableMoney(record.outstandingAmount),
-    },
-  };
+  if (!Object.prototype.hasOwnProperty.call(form.allocations, expenseRecordId)) return form;
+  const allocations = { ...form.allocations, [expenseRecordId]: amount };
+  return { ...form, amount: formatExpenseAllocationTotal(allocations), allocations };
 }
 
 export function getExpensePaymentFormStatus(
@@ -360,6 +459,21 @@ function toPaise(value: number): number {
 
 function formatEditableMoney(amount: number): string {
   return amount.toFixed(2).replace(/\.00$/, "");
+}
+
+function formatExpenseAllocationTotal(
+  allocations: Readonly<Record<string, string>>,
+): string {
+  const values = Object.values(allocations);
+  if (values.length === 0) return "";
+  let totalPaise = 0;
+  for (const value of values) {
+    const paise = parseMoneyToPaise(value);
+    if (paise === null) return "";
+    totalPaise += paise;
+    if (!Number.isSafeInteger(totalPaise)) return "";
+  }
+  return formatEditableMoney(totalPaise / 100);
 }
 
 function normalizeText(value: string): string {

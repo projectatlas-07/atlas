@@ -91,6 +91,18 @@ export type ChallanFormState = {
   flexibleLines: ChallanFlexibleLineForm[];
 };
 
+export function clearBrickTypeFromUnsavedChallanDraft(
+  form: Readonly<ChallanFormState>,
+  brickTypeId: string,
+): ChallanFormState {
+  return {
+    ...form,
+    lines: form.lines.map((line) => line.brickTypeId === brickTypeId
+      ? { ...line, brickTypeId: "" }
+      : line),
+  };
+}
+
 export type ChallanReceivedPaymentForm = {
   choice: "pay_later" | "received_now";
   paymentDate: string;

@@ -13,13 +13,16 @@ import {
   emptyExpensePaymentForm,
   emptyExpenseRecordForm,
   expenseRecordFormFromSaved,
-  fillExpenseOutstandingAllocation,
+  filterExpenseArchiveRecords,
+  filterExpensePayments,
   filterExpenseRecords,
+  getExpensePaymentAllocationReconciliation,
   getExpensePaymentCandidates,
   getExpensePaymentFormStatus,
   getExpenseRecordEligibility,
   getPaymentsForExpenseRecord,
   resolveExpenseDateRange,
+  setExpensePaymentAllocation,
   setExpensePaymentAmount,
   summarizeExpenseRecords,
   toggleExpensePaymentAllocation,
@@ -65,6 +68,43 @@ const candidates = [
     isLocked: true,
   }),
 ];
+
+function payment(overrides: Partial<ExpensePayment> = {}): ExpensePayment {
+  return {
+    id: "payment-1",
+    factoryId: "factory-a",
+    paymentDate: "2026-09-14",
+    amount: 60_000,
+    paymentMode: "bank_transfer",
+    note: "September settlement",
+    createdAt: "2026-09-14T05:00:00Z",
+    allocations: [
+      {
+        id: "allocation-1",
+        factoryId: "factory-a",
+        paymentId: "payment-1",
+        expenseRecordId: "record-1",
+        expenseKind: "purchase",
+        counterpartyNameSnapshot: "Historical Coal Supplier",
+        description: "Coal purchase",
+        allocatedAmount: 40_000,
+        createdAt: "2026-09-14T05:00:00Z",
+      },
+      {
+        id: "allocation-2",
+        factoryId: "factory-a",
+        paymentId: "payment-1",
+        expenseRecordId: "record-2",
+        expenseKind: "expense",
+        counterpartyNameSnapshot: "Town Garage",
+        description: "Tractor repair",
+        allocatedAmount: 20_000,
+        createdAt: "2026-09-14T05:00:00Z",
+      },
+    ],
+    ...overrides,
+  };
+}
 
 test("Purchase and miscellaneous Expense creation use the S7A source input", () => {
   assert.deepEqual(buildExpenseRecordInput("factory-a", {
@@ -153,6 +193,46 @@ test("register keeps one source row, kind distinction, and historical snapshots"
   assert.equal(filtered[0]?.counterpartyNameSnapshot, "Historical Coal Supplier");
 });
 
+test("Cost archive filters genuine snapshots, inclusive dates, type, counterparty, and authoritative state", () => {
+  const rows = [
+    record(),
+    record({
+      id: "record-2",
+      businessDate: "2026-09-02",
+      kind: "expense",
+      supplierId: null,
+      counterpartyNameSnapshot: "Town Garage",
+      description: "Tractor repair",
+      note: "Voucher 9",
+      totalPaid: 10_000,
+      outstandingAmount: 20_000,
+      paymentState: "partially_paid",
+    }),
+    record({
+      id: "record-3",
+      businessDate: "2026-09-03",
+      status: "void",
+      outstandingAmount: 0,
+    }),
+  ];
+  const base = {
+    search: "",
+    fromDate: "",
+    toDate: "",
+    kind: "all" as const,
+    counterparty: "",
+    state: "all" as const,
+  };
+
+  assert.deepEqual(filterExpenseArchiveRecords(rows, { ...base, search: "voucher 9" }).map((item) => item.id), ["record-2"]);
+  assert.deepEqual(filterExpenseArchiveRecords(rows, { ...base, fromDate: "2026-09-02", toDate: "2026-09-03" }).map((item) => item.id), ["record-2", "record-3"]);
+  assert.deepEqual(filterExpenseArchiveRecords(rows, { ...base, kind: "expense" }).map((item) => item.id), ["record-2"]);
+  assert.deepEqual(filterExpenseArchiveRecords(rows, { ...base, counterparty: "town garage" }).map((item) => item.id), ["record-2"]);
+  assert.deepEqual(filterExpenseArchiveRecords(rows, { ...base, state: "partially_paid" }).map((item) => item.id), ["record-2"]);
+  assert.deepEqual(filterExpenseArchiveRecords(rows, { ...base, state: "void" }).map((item) => item.id), ["record-3"]);
+  assert.deepEqual(filterExpenseArchiveRecords(rows, { ...base, fromDate: "2026-09-04", toDate: "2026-09-01" }), []);
+});
+
 test("range summary uses authoritative Paid and Due and excludes void records", () => {
   const summary = summarizeExpenseRecords([
     record({ totalPaid: 40_000, outstandingAmount: 60_000, paymentState: "partially_paid" }),
@@ -164,6 +244,55 @@ test("range summary uses authoritative Paid and Due and excludes void records", 
     totalExpenses: 5_000,
     totalPaid: 45_000,
     totalOutstanding: 60_000,
+  });
+});
+
+test("Outgoing Payment archive filters saved payment and allocation fields", () => {
+  const rows = [
+    payment(),
+    payment({
+      id: "payment-2",
+      paymentDate: "2026-09-20",
+      paymentMode: "cash",
+      note: null,
+      allocations: [{
+        ...payment().allocations[0]!,
+        id: "allocation-3",
+        paymentId: "payment-2",
+        expenseKind: "expense",
+        counterpartyNameSnapshot: "Site Contractor",
+        description: "Loading labour",
+        allocatedAmount: 60_000,
+      }],
+    }),
+  ];
+  const base = {
+    search: "",
+    fromDate: "",
+    toDate: "",
+    kind: "all" as const,
+    paymentMode: "" as const,
+  };
+
+  assert.deepEqual(filterExpensePayments(rows, { ...base, search: "town garage" }).map((item) => item.id), ["payment-1"]);
+  assert.deepEqual(filterExpensePayments(rows, { ...base, search: "loading labour" }).map((item) => item.id), ["payment-2"]);
+  assert.deepEqual(filterExpensePayments(rows, { ...base, search: "september" }).map((item) => item.id), ["payment-1"]);
+  assert.deepEqual(filterExpensePayments(rows, { ...base, fromDate: "2026-09-15", toDate: "2026-09-20" }).map((item) => item.id), ["payment-2"]);
+  assert.deepEqual(filterExpensePayments(rows, { ...base, kind: "purchase" }).map((item) => item.id), ["payment-1"]);
+  assert.deepEqual(filterExpensePayments(rows, { ...base, paymentMode: "cash" }).map((item) => item.id), ["payment-2"]);
+  assert.deepEqual(filterExpensePayments(rows, { ...base, fromDate: "2026-09-21", toDate: "2026-09-01" }), []);
+});
+
+test("Outgoing Payment reconciliation uses only saved payment and allocation amounts", () => {
+  assert.deepEqual(getExpensePaymentAllocationReconciliation(payment()), {
+    allocatedAmount: 60_000,
+    remainingAmount: 0,
+    reconciles: true,
+  });
+  assert.deepEqual(getExpensePaymentAllocationReconciliation(payment({ amount: 60_000.01 })), {
+    allocatedAmount: 60_000,
+    remainingAmount: 0.01,
+    reconciles: false,
   });
 });
 
@@ -185,31 +314,56 @@ test("payment amount never selects or allocates an Expense/Purchase automaticall
   assert.equal(getExpensePaymentFormStatus(changed, candidates).canSubmit, false);
 });
 
-test("explicit single and multi-record allocations must equal the payment", () => {
-  let single = {
-    ...emptyExpensePaymentForm("2026-09-01"), amount: "40000", paymentMode: "upi",
+test("explicit selection fills full Due and reconciles one or multiple allocations", () => {
+  let form = {
+    ...emptyExpensePaymentForm("2026-09-01"), paymentMode: "bank_transfer",
   };
-  single = toggleExpensePaymentAllocation(single, "record-1", true);
-  single = { ...single, allocations: { "record-1": "40000" } };
-  assert.equal(getExpensePaymentFormStatus(single, candidates).canSubmit, true);
+  form = toggleExpensePaymentAllocation(form, candidates[0]!, true);
+  assert.equal(form.allocations["record-1"], "100000");
+  assert.equal(form.amount, "100000");
 
-  let multi = {
-    ...emptyExpensePaymentForm("2026-09-01"), amount: "60000", paymentMode: "bank_transfer",
+  form = toggleExpensePaymentAllocation(form, candidates[1]!, true);
+  assert.deepEqual(form.allocations, { "record-1": "100000", "record-2": "20000" });
+  assert.equal(form.amount, "120000");
+  assert.equal(getExpensePaymentFormStatus(form, candidates).canSubmit, true);
+});
+
+test("partial allocation edits reconcile Payment Amount and remain savable", () => {
+  let form = {
+    ...emptyExpensePaymentForm("2026-09-01"), paymentMode: "bank_transfer",
   };
-  multi = toggleExpensePaymentAllocation(multi, "record-1", true);
-  multi = toggleExpensePaymentAllocation(multi, "record-2", true);
-  multi = { ...multi, allocations: { "record-1": "40000", "record-2": "20000" } };
-  assert.deepEqual(buildExpensePaymentInput("factory-a", multi, candidates)?.allocations, [
+  form = toggleExpensePaymentAllocation(form, candidates[0]!, true);
+  form = toggleExpensePaymentAllocation(form, candidates[1]!, true);
+  form = setExpensePaymentAllocation(form, "record-1", "40000");
+  assert.equal(form.amount, "60000");
+  assert.deepEqual(buildExpensePaymentInput("factory-a", form, candidates)?.allocations, [
     { expenseRecordId: "record-1", amount: 40_000 },
     { expenseRecordId: "record-2", amount: 20_000 },
   ]);
 });
 
-test("Pay full due works only after explicit selection", () => {
-  const empty = emptyExpensePaymentForm("2026-09-01");
-  assert.strictEqual(fillExpenseOutstandingAllocation(empty, candidates[0]!), empty);
-  const selected = toggleExpensePaymentAllocation(empty, "record-1", true);
-  assert.equal(fillExpenseOutstandingAllocation(selected, candidates[0]!).allocations["record-1"], "100000");
+test("deselection removes its allocation and returns Payment Amount to the remaining total or empty state", () => {
+  let form = emptyExpensePaymentForm("2026-09-01");
+  form = toggleExpensePaymentAllocation(form, candidates[0]!, true);
+  form = toggleExpensePaymentAllocation(form, candidates[1]!, true);
+  form = toggleExpensePaymentAllocation(form, candidates[0]!, false);
+  assert.deepEqual(form.allocations, { "record-2": "20000" });
+  assert.equal(form.amount, "20000");
+
+  form = toggleExpensePaymentAllocation(form, candidates[1]!, false);
+  assert.deepEqual(form.allocations, {});
+  assert.equal(form.amount, "");
+});
+
+test("editing Payment Amount with one selected Cost preserves partial-payment support", () => {
+  const selected = toggleExpensePaymentAllocation(
+    emptyExpensePaymentForm("2026-09-01"),
+    candidates[0]!,
+    true,
+  );
+  const partial = setExpensePaymentAmount(selected, "30000");
+  assert.equal(partial.amount, "30000");
+  assert.deepEqual(partial.allocations, { "record-1": "30000" });
 });
 
 test("overpayment, missing mode, invalid equality, and unavailable records cannot submit", () => {

@@ -1,4 +1,3 @@
-import { AuthGuard } from "@/features/auth/components/auth-guard";
-import { ManagerEntryScreen } from "@/features/manager/components/manager-entry-screen";
+import { OfficeStartupRedirect } from "@/features/office/components/office-startup-redirect";
 
-export default function HomePage() { return <AuthGuard><ManagerEntryScreen /></AuthGuard>; }
+export default function HomePage() { return <OfficeStartupRedirect />; }

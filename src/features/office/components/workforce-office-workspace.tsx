@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { useOfficePageScrollReset } from "@/features/office/components/office-shell";
 
 export type WorkforceWorkspaceArea =
   | "production-workers"
@@ -32,6 +33,14 @@ export function WorkforceOfficeWorkspace({
   onAreaChange: (area: WorkforceWorkspaceArea) => void;
   children: ReactNode;
 }>) {
+  const resetOfficePageScroll = useOfficePageScrollReset();
+
+  function selectArea(area: WorkforceWorkspaceArea) {
+    if (area === activeArea) return;
+    onAreaChange(area);
+    resetOfficePageScroll();
+  }
+
   return (
     <div className="space-y-atlas-4">
       <nav aria-label="Workforce areas" className="overflow-x-auto pb-atlas-1">
@@ -41,7 +50,7 @@ export function WorkforceOfficeWorkspace({
               key={area.id}
               variant={activeArea === area.id ? "primary" : "ghost"}
               aria-pressed={activeArea === area.id}
-              onClick={() => onAreaChange(area.id)}
+              onClick={() => selectArea(area.id)}
             >
               {area.label}
             </Button>

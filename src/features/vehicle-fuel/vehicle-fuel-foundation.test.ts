@@ -43,8 +43,8 @@ test("dedicated UI includes fast entry, Last Refuel, histories, and generic excl
   assert.match(dashboard, /<VehicleFuelOfficeSection factoryId=\{factoryId!\}/);
   assert.match(component, /Last refuel:/);
   assert.match(component, /No previous refuel recorded/);
-  assert.match(component, /Vehicle and Pump Fuel history/);
-  assert.match(component, /Pump payment history/);
+  assert.match(component, /Recent Fuel Entries/);
+  assert.match(component, /Recent Pump Payments/);
   assert.match(migration, /from public\.vehicle_fuel_records/);
 });
 

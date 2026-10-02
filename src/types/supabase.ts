@@ -58,6 +58,17 @@ type MudAccountingModeTransitionRow = {
   actor: string;
 };
 
+type MudFactorySettlementRow = {
+  id: string;
+  factory_id: string;
+  previous_cutoff: string | null;
+  settled_through: string;
+  settlement_type: "legacy_opening" | "checkpoint";
+  triggering_labour_group_id: string | null;
+  triggering_withdrawal_id: string | null;
+  created_at: string;
+};
+
 type MudGroupConfigurationRow = {
   labour_group_id: string;
   group_name: string;
@@ -765,6 +776,16 @@ type CustomerPaymentAllocationRow = {
   created_at: string;
 };
 
+type BrickTypeRow = {
+  id: string;
+  factory_id: string;
+  name: string;
+  is_active: boolean;
+  ever_used: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -781,9 +802,9 @@ export type Database = {
         Relationships: [{ foreignKeyName: "factory_users_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] }];
       };
       brick_types: {
-        Row: { id: string; factory_id: string; name: string; is_active: boolean; created_at: string; updated_at: string };
-        Insert: { id?: string; factory_id: string; name: string; is_active?: boolean; created_at?: string; updated_at?: string };
-        Update: { id?: string; factory_id?: string; name?: string; is_active?: boolean; created_at?: string; updated_at?: string };
+        Row: BrickTypeRow;
+        Insert: { id?: string; factory_id: string; name: string; is_active?: boolean; ever_used?: boolean; created_at?: string; updated_at?: string };
+        Update: Partial<Omit<BrickTypeRow, "id">> & { id?: string };
         Relationships: [{ foreignKeyName: "brick_types_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] }];
       };
       customers: {
@@ -1371,6 +1392,25 @@ export type Database = {
           { foreignKeyName: "mud_accounting_mode_transitions_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] }
         ];
       };
+      mud_factory_settlements: {
+        Row: MudFactorySettlementRow;
+        Insert: {
+          id?: string;
+          factory_id: string;
+          previous_cutoff?: string | null;
+          settled_through: string;
+          settlement_type: "legacy_opening" | "checkpoint";
+          triggering_labour_group_id?: string | null;
+          triggering_withdrawal_id?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<MudFactorySettlementRow>;
+        Relationships: [
+          { foreignKeyName: "mud_factory_settlements_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "mud_factory_settlements_trigger_group_factory_fkey"; columns: ["triggering_labour_group_id", "factory_id"]; isOneToOne: false; referencedRelation: "labour_groups"; referencedColumns: ["id", "factory_id"] },
+          { foreignKeyName: "mud_factory_settlements_triggering_withdrawal_id_fkey"; columns: ["triggering_withdrawal_id"]; isOneToOne: false; referencedRelation: "withdrawals"; referencedColumns: ["id"] }
+        ];
+      };
       production_entries: {
         Row: { id: string; factory_id: string; labourer_id: string; production_date: string; quantity: number; created_at: string; updated_at: string };
         Insert: { id: string; factory_id: string; labourer_id: string; production_date: string; quantity: number; created_at?: string; updated_at?: string };
@@ -1500,6 +1540,22 @@ export type Database = {
           p_gstin: string | null;
         };
         Returns: Database["public"]["Tables"]["factories"]["Row"];
+      };
+      create_brick_type: {
+        Args: { p_factory_id: string; p_name: string };
+        Returns: BrickTypeRow;
+      };
+      rename_brick_type: {
+        Args: { p_factory_id: string; p_brick_type_id: string; p_name: string };
+        Returns: BrickTypeRow;
+      };
+      set_brick_type_active: {
+        Args: { p_factory_id: string; p_brick_type_id: string; p_is_active: boolean };
+        Returns: BrickTypeRow;
+      };
+      delete_unused_brick_type: {
+        Args: { p_factory_id: string; p_brick_type_id: string };
+        Returns: string;
       };
       create_customer: {
         Args: { p_factory_id: string; p_name: string; p_address: string; p_mobile: string };

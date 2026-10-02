@@ -1,0 +1,287 @@
+<!DOCTYPE html><html lang="en" style=""><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_dashboard" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-tint": "#2d694d", "primary-fixed": "#b1f0cd", "on-secondary-fixed": "#151d1a", "outline-variant": "#c0c9c1", "on-primary": "#ffffff", "surface-container-low": "#f4f4f2", "on-error-container": "#93000a", "surface-container-lowest": "#ffffff", "surface-dim": "#dadad8", "text-tertiary": "#989894", "on-surface-variant": "#404943", "state-success": "#047857", "on-tertiary-container": "#ffd1d1", "tertiary": "#723739", "secondary-fixed": "#dce5e0", "on-primary-container": "#aae9c6", "on-primary-fixed-variant": "#105137", "text-secondary": "#686864", "on-secondary-container": "#5d6663", "tertiary-container": "#8e4e50", "border-strong": "#D5D5D1", "on-tertiary-fixed": "#390b0f", "on-secondary-fixed-variant": "#404945", "tertiary-fixed-dim": "#ffb3b4", "primary-container": "#2f6b4f", "surface-bright": "#f9f9f7", "tertiary-fixed": "#ffdad9", "surface-container-highest": "#e2e3e1", "border-subtle": "#E5E5E2", "secondary-container": "#dce5e0", "card-surface": "#FFFFFF", "row-hover": "#F1F1EF", "error": "#ba1a1a", "on-error": "#ffffff", "secondary-fixed-dim": "#bfc9c4", "inverse-primary": "#96d4b2", "outline": "#707972", "surface-variant": "#e2e3e1", "surface-container": "#eeeeec", "on-secondary": "#ffffff", "primary-fixed-dim": "#96d4b2", "secondary": "#57605d", "on-background": "#1a1c1b", "on-surface": "#1a1c1b", "inverse-surface": "#2f3130", "error-container": "#ffdad6", "background": "#f9f9f7", "on-primary-fixed": "#002113", "on-tertiary": "#ffffff", "text-primary": "#1F1F1D", "surface": "#f9f9f7", "sidebar-surface": "#F2F3F1", "inverse-on-surface": "#f1f1ef", "on-tertiary-fixed-variant": "#6f3538", "primary": "#125238", "surface-container-high": "#e8e8e6" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-sm": "0.5rem", "gutter-sm": "1rem", "gutter": "1.5rem", "gutter-lg": "2rem", "space-xs": "0.25rem", "space-xl": "2.5rem", "margin-mobile": "1rem", "space-md": "0.875rem", "margin-desktop": "3rem", "margin": "2rem", "space-lg": "1.5rem" }, "fontFamily": { "headline-sm": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"], "headline-xl": ["Plus Jakarta Sans"], "caption": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "headline-xl-mobile": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"] }, "fontSize": { "headline-sm": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.005em", "fontWeight": "600" }], "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500" }], "headline-xl": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "caption": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "body-sm": ["13px", { "lineHeight": "20px", "fontWeight": "400" }], "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }], "headline-xl-mobile": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "body-md": ["14px", { "lineHeight": "22px", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "26px", "fontWeight": "400" }] } } } };</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 bottom-0 w-64 bg-sidebar-surface z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col"><div class="h-16 flex items-center gap-space-sm px-gutter"><div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[20px]">account_balance</span></div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-text-primary tracking-tight font-semibold">Atlas</span><span class="font-caption text-caption text-text-tertiary uppercase tracking-wider font-semibold">OFFICE</span></div></div><div class="px-gutter-sm mt-space-md"><span class="font-caption text-caption text-text-tertiary px-space-sm tracking-wider uppercase font-semibold">Operations</span></div><nav class="flex flex-col gap-space-xs px-gutter-sm mt-space-xs" data-active-classes="bg-primary-container text-on-primary font-medium shadow-sm"><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span><span class="">Dashboard</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="production" href="#"><span class="material-symbols-outlined text-[20px]">precision_manufacturing</span><span class="">Production</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="workforce" href="#"><span class="material-symbols-outlined text-[20px]">badge</span><span class="">Workforce</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="sales" href="#"><span class="material-symbols-outlined text-[20px]">trending_up</span><span class="">Sales</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="purchases-and-expenses" href="#"><span class="material-symbols-outlined text-[20px]">receipt_long</span><span class="">Purchases &amp; Expenses</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cash-book" href="#"><span class="material-symbols-outlined text-[20px]">payments</span><span class="">Cash Book</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="reports" href="#"><span class="material-symbols-outlined text-[20px]">analytics</span><span class="">Reports</span></a></nav></div><div class="flex flex-col p-gutter-sm gap-space-xs"><button class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors w-full text-left" type="button"><span class="material-symbols-outlined text-[20px]">logout</span><span class="">Log out</span></button></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-16 bg-surface/85 backdrop-blur-xl z-40 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 w-full px-gutter-lg flex items-center justify-between"><div class="flex items-center gap-space-sm font-label-md text-label-md"><span class="text-text-secondary uppercase tracking-wider text-[11px] font-semibold">Production</span><span class="material-symbols-outlined text-text-tertiary text-[14px]">chevron_right</span><span class="text-text-primary font-medium uppercase tracking-wider text-[11px]">Chamber Transport</span></div></div></header><main class="w-full pt-16 px-gutter-lg pb-margin-desktop bg-surface"><div class="flex flex-col w-full">
+<div class="flex flex-col w-full max-w-[720px] pb-margin-desktop">
+<!-- Top Workspace Sub-Navigation Tabs -->
+<div class="flex items-center gap-space-xs mb-gutter">
+<a class="px-gutter py-space-sm rounded-lg font-label-md text-label-md text-text-secondary bg-surface-container-low hover:bg-surface-container-high transition-colors" href="#">
+        Brick Production
+      </a>
+<a class="px-gutter py-space-sm rounded-lg font-label-md text-label-md text-on-primary bg-primary-container font-medium shadow-sm transition-colors" href="#">
+        Chamber Transport
+      </a>
+<a class="px-gutter py-space-sm rounded-lg font-label-md text-label-md text-text-secondary bg-surface-container-low hover:bg-surface-container-high transition-colors" href="#">
+        Soil / Trolley
+      </a>
+</div>
+<!-- Workspace Header Block -->
+<div class="flex items-start justify-between gap-space-md mb-gutter">
+<div class="flex flex-col">
+<span class="font-caption text-caption text-text-tertiary uppercase tracking-wider font-semibold">
+          Daily Factory Operations
+        </span>
+<h1 class="font-headline-lg text-headline-lg text-text-primary mt-space-xs">
+          Chamber Transport
+        </h1>
+<p class="font-body-sm text-body-sm text-text-secondary mt-space-xs">
+          Record daily Transport Group movement, present workers and paya quantity.
+        </p>
+</div>
+<!-- Business Date Picker Input -->
+<div class="flex flex-col items-end shrink-0">
+<label class="font-caption text-caption text-text-tertiary mb-space-xs font-medium uppercase tracking-wider" for="business-date-input">
+          Business date
+        </label>
+<div class="relative flex items-center bg-card-surface rounded-lg shadow-sm">
+<input class="w-36 h-[38px] pl-space-md pr-8 font-label-md text-label-md text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest" id="business-date-input" type="text" value="30/09/2026">
+<span class="material-symbols-outlined absolute right-space-sm text-text-tertiary text-[18px] pointer-events-none">
+            calendar_today
+          </span>
+</div>
+</div>
+</div>
+<!-- Primary Task Card: Record Transport -->
+<div class="bg-card-surface rounded-xl shadow-sm p-gutter flex flex-col gap-space-lg mb-gutter">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-sm text-headline-sm text-text-primary">
+          Record transport
+        </h2>
+
+</div>
+<!-- Form Inputs Container -->
+<div class="flex flex-col gap-space-md">
+<!-- Field 1: Transport Group -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-sm text-label-sm text-text-secondary" for="transport-group-select">
+            Transport Group
+          </label>
+<div class="relative">
+<select class="w-full h-[38px] appearance-none bg-surface-container-low pl-space-md pr-10 rounded-lg font-body-md text-body-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all" id="transport-group-select">
+<option selected="" value="group-1">New Group 1</option>
+<option value="group-2">Transport Unit B (Kiln East)</option>
+<option value="group-3">Transport Unit C (Track South)</option>
+</select>
+<span class="material-symbols-outlined absolute right-space-md top-1/2 -translate-y-1/2 text-text-tertiary text-[18px] pointer-events-none">
+              expand_more
+            </span>
+</div>
+</div>
+<!-- Field 2: Present Workers -->
+<div class="flex flex-col gap-space-xs mt-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-baseline gap-space-xs">
+<label class="font-label-sm text-label-sm text-text-secondary">
+                Present workers
+              </label>
+<span class="font-caption text-caption text-text-tertiary" id="worker-selected-count">(1 of 3 selected)</span>
+</div>
+<button class="font-caption text-caption text-primary hover:text-on-primary-fixed-variant transition-colors font-medium cursor-pointer" id="select-all-workers-btn" type="button">Select all</button>
+</div>
+<!-- Compact Checkbox List -->
+<div class="flex flex-col bg-surface-container-low rounded-lg p-space-xs gap-space-xs">
+<!-- Worker 1 -->
+<label class="flex items-center justify-between p-space-sm rounded-lg bg-card-surface hover:bg-row-hover cursor-pointer transition-colors">
+<div class="flex items-center gap-space-md">
+<input checked="" class="worker-checkbox w-[18px] h-[18px] accent-primary rounded cursor-pointer" type="checkbox" value="Toto">
+<span class="font-body-md text-body-md text-text-primary font-medium">Toto</span>
+</div>
+
+</label>
+<!-- Worker 2 -->
+<label class="flex items-center justify-between p-space-sm rounded-lg bg-card-surface hover:bg-row-hover cursor-pointer transition-colors">
+<div class="flex items-center gap-space-md">
+<input class="worker-checkbox w-[18px] h-[18px] accent-primary rounded cursor-pointer" type="checkbox" value="Ratan Das">
+<span class="font-body-md text-body-md text-text-primary">Ratan Das</span>
+</div>
+
+</label>
+<!-- Worker 3 -->
+<label class="flex items-center justify-between p-space-sm rounded-lg bg-card-surface hover:bg-row-hover cursor-pointer transition-colors">
+<div class="flex items-center gap-space-md">
+<input class="worker-checkbox w-[18px] h-[18px] accent-primary rounded cursor-pointer" type="checkbox" value="Manoj Soren">
+<span class="font-body-md text-body-md text-text-primary">Manoj Soren</span>
+</div>
+
+</label>
+</div>
+</div>
+<!-- Field 3: Paya / Chamber Quantity -->
+<div class="flex flex-col gap-space-xs mt-space-xs">
+<label class="font-label-sm text-label-sm text-text-secondary" for="paya-quantity-input">
+            Paya / Chamber quantity
+          </label>
+<div class="relative flex items-center bg-surface-container-low rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:bg-surface-container-lowest">
+<input class="w-full h-[38px] bg-transparent pl-space-md pr-16 font-body-md text-body-md text-text-primary focus:outline-none" id="paya-quantity-input" min="1" step="1" type="number" value="3">
+<div class="absolute right-space-sm flex items-center gap-space-xs">
+<button aria-label="Decrease quantity" class="w-6 h-6 flex items-center justify-center rounded bg-surface-container-high hover:bg-surface-dim text-text-secondary transition-colors" onclick="document.getElementById('paya-quantity-input').stepDown()" type="button">
+<span class="material-symbols-outlined text-[16px]">remove</span>
+</button>
+<button aria-label="Increase quantity" class="w-6 h-6 flex items-center justify-center rounded bg-surface-container-high hover:bg-surface-dim text-text-secondary transition-colors" onclick="document.getElementById('paya-quantity-input').stepUp()" type="button">
+<span class="material-symbols-outlined text-[16px]">add</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Footer -->
+<div class="flex items-center justify-end pt-space-xs">
+<button class="flex items-center gap-space-sm px-gutter py-space-sm rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-medium hover:bg-primary transition-all shadow-sm active:scale-[0.99] cursor-pointer" id="save-transport-btn" type="button">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+<span class="">Save transport entry</span>
+</button>
+</div>
+</div>
+<!-- Today Summary Strip -->
+<div class="bg-secondary-fixed/30 rounded-xl px-gutter py-space-md flex items-center justify-between mb-gutter shadow-sm">
+<div class="flex flex-col">
+<span class="font-caption text-caption text-text-tertiary uppercase tracking-wider font-semibold">
+          Transport Groups Recorded
+        </span>
+<span class="font-headline-md text-headline-md text-text-primary font-semibold tabular-nums mt-space-xs" id="metric-groups">
+          1
+        </span>
+</div>
+<div class="h-8 w-px bg-surface-container-highest"></div>
+<div class="flex flex-col">
+<span class="font-caption text-caption text-text-tertiary uppercase tracking-wider font-semibold">
+          Total Paya
+        </span>
+<span class="font-headline-md text-headline-md text-text-primary font-semibold tabular-nums mt-space-xs" id="metric-paya">
+          3
+        </span>
+</div>
+<div class="h-8 w-px bg-surface-container-highest"></div>
+<div class="flex flex-col">
+<span class="font-caption text-caption text-text-tertiary uppercase tracking-wider font-semibold">
+          Workers Present
+        </span>
+<span class="font-headline-md text-headline-md text-text-primary font-semibold tabular-nums mt-space-xs" id="metric-workers">
+          1
+        </span>
+</div>
+</div>
+<!-- Today’s Saved Entries Section -->
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-sm text-headline-sm text-text-primary">
+          Today’s saved entries
+        </h2>
+
+</div>
+<!-- Data Table Card Container -->
+<div class="bg-card-surface rounded-xl shadow-sm overflow-hidden flex flex-col">
+<!-- Table Column Headers -->
+<div class="grid grid-cols-12 px-gutter py-space-sm bg-surface-container-low font-caption text-caption text-text-tertiary font-semibold uppercase tracking-wider">
+<div class="col-span-6">Transport Group</div>
+<div class="col-span-3 text-center">Present</div>
+<div class="col-span-3 text-right">Paya</div>
+</div>
+<!-- Table Row 1 -->
+<div class="flex flex-col transition-colors group">
+<div class="grid grid-cols-12 px-gutter py-space-md items-center bg-card-surface hover:bg-row-hover transition-colors">
+<div class="col-span-6 flex items-center gap-space-sm">
+<span class="w-2 h-2 rounded-full bg-state-success shrink-0"></span>
+<span class="font-body-md text-body-md text-text-primary font-medium">New Group 1</span>
+</div>
+<div class="col-span-3 text-center font-body-md text-body-md text-text-secondary tabular-nums">
+              1 worker
+            </div>
+<div class="col-span-3 text-right font-body-md text-body-md text-text-primary font-semibold tabular-nums">
+              3
+            </div>
+</div>
+<!-- Expandable / Quiet Sub-Detail -->
+<div class="px-gutter pb-space-sm pt-0 flex items-center gap-space-xs">
+<button class="flex items-center gap-space-xs font-caption text-caption text-text-secondary hover:text-text-primary transition-colors cursor-pointer" id="details-toggle-btn" type="button">
+<span class="material-symbols-outlined text-[14px] text-text-tertiary transition-transform duration-200" id="details-chevron">
+                arrow_right
+              </span>
+<span class="font-medium" id="saved-workers-label">Saved workers: Toto</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  (function initChamberTransport() {
+    const checkboxes = document.querySelectorAll('.worker-checkbox');
+    const selectAllBtn = document.getElementById('select-all-workers-btn');
+    const countDisplay = document.getElementById('worker-selected-count');
+    const metricWorkers = document.getElementById('metric-workers');
+    const metricPaya = document.getElementById('metric-paya');
+    const metricGroups = document.getElementById('metric-groups');
+    const payaInput = document.getElementById('paya-quantity-input');
+    const saveBtn = document.getElementById('save-transport-btn');
+    const detailsToggle = document.getElementById('details-toggle-btn');
+    const chevron = document.getElementById('details-chevron');
+    const savedWorkersLabel = document.getElementById('saved-workers-label');
+
+    function updateWorkerCount() {
+      const selected = Array.from(checkboxes).filter(cb => cb.checked);
+      const total = checkboxes.length;
+      if (countDisplay) {
+        countDisplay.textContent = `(${selected.length} of ${total} selected)`;
+      }
+      if (selectAllBtn) {
+        selectAllBtn.textContent = selected.length === total ? 'Deselect all' : 'Select all';
+      }
+    }
+
+    checkboxes.forEach(cb => {
+      cb.addEventListener('change', updateWorkerCount);
+    });
+
+    if (selectAllBtn) {
+      selectAllBtn.addEventListener('click', () => {
+        const anyUnchecked = Array.from(checkboxes).some(cb => !cb.checked);
+        checkboxes.forEach(cb => { cb.checked = anyUnchecked; });
+        updateWorkerCount();
+      });
+    }
+
+    if (detailsToggle && chevron) {
+      let expanded = false;
+      detailsToggle.addEventListener('click', () => {
+        expanded = !expanded;
+        chevron.style.transform = expanded ? 'rotate(90deg)' : 'rotate(0deg)';
+      });
+    }
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => {
+        const selected = Array.from(checkboxes).filter(cb => cb.checked);
+        const count = selected.length;
+        const paya = parseInt(payaInput?.value || '0', 10);
+
+        if (count === 0) {
+          alert('Please select at least one present worker.');
+          return;
+        }
+
+        if (metricWorkers) metricWorkers.textContent = count.toString();
+        if (metricPaya) metricPaya.textContent = paya.toString();
+        if (metricGroups) metricGroups.textContent = '1';
+
+        const workerNames = selected.map(cb => cb.value).join(', ');
+        if (savedWorkersLabel) {
+          savedWorkersLabel.textContent = `Saved workers: ${workerNames}`;
+        }
+
+        saveBtn.classList.add('bg-state-success');
+        const originalText = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">done_all</span><span>Saved</span>';
+        setTimeout(() => {
+          saveBtn.classList.remove('bg-state-success');
+          saveBtn.innerHTML = originalText;
+        }, 1200);
+      });
+    }
+
+    updateWorkerCount();
+  })();
+</script></main></div>
+
+
+</body></html>

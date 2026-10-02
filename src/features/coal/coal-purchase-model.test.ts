@@ -11,10 +11,13 @@ import {
   filterCoalPayments,
   filterCoalPurchases,
   getCoalFinalTotal,
+  getCoalPaymentAllocationReconciliation,
   getCoalSelectivePaymentStatus,
   getDerivedCoalMeasurementField,
   getEligibleCoalSettlementPurchases,
   summarizeCoalPurchases,
+  setCoalSettlementAllocation,
+  setCoalSettlementPaymentAmount,
   toggleCoalSettlementPurchase,
   updateCoalMeasurement,
 } from "./coal-purchase-model.ts";
@@ -210,6 +213,28 @@ test("Payment Status combines with seller and inclusive date range without leaki
   });
 });
 
+test("Coal Purchase archive search matches only genuine identifying fields", () => {
+  const purchases = [
+    purchase({ id: "seller", sellerNameSnapshot: "Dhanbad Minerals" }),
+    purchase({ id: "coal", coalNameSnapshot: "Grade G11 Steam" }),
+    purchase({ id: "source", sourceLocationSnapshot: "Central Siding" }),
+    purchase({ id: "challan", coalChallanNumber: "CH-204" }),
+    purchase({ id: "vehicle", vehicleNumberSnapshot: "WB58 A 1234" }),
+    purchase({ id: "outside", sellerNameSnapshot: "Another Seller" }),
+  ];
+
+  const ids = (searchTerm: string) => filterCoalPurchases(
+    purchases, "2026-09-01", "2026-09-30", "", "all", searchTerm,
+  ).map((entry) => entry.id);
+
+  assert.deepEqual(ids("dhanbad"), ["seller"]);
+  assert.deepEqual(ids("g11"), ["coal"]);
+  assert.deepEqual(ids("central"), ["source"]);
+  assert.deepEqual(ids("ch-204"), ["challan"]);
+  assert.deepEqual(ids("wb58"), ["vehicle"]);
+  assert.deepEqual(ids("   ").sort(), purchases.map((entry) => entry.id).sort());
+});
+
 test("Detailed Purchase History is newest-first with deterministic same-date ordering", () => {
   const filtered = filterCoalPurchases([
     purchase({ id: "purchase-old-created", purchaseDate: "2026-09-20", createdAt: "2026-09-20T08:00:00Z" }),
@@ -265,6 +290,49 @@ test("Seller Payment History is newest-first and renders one grouped payment wit
   assert.deepEqual(filtered[0]?.allocations, grouped.allocations);
 });
 
+test("Seller Payment archive filters persisted payment and allocation snapshots", () => {
+  const first = payment({
+    id: "first",
+    sellerNameSnapshot: "Dhanbad Minerals",
+    paymentMode: "bank_transfer",
+    note: "September settlement",
+    allocations: [{
+      purchaseId: "purchase-a",
+      purchaseDate: "2026-09-10",
+      coalChallanNumber: "CH-204",
+      coalNameSnapshot: "Steam Coal",
+      sourceLocationSnapshot: "Central Siding",
+      vehicleNumberSnapshot: "WB58 A 1234",
+      allocatedAmount: 25000,
+    }],
+  });
+  const second = payment({ id: "second", sellerId: "seller-b", paymentMode: "cash" });
+
+  const ids = (mode: "" | CoalPayment["paymentMode"], search: string) => filterCoalPayments(
+    [first, second], "2026-09-01", "2026-09-30", "", mode, search,
+  ).map((entry) => entry.id);
+
+  assert.deepEqual(ids("bank_transfer", ""), ["first"]);
+  for (const search of ["dhanbad", "september", "ch-204", "steam", "central", "wb58"]) {
+    assert.deepEqual(ids("", search), ["first"]);
+  }
+});
+
+test("persisted Seller Payment allocations reconcile in paise without current purchase balances", () => {
+  assert.deepEqual(getCoalPaymentAllocationReconciliation(payment({
+    amount: 25000,
+    allocations: [
+      { purchaseId: "a", purchaseDate: "2026-09-10", coalChallanNumber: null, coalNameSnapshot: "A", sourceLocationSnapshot: "A", vehicleNumberSnapshot: "A", allocatedAmount: 10000.1 },
+      { purchaseId: "b", purchaseDate: "2026-09-11", coalChallanNumber: null, coalNameSnapshot: "B", sourceLocationSnapshot: "B", vehicleNumberSnapshot: "B", allocatedAmount: 14999.9 },
+    ],
+  })), { allocatedAmount: 25000, remainingAmount: 0, reconciles: true });
+
+  assert.deepEqual(getCoalPaymentAllocationReconciliation(payment({
+    amount: 25000,
+    allocations: [{ purchaseId: "a", purchaseDate: "2026-09-10", coalChallanNumber: null, coalNameSnapshot: "A", sourceLocationSnapshot: "A", vehicleNumberSnapshot: "A", allocatedAmount: 24000 }],
+  })), { allocatedAmount: 24000, remainingAmount: 1000, reconciles: false });
+});
+
 test("only unpaid active Coal Purchases may be corrected or voided", () => {
   assert.equal(canChangeCoalPurchase(purchase()), true);
   assert.equal(canChangeCoalPurchase(purchase({ isLocked: true, totalPaid: 1 })), false);
@@ -290,17 +358,23 @@ test("seller and inclusive date range expose only eligible outstanding Coal Purc
   ), []);
 });
 
-test("selection defaults to full due but preserves explicit mixed full and partial amounts", () => {
+test("selection defaults to full due and reconciles payment across multiple purchases", () => {
   const first = purchase({ id: "first", outstandingAmount: 800000, finalTotal: 1800000, totalPaid: 1000000 });
   const second = purchase({ id: "second", purchaseDate: "2026-09-20", outstandingAmount: 1500000, finalTotal: 2000000, totalPaid: 500000 });
   let form = { ...emptyCoalSelectivePaymentForm("2026-09-30"), sellerId: "seller-a", paymentMode: "bank_transfer" };
   form = toggleCoalSettlementPurchase(form, first, true);
+  assert.equal(form.amount, "800000");
   form = toggleCoalSettlementPurchase(form, second, true);
-  form = { ...form, allocations: { ...form.allocations, second: "500000" } };
+  assert.equal(form.amount, "2300000");
+  form = setCoalSettlementAllocation(form, second.id, "500000");
   assert.deepEqual(form.allocations, { first: "800000", second: "500000" });
+  assert.equal(form.amount, "1300000");
   assert.deepEqual(getCoalSelectivePaymentStatus(form, [first, second]), {
     periodOutstanding: 2300000,
     selectedPurchases: 2,
+    paymentAmount: 1300000,
+    allocatedAmount: 1300000,
+    remainingAmount: 0,
     selectedPayment: 1300000,
     canSubmit: true,
     error: "",
@@ -311,9 +385,52 @@ test("selection defaults to full due but preserves explicit mixed full and parti
   ]);
 });
 
+test("deselection removes its allocation and returns payment to the remaining total or empty state", () => {
+  const first = purchase({ id: "first", outstandingAmount: 80000 });
+  const second = purchase({ id: "second", outstandingAmount: 20000 });
+  let form = emptyCoalSelectivePaymentForm("2026-09-30");
+  form = toggleCoalSettlementPurchase(form, first, true);
+  form = toggleCoalSettlementPurchase(form, second, true);
+  assert.equal(form.amount, "100000");
+
+  form = toggleCoalSettlementPurchase(form, first, false);
+  assert.deepEqual(form.allocations, { second: "20000" });
+  assert.equal(form.amount, "20000");
+
+  form = toggleCoalSettlementPurchase(form, second, false);
+  assert.deepEqual(form.allocations, {});
+  assert.equal(form.amount, "");
+});
+
+test("editing payment amount keeps one selected Coal Purchase allocation partial and valid", () => {
+  const due = purchase({ outstandingAmount: 80000 });
+  let form = {
+    ...toggleCoalSettlementPurchase(emptyCoalSelectivePaymentForm("2026-09-30"), due, true),
+    sellerId: due.sellerId,
+    paymentMode: "upi",
+  };
+  form = setCoalSettlementPaymentAmount(form, "30000");
+  assert.equal(form.amount, "30000");
+  assert.deepEqual(form.allocations, { [due.id]: "30000" });
+  assert.equal(getCoalSelectivePaymentStatus(form, [due]).canSubmit, true);
+});
+
+test("an auto-reconciled allocation still cannot exceed the purchase outstanding balance", () => {
+  const due = purchase({ outstandingAmount: 1000 });
+  let form = {
+    ...toggleCoalSettlementPurchase(emptyCoalSelectivePaymentForm("2026-09-30"), due, true),
+    sellerId: due.sellerId,
+    paymentMode: "cash",
+  };
+  form = setCoalSettlementAllocation(form, due.id, "1000.01");
+  assert.equal(form.amount, "1000.01");
+  assert.match(getCoalSelectivePaymentStatus(form, [due]).error, /exceeds its outstanding amount/);
+  assert.equal(buildCoalSelectivePaymentInput("factory-a", form, [due]), null);
+});
+
 test("selective payment rejects no selection, zero, negative, over-allocation, and invalid ranges", () => {
   const due = purchase({ outstandingAmount: 1000 });
-  const base = { ...emptyCoalSelectivePaymentForm("2026-09-30"), sellerId: "seller-a", paymentMode: "cash" };
+  const base = { ...emptyCoalSelectivePaymentForm("2026-09-30"), sellerId: "seller-a", amount: "1000", paymentMode: "cash" };
   assert.equal(buildCoalSelectivePaymentInput("factory-a", base, [due]), null);
   for (const amount of ["0", "-1", "1000.01"]) {
     assert.equal(buildCoalSelectivePaymentInput("factory-a", {
@@ -323,4 +440,35 @@ test("selective payment rejects no selection, zero, negative, over-allocation, a
   assert.equal(buildCoalSelectivePaymentInput("factory-a", {
     ...base, fromDate: "2026-10-01", toDate: "2026-09-01", allocations: { [due.id]: "1" },
   }, [due]), null);
+  assert.equal(buildCoalSelectivePaymentInput("factory-a", {
+    ...base, amount: "999", allocations: { [due.id]: "1000" },
+  }, [due]), null);
+  assert.equal(buildCoalSelectivePaymentInput("factory-a", {
+    ...base, amount: "1000", allocations: { [due.id]: "999" },
+  }, [due]), null);
+});
+
+test("selective payment exposes payment, allocated, and remaining without changing allocation authority", () => {
+  const due = purchase({ outstandingAmount: 2000 });
+  const base = {
+    ...emptyCoalSelectivePaymentForm("2026-09-30"),
+    sellerId: "seller-a",
+    amount: "1500",
+    paymentMode: "cash",
+    allocations: { [due.id]: "1000" },
+  };
+  assert.deepEqual(getCoalSelectivePaymentStatus(base, [due]), {
+    periodOutstanding: 2000,
+    selectedPurchases: 1,
+    paymentAmount: 1500,
+    allocatedAmount: 1000,
+    remainingAmount: 500,
+    selectedPayment: 1000,
+    canSubmit: false,
+    error: "Allocate the full payment amount before saving.",
+  });
+  assert.equal(getCoalSelectivePaymentStatus({
+    ...base,
+    amount: "999",
+  }, [due]).error, "Allocated amount cannot exceed the payment amount.");
 });

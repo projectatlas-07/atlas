@@ -8,11 +8,16 @@ import {
   canChangeVehicleMaintenance,
   emptyVehicleMaintenanceBatchPaymentForm,
   emptyVehicleMaintenanceForm,
+  filterVehicleMaintenanceBatchPayments,
   filterVehicleMaintenanceRecords,
+  getVehicleMaintenancePaymentAllocationReconciliation,
   getVehicleMaintenancePeriodOutstanding,
   summarizeVehicleMaintenance,
 } from "./vehicle-maintenance-model.ts";
-import type { VehicleMaintenanceRecord } from "./types.ts";
+import type {
+  VehicleMaintenanceBatchPayment,
+  VehicleMaintenanceRecord,
+} from "./types.ts";
 
 const baseForm = {
   ...emptyVehicleMaintenanceForm("2026-09-10"),
@@ -31,6 +36,28 @@ const baseRecord: VehicleMaintenanceRecord = {
   status: "active", isLocked: false, totalPaid: 0, outstandingAmount: 8000,
   paymentState: "unpaid", voidedAt: null,
   createdAt: "2026-09-10T00:00:00Z", updatedAt: "2026-09-10T00:00:00Z",
+};
+
+const baseBatchPayment: VehicleMaintenanceBatchPayment = {
+  id: "payment-a",
+  factoryId: "factory-a",
+  garageId: "garage-a",
+  garageNameSnapshot: "Rahman Garage",
+  vehicleIds: ["vehicle-a"],
+  allocationCount: 1,
+  allocations: [{
+    maintenanceId: "maintenance-a",
+    maintenanceDate: "2026-09-10",
+    vehicleId: "vehicle-a",
+    vehicleNumberSnapshot: "WB58 A 1234",
+    workDescription: "Rear tyre replacement",
+    allocatedAmount: 3000,
+  }],
+  paymentDate: "2026-09-12",
+  amount: 3000,
+  paymentMode: "bank_transfer",
+  note: "Final tyre payment",
+  createdAt: "2026-09-12T10:00:00Z",
 };
 
 test("creates back-entered unpaid Maintenance with stable vehicle and garage IDs", () => {
@@ -137,6 +164,85 @@ test("vehicle and Garage date filters preserve multiple relationship combination
   ];
   assert.deepEqual(filterVehicleMaintenanceRecords(rows, "2026-09-01", "2026-09-30", "vehicle-a", "garage-a").map((row) => row.id), ["maintenance-a"]);
   assert.equal(filterVehicleMaintenanceRecords(rows, "2026-09-01", "2026-09-30").length, 3);
+  assert.equal(filterVehicleMaintenanceRecords(rows, "", "").length, 4);
+});
+
+test("Maintenance archive filters genuine snapshots and authoritative states", () => {
+  const rows = [
+    baseRecord,
+    { ...baseRecord, id: "partial", vehicleNumberSnapshot: "TRUCK-2", totalPaid: 2000, outstandingAmount: 6000, paymentState: "partially_paid" as const, isLocked: true },
+    { ...baseRecord, id: "paid", garageNameSnapshot: "Metro Garage", totalPaid: 8000, outstandingAmount: 0, paymentState: "paid" as const, isLocked: true },
+    { ...baseRecord, id: "void", workDescription: "Brake repair", status: "void" as const, outstandingAmount: 0 },
+  ];
+  assert.deepEqual(filterVehicleMaintenanceRecords(rows, "2026-09-01", "2026-09-30", "", "", "partially_paid", "truck-2").map((row) => row.id), ["partial"]);
+  assert.deepEqual(filterVehicleMaintenanceRecords(rows, "2026-09-01", "2026-09-30", "", "", "paid", "metro").map((row) => row.id), ["paid"]);
+  assert.deepEqual(filterVehicleMaintenanceRecords(rows, "2026-09-01", "2026-09-30", "", "", "void", "brake").map((row) => row.id), ["void"]);
+  assert.deepEqual(filterVehicleMaintenanceRecords(rows, "2026-09-01", "2026-09-30", "", "", "unpaid", "rahman").map((row) => row.id), ["maintenance-a"]);
+});
+
+test("Garage Payment archive filters persisted payment and allocation snapshots", () => {
+  const rows: VehicleMaintenanceBatchPayment[] = [
+    baseBatchPayment,
+    {
+      ...baseBatchPayment,
+      id: "payment-b",
+      garageId: "garage-b",
+      garageNameSnapshot: "Metro Motors",
+      vehicleIds: ["vehicle-b"],
+      paymentDate: "2026-09-14",
+      paymentMode: "cash",
+      note: null,
+      createdAt: "2026-09-14T09:00:00Z",
+      allocations: [{
+        ...baseBatchPayment.allocations[0],
+        maintenanceId: "maintenance-b",
+        vehicleId: "vehicle-b",
+        vehicleNumberSnapshot: "TRUCK-2",
+        workDescription: "Brake repair",
+      }],
+    },
+    {
+      ...baseBatchPayment,
+      id: "payment-c",
+      paymentDate: "2026-09-14",
+      createdAt: "2026-09-14T11:00:00Z",
+    },
+  ];
+
+  assert.deepEqual(filterVehicleMaintenanceBatchPayments(
+    rows, "", "", "", "", "", "tyre",
+  ).map((payment) => payment.id), ["payment-c", "payment-a"]);
+  assert.deepEqual(filterVehicleMaintenanceBatchPayments(
+    rows, "2026-09-14", "2026-09-14", "garage-b", "vehicle-b", "cash", "brake",
+  ).map((payment) => payment.id), ["payment-b"]);
+  assert.deepEqual(filterVehicleMaintenanceBatchPayments(
+    rows, "", "", "", "", "", "truck-2",
+  ).map((payment) => payment.id), ["payment-b"]);
+  assert.deepEqual(filterVehicleMaintenanceBatchPayments(
+    rows, "", "", "", "", "", "metro motors",
+  ).map((payment) => payment.id), ["payment-b"]);
+  assert.deepEqual(filterVehicleMaintenanceBatchPayments(
+    rows, "", "", "", "", "", "final tyre payment",
+  ).map((payment) => payment.id), ["payment-c", "payment-a"]);
+  assert.deepEqual(filterVehicleMaintenanceBatchPayments(
+    rows, "2026-09-15", "2026-09-14",
+  ), []);
+});
+
+test("Garage Payment reconciliation uses exact persisted allocation amounts", () => {
+  assert.deepEqual(getVehicleMaintenancePaymentAllocationReconciliation(baseBatchPayment), {
+    allocatedAmount: 3000,
+    remainingAmount: 0,
+    reconciles: true,
+  });
+  assert.deepEqual(getVehicleMaintenancePaymentAllocationReconciliation({
+    ...baseBatchPayment,
+    amount: 3500,
+  }), {
+    allocatedAmount: 3000,
+    remainingAmount: 500,
+    reconciles: false,
+  });
 });
 
 test("history summary excludes void jobs and derives billed, paid, and outstanding", () => {

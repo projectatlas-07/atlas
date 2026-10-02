@@ -5,6 +5,7 @@ import type {
   CreateVehicleMaintenanceInput,
   CreateVehicleMaintenancePaymentInput,
   UpdateVehicleMaintenanceInput,
+  VehicleMaintenanceBatchPayment,
   VehicleMaintenanceRecord,
 } from "./types.ts";
 
@@ -48,6 +49,19 @@ export type VehicleMaintenanceSummary = {
   totalOutstanding: number;
   activeJobs: number;
 };
+
+export type VehicleMaintenancePaymentReconciliation = {
+  allocatedAmount: number;
+  remainingAmount: number;
+  reconciles: boolean;
+};
+
+export type VehicleMaintenanceStateFilter =
+  | "all"
+  | "unpaid"
+  | "partially_paid"
+  | "paid"
+  | "void";
 
 export function emptyVehicleMaintenanceForm(localToday: string): VehicleMaintenanceForm {
   return {
@@ -204,12 +218,25 @@ export function filterVehicleMaintenanceRecords(
   toDate: string,
   vehicleId = "",
   garageId = "",
+  state: VehicleMaintenanceStateFilter = "all",
+  searchTerm = "",
 ): VehicleMaintenanceRecord[] {
-  if (!isLocalDate(fromDate) || !isLocalDate(toDate) || fromDate > toDate) return [];
-  return records.filter((record) => record.maintenanceDate >= fromDate
-    && record.maintenanceDate <= toDate
+  if ((fromDate && !isLocalDate(fromDate)) || (toDate && !isLocalDate(toDate))
+    || (fromDate && toDate && fromDate > toDate)) return [];
+  const normalizedSearch = searchTerm.trim().toLocaleLowerCase("en-IN");
+  return records.filter((record) => (!fromDate || record.maintenanceDate >= fromDate)
+    && (!toDate || record.maintenanceDate <= toDate)
     && (!vehicleId || record.vehicleId === vehicleId)
-    && (!garageId || record.garageId === garageId));
+    && (!garageId || record.garageId === garageId)
+    && matchesVehicleMaintenanceState(record, state)
+    && (!normalizedSearch || [
+      record.vehicleNumberSnapshot,
+      record.garageNameSnapshot,
+      record.workDescription,
+    ].some((value) => value.toLocaleLowerCase("en-IN").includes(normalizedSearch))))
+    .sort((left, right) => right.maintenanceDate.localeCompare(left.maintenanceDate)
+      || right.createdAt.localeCompare(left.createdAt)
+      || right.id.localeCompare(left.id));
 }
 
 export function summarizeVehicleMaintenance(
@@ -234,6 +261,51 @@ export function summarizeVehicleMaintenance(
   };
 }
 
+export function filterVehicleMaintenanceBatchPayments(
+  payments: readonly VehicleMaintenanceBatchPayment[],
+  fromDate: string,
+  toDate: string,
+  garageId = "",
+  vehicleId = "",
+  paymentMode: VehicleMaintenanceBatchPayment["paymentMode"] | "" = "",
+  searchTerm = "",
+): VehicleMaintenanceBatchPayment[] {
+  if ((fromDate && !isLocalDate(fromDate)) || (toDate && !isLocalDate(toDate))
+    || (fromDate && toDate && fromDate > toDate)) return [];
+  const normalizedSearch = searchTerm.trim().toLocaleLowerCase("en-IN");
+  return payments.filter((payment) => (!fromDate || payment.paymentDate >= fromDate)
+    && (!toDate || payment.paymentDate <= toDate)
+    && (!garageId || payment.garageId === garageId)
+    && (!vehicleId || payment.vehicleIds.includes(vehicleId))
+    && (!paymentMode || payment.paymentMode === paymentMode)
+    && (!normalizedSearch || [
+      payment.garageNameSnapshot,
+      payment.note ?? "",
+      ...payment.allocations.flatMap((allocation) => [
+        allocation.vehicleNumberSnapshot,
+        allocation.workDescription,
+      ]),
+    ].some((value) => value.toLocaleLowerCase("en-IN").includes(normalizedSearch))))
+    .sort((left, right) => right.paymentDate.localeCompare(left.paymentDate)
+      || right.createdAt.localeCompare(left.createdAt)
+      || right.id.localeCompare(left.id));
+}
+
+export function getVehicleMaintenancePaymentAllocationReconciliation(
+  payment: Pick<VehicleMaintenanceBatchPayment, "amount" | "allocations">,
+): VehicleMaintenancePaymentReconciliation {
+  const paymentPaise = Math.round(payment.amount * 100);
+  const allocatedPaise = payment.allocations.reduce(
+    (sum, allocation) => sum + Math.round(allocation.allocatedAmount * 100),
+    0,
+  );
+  return {
+    allocatedAmount: allocatedPaise / 100,
+    remainingAmount: (paymentPaise - allocatedPaise) / 100,
+    reconciles: paymentPaise === allocatedPaise,
+  };
+}
+
 export function canChangeVehicleMaintenance(
   record: Pick<VehicleMaintenanceRecord, "status" | "isLocked" | "totalPaid">,
 ): boolean {
@@ -247,6 +319,15 @@ function compareMaintenanceOldestFirst(
   return left.maintenanceDate.localeCompare(right.maintenanceDate)
     || left.createdAt.localeCompare(right.createdAt)
     || left.id.localeCompare(right.id);
+}
+
+function matchesVehicleMaintenanceState(
+  record: VehicleMaintenanceRecord,
+  state: VehicleMaintenanceStateFilter,
+): boolean {
+  if (state === "all") return true;
+  if (state === "void") return record.status === "void";
+  return record.status === "active" && record.paymentState === state;
 }
 
 function buildCommonInput(factoryId: string, form: VehicleMaintenanceForm): {

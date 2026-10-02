@@ -133,15 +133,7 @@ export function CashBookOfficeSection({ factoryId }: Readonly<{ factoryId: strin
   const initializationRequired = isCashBookInitializationRequired(dayQuery.error);
 
   return (
-    <section aria-labelledby="cash-book-heading" className="mt-10 border-t-4 border-emerald-300 pt-8">
-      <div className="mb-6">
-        <p className="text-sm font-semibold uppercase tracking-wider text-emerald-800">Cash Book</p>
-        <h2 id="cash-book-heading" className="mt-1 text-2xl font-bold">Daily money in and money out</h2>
-        <p className="mt-2 max-w-3xl text-sm text-slate-600">
-          Customer receipts, supplier payments, and Vehicle wage payments appear automatically. Record only other direct money movements here.
-        </p>
-      </div>
-
+    <section aria-label="Cash Book" className="min-h-0">
       {dayQuery.isLoading && <CashBookMessage>Loading Cash Book...</CashBookMessage>}
       {initializationRequired && <CashBookInitializationSetup
         factoryId={factoryId}
@@ -167,8 +159,9 @@ export function CashBookOfficeSection({ factoryId }: Readonly<{ factoryId: strin
         </div>
       </div>}
 
-      {dayQuery.data && <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 bg-slate-50 p-4 sm:p-5">
+      {/* ui-exception: the daily workspace needs a viewport-derived desktop height so transaction history receives the remaining Office space. */}
+      {dayQuery.data && <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-var(--atlas-space-16))]">
+        <div className="shrink-0 border-b border-slate-200 bg-slate-50 p-4 sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h3 className="text-lg font-bold">{formatChallanDate(selectedDate)}</h3>
@@ -190,7 +183,7 @@ export function CashBookOfficeSection({ factoryId }: Readonly<{ factoryId: strin
 
         <CashBookSummary day={dayQuery.data} />
 
-        <div className="border-b border-slate-200 px-4 py-3 sm:px-5">
+        <div className="shrink-0 border-b border-slate-200 px-4 py-3 sm:px-5">
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => openManualEntry("in")} className="h-9 rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white">+ Add Money In</button>
             <button type="button" onClick={() => openManualEntry("out")} className="h-9 rounded-lg bg-red-700 px-4 text-sm font-semibold text-white">+ Add Money Out</button>
@@ -207,7 +200,7 @@ export function CashBookOfficeSection({ factoryId }: Readonly<{ factoryId: strin
           {success && <p role="status" className="mt-3 text-sm font-semibold text-emerald-700">{success}</p>}
         </div>
 
-        <div className="grid lg:grid-cols-2 lg:divide-x lg:divide-slate-200">
+        <div className="max-h-96 min-h-0 flex-1 overflow-y-auto lg:grid lg:max-h-none lg:grid-cols-2 lg:divide-x lg:divide-slate-200 lg:overflow-hidden">
           <CashBookColumn
             direction="in"
             entries={dayQuery.data.moneyIn}
@@ -277,7 +270,7 @@ function CashBookInitializationSetup({ factoryId, localToday, onInitialized }: R
 }
 
 function CashBookSummary({ day }: Readonly<{ day: CashBookDay }>) {
-  return <dl className="grid grid-cols-2 border-b border-slate-200 sm:grid-cols-4">
+  return <dl className="grid shrink-0 grid-cols-2 border-b border-slate-200 sm:grid-cols-4">
     <CashBookSummaryValue label="Opening Balance" value={day.summary.openingBalance} />
     <CashBookSummaryValue label="Money In" value={day.summary.totalMoneyIn} tone="in" />
     <CashBookSummaryValue label="Money Out" value={day.summary.totalMoneyOut} tone="out" />
@@ -333,24 +326,26 @@ function CashBookColumn({ direction, entries, confirmingVoidId, voidingEntryId, 
   onConfirmVoid: (entry: CashBookMovement) => void;
 }>) {
   const isMoneyIn = direction === "in";
-  return <section aria-label={isMoneyIn ? "Money In / Receipts" : "Money Out / Payments"} className="min-w-0">
-    <div className={`border-b border-slate-200 px-4 py-3 sm:px-5 ${isMoneyIn ? "bg-emerald-50" : "bg-red-50"}`}>
+  return <section aria-label={isMoneyIn ? "Money In / Receipts" : "Money Out / Payments"} className="min-w-0 lg:flex lg:min-h-0 lg:flex-col">
+    <div className={`border-b border-slate-200 px-4 py-3 sm:px-5 lg:shrink-0 ${isMoneyIn ? "bg-emerald-50" : "bg-red-50"}`}>
       <h4 className={`font-bold ${isMoneyIn ? "text-emerald-900" : "text-red-900"}`}>{isMoneyIn ? "Money In / Receipts" : "Money Out / Payments"}</h4>
     </div>
-    {entries.length === 0 && <p className="px-5 py-8 text-sm text-slate-500">
-      {isMoneyIn ? "No money received on this date." : "No money paid out on this date."} Opening and closing still carry forward.
-    </p>}
-    {entries.length > 0 && <ul className="divide-y divide-slate-100">
-      {entries.map((entry) => <CashBookEntryRow
-        key={`${entry.sourceType}-${entry.sourceId}`}
-        entry={entry}
-        confirmingVoid={confirmingVoidId === entry.sourceId}
-        isVoiding={voidingEntryId === entry.sourceId}
-        onAskVoid={() => onAskVoid(entry.sourceId)}
-        onCancelVoid={onCancelVoid}
-        onConfirmVoid={() => onConfirmVoid(entry)}
-      />)}
-    </ul>}
+    <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+      {entries.length === 0 && <p className="px-5 py-8 text-sm text-slate-500">
+        {isMoneyIn ? "No money received on this date." : "No money paid out on this date."} Opening and closing still carry forward.
+      </p>}
+      {entries.length > 0 && <ul className="divide-y divide-slate-100">
+        {entries.map((entry) => <CashBookEntryRow
+          key={`${entry.sourceType}-${entry.sourceId}`}
+          entry={entry}
+          confirmingVoid={confirmingVoidId === entry.sourceId}
+          isVoiding={voidingEntryId === entry.sourceId}
+          onAskVoid={() => onAskVoid(entry.sourceId)}
+          onCancelVoid={onCancelVoid}
+          onConfirmVoid={() => onConfirmVoid(entry)}
+        />)}
+      </ul>}
+    </div>
   </section>;
 }
 

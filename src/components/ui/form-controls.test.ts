@@ -4,7 +4,7 @@ import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { Checkbox, Input, Select } from "./form-controls.ts";
+import { Checkbox, Input, Select, Textarea } from "./form-controls.ts";
 
 function classNamesFromMarkup(markup: string) {
   const classAttribute = /class="([^"]+)"/.exec(markup)?.[1];
@@ -52,6 +52,28 @@ test("Input and Select render the normal native control contract", () => {
     ]) {
       assert.ok(classNames.has(className), `control must use ${className}`);
     }
+  }
+});
+
+test("Textarea renders the shared multiline control contract", () => {
+  const html = renderToStaticMarkup(
+    createElement(Textarea, { id: "repair", name: "repair", rows: 3 }),
+  );
+  const classNames = classNamesFromMarkup(html);
+
+  assert.match(html, /^<textarea [^>]+><\/textarea>$/);
+  assert.match(html, / id="repair"/);
+  assert.match(html, / name="repair"/);
+  assert.match(html, / rows="3"/);
+  for (const className of [
+    "min-h-atlas-12",
+    "rounded-atlas-control",
+    "border-atlas-border-strong",
+    "bg-atlas-surface",
+    "resize-y",
+    "focus-visible:ring-atlas-focus",
+  ]) {
+    assert.ok(classNames.has(className), `textarea must use ${className}`);
   }
 });
 

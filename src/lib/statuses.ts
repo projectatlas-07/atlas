@@ -413,7 +413,7 @@ export const PRODUCTION_LABOURER_LIFECYCLE_STATUS =
 export const BRICK_TYPE_LIFECYCLE_STATUS =
   defineBooleanStatusPresentationSet("Brick type lifecycle", {
     true: { value: true, label: "Active", tone: "success" },
-    false: { value: false, label: "Archived", tone: "archive" },
+    false: { value: false, label: "Inactive", tone: "archive" },
   });
 
 export const ATLAS_STATUS_PRESENTATION_SETS = {

@@ -92,6 +92,16 @@ test("the container supports wide tables and headers opt into sticky positioning
   assert.doesNotMatch(html, /\bcursor-pointer\b/);
 });
 
+test("the container can bound both table axes for an internally scrolling archive", () => {
+  const html = renderToStaticMarkup(
+    createElement(TableContainer, { bounded: true }, "Archive"),
+  );
+
+  assert.match(html, /\bmax-h-96\b/);
+  assert.match(html, /\boverflow-auto\b/);
+  assert.doesNotMatch(html, /\boverflow-x-auto\b/);
+});
+
 test("rows can expose a selected presentation without becoming interactive", () => {
   const html = renderToStaticMarkup(
     createElement(TableRow, { selected: true }, createElement(TableCell, null, "Selected")),

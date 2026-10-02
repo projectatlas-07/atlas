@@ -73,7 +73,7 @@ test("header exposes exactly the two approved touch-friendly shortcuts", () => {
   assert.ok(shortcutNav);
   const links = collectElements(shortcutNav).filter((element) => element.type === "a" || element.type === Link);
   assert.deepEqual(links.map((link) => ({ href: link.props.href, label: link.props.children })), [
-    { href: "/", label: "Record Production" },
+    { href: "/office#brick-production", label: "Record Production" },
     { href: "#new-challan", label: "New Challan" },
   ]);
   for (const link of links) assert.match(String(link.props.className), /min-h-atlas-12/);
