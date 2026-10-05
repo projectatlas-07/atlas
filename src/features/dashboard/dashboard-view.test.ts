@@ -22,8 +22,6 @@ function ownerSnapshot(overrides: Partial<OwnerDashboardSnapshot["today"]["flows
         sales: 125000,
         paymentsReceived: 25001,
         expenses: 35002,
-        cashIn: 45003,
-        cashOut: 55004,
         productionQuantity: 12345,
         productionLabourPaid: 75006,
         mudSupplyPaid: 85007,
@@ -34,8 +32,13 @@ function ownerSnapshot(overrides: Partial<OwnerDashboardSnapshot["today"]["flows
         ...overrides,
       },
       stocks: {
-        cashBalance: 135012,
         currentCustomerOutstanding: 145013,
+      },
+      cashBook: {
+        status: "started",
+        moneyIn: 45003,
+        moneyOut: 55004,
+        balance: 135012,
       },
     },
     thisWeekSales: {
@@ -93,18 +96,51 @@ test("attention uses only absent production and current outstanding without inve
 });
 
 test("zero activity gets an explicit empty state while zero Sales remains a truthful value", () => {
-  const presentation = buildDashboardPresentation(ownerSnapshot({
+  const snapshot = ownerSnapshot({
     sales: 0,
     paymentsReceived: 0,
     expenses: 0,
-    cashIn: 0,
-    cashOut: 0,
-  }));
+  });
+  snapshot.today.cashBook = { status: "started", moneyIn: 0, moneyOut: 0, balance: 0 };
+  const presentation = buildDashboardPresentation(snapshot);
 
   assert.equal(presentation.todaySales.value, "₹0.00");
   assert.match(presentation.todaySales.description, /No active Challan value/i);
   assert.equal(presentation.hasRecordedActivity, false);
   assert.match(componentSource, /No money activity recorded today/);
+});
+
+test("uninitialized Cash Book is explicit and introduces no fabricated financial values", () => {
+  const snapshot = ownerSnapshot({ paymentsReceived: 0, expenses: 0 });
+  snapshot.today.cashBook = { status: "not_started" };
+
+  const presentation = buildDashboardPresentation(snapshot);
+  const cashPosition = presentation.currentPosition.find((item) => item.label === "Cash balance");
+
+  assert.equal(cashPosition?.value, "Cash Book not started");
+  assert.equal(cashPosition?.href, "#cash-book");
+  assert.match(cashPosition?.description ?? "", /one-time setup/i);
+  assert.equal(presentation.activity.some((item) => item.label === "Cash In"), false);
+  assert.equal(presentation.activity.some((item) => item.label === "Cash Out"), false);
+  assert.equal(presentation.hasRecordedActivity, false);
+  assert.doesNotMatch(JSON.stringify(presentation.currentPosition), /₹0\.00/);
+});
+
+test("an initialized legitimate zero remains a real Cash Book value", () => {
+  const snapshot = ownerSnapshot({ paymentsReceived: 0, expenses: 0 });
+  snapshot.today.cashBook = { status: "started", moneyIn: 0, moneyOut: 0, balance: 0 };
+
+  const presentation = buildDashboardPresentation(snapshot);
+
+  assert.equal(presentation.currentPosition[0]?.value, "₹0.00");
+  assert.deepEqual(
+    presentation.activity.filter((item) => item.href === "#cash-book").map(({ label, value }) => ({ label, value })),
+    [
+      { label: "Cash In", value: "₹0.00" },
+      { label: "Cash Out", value: "₹0.00" },
+    ],
+  );
+  assert.equal(presentation.hasRecordedActivity, false);
 });
 
 test("view is presentational, token-based, responsive, and links only to existing areas", () => {

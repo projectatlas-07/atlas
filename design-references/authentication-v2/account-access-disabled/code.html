@@ -1,0 +1,68 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Atlas Login — Desktop Authentication Shell</title>
+<!-- Tailwind CSS v3 with forms & container queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Inter Google Font -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<!-- BEGIN: Custom Typography & Canvas Styles -->
+<style data-purpose="base-styling">
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #F8F9FA;
+      color: #111827;
+    }
+  </style>
+<!-- END: Custom Typography & Canvas Styles -->
+</head>
+<body class="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center p-6 antialiased selection:bg-[#2F6B4F]/10 selection:text-[#2F6B4F]">
+<!-- BEGIN: BrandHeader -->
+<header class="mb-8 flex items-baseline gap-2.5 select-none" data-purpose="brand-header">
+<span class="text-[28px] font-bold tracking-tight text-[#111827]">Atlas</span>
+<span class="text-[12px] font-semibold tracking-wider text-[#6B7280] uppercase">OFFICE</span>
+</header>
+<!-- END: BrandHeader -->
+<!-- BEGIN: AuthenticationCard -->
+<main class="w-full max-w-[440px] bg-[#FFFFFF] rounded-xl border border-[#E5E5E2] p-8 shadow-[0_1px_3px_rgba(0,0,0,0.03)]" data-purpose="auth-card"><h1 class="text-2xl font-bold text-[#191C1A] tracking-tight mb-2">Account access disabled</h1>
+<p class="text-sm text-[#525650] leading-relaxed mb-2">Your account is signed in, but access to this factory is currently disabled.</p>
+<p class="text-xs text-[#737770] leading-relaxed mb-6">Contact your factory owner or administrator to restore access.</p>
+<div class="bg-[#FAF9F7] border border-[#E5E5E2] rounded-lg p-3.5 text-left mb-6 space-y-2.5">
+  <div>
+    <div class="text-[11px] font-medium text-[#737770] uppercase tracking-wider mb-0.5">Signed in as</div>
+    <div class="text-sm font-semibold text-[#191C1A]">rajesh@shreekiln.in</div>
+  </div>
+  <div class="border-t border-[#EAEAE6] pt-2">
+    <div class="text-[11px] font-medium text-[#737770] uppercase tracking-wider mb-0.5">Factory</div>
+    <div class="text-sm font-semibold text-[#191C1A]">Shree Kiln Industries</div>
+  </div>
+</div>
+<button type="button" class="w-full h-12 rounded-lg border border-[#D9DAD6] bg-white text-[#191C1A] font-medium text-sm hover:bg-[#F5F5F3] transition-colors flex items-center justify-center mb-4">Log out</button>
+<div class="text-center">
+  <a href="#" class="text-xs font-medium text-[#2F6B4F] hover:underline">Use a different account</a>
+</div></main>
+<!-- END: AuthenticationCard -->
+<!-- BEGIN: Interactive Password Toggle Script -->
+<script data-purpose="toggle-password-visibility">
+    document.addEventListener('DOMContentLoaded', () => {
+      const toggleButton = document.getElementById('togglePassword');
+      const passwordInput = document.getElementById('password');
+      const eyeIcon = document.getElementById('eyeIcon');
+      const eyeSlashIcon = document.getElementById('eyeSlashIcon');
+
+      if (toggleButton && passwordInput) {
+        toggleButton.addEventListener('click', () => {
+          const isPassword = passwordInput.getAttribute('type') === 'password';
+          passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+          eyeIcon.classList.toggle('hidden', isPassword);
+          eyeSlashIcon.classList.toggle('hidden', !isPassword);
+        });
+      }
+    });
+  </script>
+<!-- END: Interactive Password Toggle Script -->
+
+
+</body></html>

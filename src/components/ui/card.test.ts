@@ -4,7 +4,12 @@ import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { CARD_SURFACES, Card, type CardSurface } from "./card.ts";
+import {
+  CARD_PADDINGS,
+  CARD_SURFACES,
+  Card,
+  type CardSurface,
+} from "./card.ts";
 
 const EXPECTED_SURFACE_CLASSES = {
   default: "bg-atlas-surface",
@@ -48,6 +53,18 @@ test("the only supported surface distinction is default or muted", () => {
       `${surface} Card must use ${EXPECTED_SURFACE_CLASSES[surface]}`,
     );
   }
+});
+
+test("comfortable Card spacing supports focused narrow forms", () => {
+  assert.deepEqual(CARD_PADDINGS, ["default", "comfortable"]);
+  const html = renderToStaticMarkup(
+    createElement(Card, { padding: "comfortable" }, "Focused form"),
+  );
+  const classNames = classNamesFromMarkup(html);
+
+  assert.ok(classNames.has("p-atlas-6"));
+  assert.ok(classNames.has("sm:p-atlas-8"));
+  assert.doesNotMatch(html, /padding=/);
 });
 
 test("Card preserves appropriate HTML attributes and semantic elements", () => {

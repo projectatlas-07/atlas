@@ -35,8 +35,6 @@ const today: DashboardSnapshot = {
     sales: 1,
     paymentsReceived: 2,
     expenses: 3,
-    cashIn: 4,
-    cashOut: 5,
     productionQuantity: 6,
     productionLabourPaid: 7,
     mudSupplyPaid: 8,
@@ -45,7 +43,8 @@ const today: DashboardSnapshot = {
     staffPaid: 11,
     vehicleDeliveryWagePaid: 12,
   },
-  stocks: { cashBalance: 13, currentCustomerOutstanding: 14 },
+  stocks: { currentCustomerOutstanding: 14 },
+  cashBook: { status: "started", moneyIn: 4, moneyOut: 5, balance: 13 },
 };
 const snapshot: OwnerDashboardSnapshot = {
   today,

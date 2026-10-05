@@ -2,8 +2,6 @@ export interface DashboardFlowMetrics {
   sales: number;
   paymentsReceived: number;
   expenses: number;
-  cashIn: number;
-  cashOut: number;
   productionQuantity: number;
   productionLabourPaid: number;
   mudSupplyPaid: number;
@@ -14,15 +12,26 @@ export interface DashboardFlowMetrics {
 }
 
 export interface DashboardStockMetrics {
-  cashBalance: number;
   currentCustomerOutstanding: number;
 }
+
+export type DashboardCashBookState =
+  | {
+      status: "started";
+      moneyIn: number;
+      moneyOut: number;
+      balance: number;
+    }
+  | {
+      status: "not_started";
+    };
 
 export interface DashboardSnapshot {
   dateFrom: string;
   dateTo: string;
   flows: DashboardFlowMetrics;
   stocks: DashboardStockMetrics;
+  cashBook: DashboardCashBookState;
 }
 
 /** Read-only owner summary composed from the existing Dashboard snapshot and Sales service. */

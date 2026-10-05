@@ -4,9 +4,13 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Feedback } from "@/components/ui/feedback";
+import { ATLAS_UI_STRINGS } from "@/lib/strings";
 import { supabase } from "@/lib/supabase/client";
 
-export function LogoutButton({ v2 = false }: Readonly<{ v2?: boolean }>) {
+export function LogoutButton({
+  v2 = false,
+  fullWidth = false,
+}: Readonly<{ v2?: boolean; fullWidth?: boolean }>) {
   const router = useRouter();
   const isLoggingOutRef = useRef(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -22,14 +26,14 @@ export function LogoutButton({ v2 = false }: Readonly<{ v2?: boolean }>) {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        setLogoutError("Could not sign out. Please try again.");
+        setLogoutError(ATLAS_UI_STRINGS.auth.logoutError);
         return;
       }
 
       router.replace("/login");
       router.refresh();
     } catch {
-      setLogoutError("Could not sign out. Please try again.");
+      setLogoutError(ATLAS_UI_STRINGS.auth.logoutError);
     } finally {
       isLoggingOutRef.current = false;
       setIsLoggingOut(false);
@@ -37,17 +41,18 @@ export function LogoutButton({ v2 = false }: Readonly<{ v2?: boolean }>) {
   }
 
   return (
-    <div className="flex shrink-0 flex-col items-end gap-2">
+    <div className={`flex shrink-0 flex-col gap-2 ${fullWidth ? "w-full items-stretch" : "items-end"}`}>
       {v2 ? (
         <Button
           type="button"
           variant="secondary"
+          fullWidth={fullWidth}
           disabled={isLoggingOut}
           loading={isLoggingOut}
-          loadingLabel="Signing out..."
+          loadingLabel={ATLAS_UI_STRINGS.auth.loggingOut}
           onClick={() => void logout()}
         >
-          Log out
+          {ATLAS_UI_STRINGS.auth.logout}
         </Button>
       ) : (
         <button
@@ -56,7 +61,7 @@ export function LogoutButton({ v2 = false }: Readonly<{ v2?: boolean }>) {
           onClick={() => void logout()}
           className="h-10 rounded-lg border border-stone-300 bg-white px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isLoggingOut ? "Signing out..." : "Log out"}
+          {isLoggingOut ? ATLAS_UI_STRINGS.auth.loggingOut : ATLAS_UI_STRINGS.auth.logout}
         </button>
       )}
       {logoutError && (v2

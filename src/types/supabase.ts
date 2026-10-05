@@ -1526,6 +1526,14 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      resolve_factory_access: {
+        Args: Record<PropertyKey, never>;
+        Returns: { status: "active" | "inactive" | "none"; factory_id: string | null }[];
+      };
+      provision_first_factory: {
+        Args: { p_factory_name: string };
+        Returns: { factory_id: string; created: boolean }[];
+      };
       update_factory_printable_profile: {
         Args: {
           p_factory_id: string;

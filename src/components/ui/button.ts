@@ -35,6 +35,7 @@ type NativeButtonProps = Omit<
 export type ButtonProps = Readonly<
   NativeButtonProps & {
     variant?: ButtonVariant;
+    fullWidth?: boolean;
     loading?: boolean;
     loadingLabel?: ReactNode;
   }
@@ -66,6 +67,7 @@ function hasVisibleText(node: ReactNode): boolean {
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({
   children,
   variant = "primary",
+  fullWidth = false,
   type = "button",
   disabled = false,
   loading = false,
@@ -108,6 +110,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         "text-atlas-base font-atlas-semibold transition-colors",
         "focus-visible:outline-none focus-visible:ring-atlas-focus focus-visible:ring-offset-atlas-focus",
         "disabled:cursor-not-allowed disabled:border-atlas-border disabled:bg-atlas-surface-disabled disabled:text-atlas-text-disabled",
+        fullWidth ? "w-full" : "",
         VARIANT_CLASSES[variant],
       ].join(" "),
     },

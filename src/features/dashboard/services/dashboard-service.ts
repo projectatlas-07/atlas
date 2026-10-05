@@ -1,4 +1,5 @@
 import {
+  CashBookServiceError,
   getBalanceAsOf,
   getRangeTotals,
 } from "../../cash-book/services/cash-book-service.ts";
@@ -18,7 +19,11 @@ import {
 } from "../../sales/services/customer-payment-service.ts";
 import { getSalesTotal } from "../../sales/services/sales-register-service.ts";
 import { assertInclusiveBusinessDateRange } from "../../../lib/business-date-contract.ts";
-import type { DashboardSnapshot, OwnerDashboardSnapshot } from "../types.ts";
+import type {
+  DashboardCashBookState,
+  DashboardSnapshot,
+  OwnerDashboardSnapshot,
+} from "../types.ts";
 
 export async function getOwnerDashboardSnapshot(
   factoryId: string,
@@ -54,7 +59,7 @@ export async function getDashboardSnapshot(
     sales,
     paymentsReceived,
     expenses,
-    cashBookRange,
+    cashBook,
     productionQuantity,
     productionLabourPaid,
     mudSupplyPaid,
@@ -62,13 +67,12 @@ export async function getDashboardSnapshot(
     soilTrolleyPaid,
     staffPaid,
     vehicleDeliveryWagePaid,
-    cashBalance,
     currentCustomerOutstanding,
   ] = await Promise.all([
     getSalesTotal(factoryId, dateFrom, dateTo),
     getPaymentsReceivedTotal(factoryId, dateFrom, dateTo),
     getRecordedExpenseTotal(factoryId, dateFrom, dateTo),
-    getRangeTotals(factoryId, dateFrom, dateTo),
+    getDashboardCashBookState(factoryId, dateFrom, dateTo),
     getProductionQuantityTotal(factoryId, dateFrom, dateTo),
     productionLabourProvider.getPaidTotal(factoryId, dateFrom, dateTo),
     mudSupplyProvider.getPaidTotal(factoryId, dateFrom, dateTo),
@@ -76,7 +80,6 @@ export async function getDashboardSnapshot(
     soilTrolleyProvider.getPaidTotal(factoryId, dateFrom, dateTo),
     staffProvider.getPaidTotal(factoryId, dateFrom, dateTo),
     vehicleDeliveryWageProvider.getPaidTotal(factoryId, dateFrom, dateTo),
-    getBalanceAsOf(factoryId, dateTo),
     getCurrentCustomerOutstandingTotal(factoryId),
   ]);
 
@@ -87,8 +90,6 @@ export async function getDashboardSnapshot(
       sales,
       paymentsReceived,
       expenses,
-      cashIn: cashBookRange.moneyIn,
-      cashOut: cashBookRange.moneyOut,
       productionQuantity,
       productionLabourPaid,
       mudSupplyPaid,
@@ -98,8 +99,41 @@ export async function getDashboardSnapshot(
       vehicleDeliveryWagePaid,
     },
     stocks: {
-      cashBalance,
       currentCustomerOutstanding,
     },
+    cashBook,
   };
+}
+
+async function getDashboardCashBookState(
+  factoryId: string,
+  dateFrom: string,
+  dateTo: string,
+): Promise<DashboardCashBookState> {
+  const [rangeResult, balanceResult] = await Promise.allSettled([
+    getRangeTotals(factoryId, dateFrom, dateTo),
+    getBalanceAsOf(factoryId, dateTo),
+  ]);
+  const results = [rangeResult, balanceResult];
+
+  for (const result of results) {
+    if (result.status === "rejected" && !isCashBookNotStartedError(result.reason)) {
+      throw result.reason;
+    }
+  }
+
+  if (rangeResult.status === "rejected" || balanceResult.status === "rejected") {
+    return { status: "not_started" };
+  }
+
+  return {
+    status: "started",
+    moneyIn: rangeResult.value.moneyIn,
+    moneyOut: rangeResult.value.moneyOut,
+    balance: balanceResult.value,
+  };
+}
+
+function isCashBookNotStartedError(error: unknown): boolean {
+  return error instanceof CashBookServiceError && error.code === "P3201";
 }

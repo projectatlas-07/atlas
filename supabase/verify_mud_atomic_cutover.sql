@@ -56,20 +56,28 @@ select
   (select count(*) from public.mud_accounting_mode_transitions)
 from public.factories as factories
 join public.mud_accounting_states as states on states.factory_id = factories.id
-join lateral (
-  select factory_users.id, factory_users.user_id
-  from public.factory_users
-  where factory_users.factory_id = factories.id and factory_users.is_active = true
-  order by factory_users.created_at, factory_users.id
-  limit 1
-) as users on true
-where factories.name = 'Test Atlas Clean user'
-  and states.accounting_mode = 'SHADOW';
+join public.factory_users as users
+  on users.factory_id = factories.id
+  and users.is_active = true
+where states.accounting_mode = 'SHADOW'
+  and not exists (
+    select 1 from public.mud_factory_settlements
+    where mud_factory_settlements.factory_id = factories.id
+  )
+  and not exists (
+    select 1 from public.mud_group_legacy_openings
+    where mud_group_legacy_openings.factory_id = factories.id
+  )
+  and 1 = (
+    select count(*) from public.factory_users
+    where factory_users.factory_id = factories.id
+      and factory_users.is_active = true
+  );
 
 do $$
 begin
   if (select count(*) from mud_phase5a_baseline) <> 1 then
-    raise exception 'FAIL: expected exactly one real Test Atlas Clean SHADOW factory';
+    raise exception 'FAIL: expected exactly one eligible SHADOW baseline factory';
   end if;
 end;
 $$;
@@ -128,7 +136,6 @@ do $$
 declare
   fixture text;
   factory_id uuid;
-  brick_id uuid;
   labourer_id uuid;
   group_a_id uuid;
   group_b_id uuid;
@@ -136,7 +143,6 @@ declare
 begin
   foreach fixture in array array['happy', 'rate_change', 'group_stop', 'multi_member', 'invalid_next_day'] loop
     factory_id := gen_random_uuid();
-    brick_id := gen_random_uuid();
     labourer_id := gen_random_uuid();
     group_a_id := gen_random_uuid();
     group_b_id := gen_random_uuid();
@@ -155,17 +161,15 @@ begin
         when 'multi_member' then '9000000054'
         else '9000000055'
       end);
-    insert into public.brick_types(id, factory_id, name)
-    values (brick_id, factory_id, 'Verifier Brick');
-    insert into public.labourers(id, factory_id, name, assigned_brick_type_id)
-    values (labourer_id, factory_id, 'Verifier Production Labourer', brick_id);
+    insert into public.labourers(id, factory_id, name)
+    values (labourer_id, factory_id, 'Verifier Production Labourer');
     insert into public.labour_groups(id, factory_id, name, member_count, is_active) values
       (group_a_id, factory_id, 'Group A', 5, true),
       (group_b_id, factory_id, 'Group B', 5, false);
     insert into public.wage_rates(id, factory_id, applies_to, rate_per_1000_bricks, effective_from)
     values (wage_rate_id, factory_id, 'mud_supply', 100, date '2026-08-31');
-    insert into public.production_entries(id, factory_id, labourer_id, brick_type_id, production_date, quantity)
-    select gen_random_uuid(), factory_id, labourer_id, brick_id,
+    insert into public.production_entries(id, factory_id, labourer_id, production_date, quantity)
+    select gen_random_uuid(), factory_id, labourer_id,
       date '2026-08-31' + days.day_offset,
       case when fixture = 'multi_member' then 1001 else 1000 end
     from generate_series(0, 6) as days(day_offset);

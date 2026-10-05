@@ -140,6 +140,15 @@ test("icon-only buttons require an accessible label", () => {
   assert.match(html, /<svg aria-hidden="true">/);
 });
 
+test("full-width buttons opt into form-width layout without caller styling", () => {
+  const html = renderToStaticMarkup(
+    createElement(Button, { fullWidth: true }, "Continue"),
+  );
+
+  assert.match(html, /class="[^"]*\bw-full\b[^"]*"/);
+  assert.doesNotMatch(html, /fullWidth=/);
+});
+
 test("the primitive uses no raw styling or domain logic", () => {
   const source = readFileSync(new URL("./button.ts", import.meta.url), "utf8");
 

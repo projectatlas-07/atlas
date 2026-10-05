@@ -48,7 +48,9 @@ function controlStateClasses({
 
 export type InputProps = WithoutClassName<
   InputHTMLAttributes<HTMLInputElement>
->;
+> & {
+  withTrailingAction?: boolean;
+};
 
 /** Native Atlas input styling. Labels and validation rules remain with callers. */
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
@@ -56,6 +58,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     type = "text",
     disabled = false,
     readOnly = false,
+    withTrailingAction = false,
     "aria-invalid": ariaInvalid,
     ...props
   },
@@ -70,6 +73,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     "aria-invalid": ariaInvalid,
     className: [
       BASE_CONTROL_CLASSES,
+      withTrailingAction ? "pr-atlas-16" : "",
       controlStateClasses({ disabled, readOnly, ariaInvalid }),
     ].join(" "),
   });

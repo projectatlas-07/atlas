@@ -1,0 +1,245 @@
+<!DOCTYPE html><html lang="en" style=""><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atlas Login — Desktop Authentication Shell</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650&amp;display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+          },
+          colors: {
+            atlas: {
+              bg: '#F7F7F5',
+              surface: '#FFFFFF',
+              border: '#E5E5E2',
+              inputBorder: '#D9DAD6',
+              green: '#2F6B4F',
+              greenHover: '#285D45',
+              greenPressed: '#234F3C',
+              greenDisabled: '#8FAFA0',
+              textMain: '#20211F',
+              textSecondary: '#6B6D68',
+              textMuted: '#8A8C87',
+              errorText: '#B54747',
+              errorBg: '#FFF5F4',
+              errorBorder: '#F2C1C1',
+            }
+          },
+          boxShadow: {
+            subtle: '0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px -1px rgba(0, 0, 0, 0.02)',
+            focusGreen: '0 0 0 3px rgba(47, 107, 79, 0.15)',
+            focusError: '0 0 0 3px rgba(181, 71, 71, 0.15)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background-color: #F7F7F5;
+      color: #20211F;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    input::placeholder {
+      color: #8A8C87;
+    }
+    .tnum {
+      font-variant-numeric: tabular-nums;
+    }
+    /* Hidden utility for state showcase switching */
+    .state-panel {
+      transition: all 0.15s ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-4 sm:p-6 md:p-8 antialiased selection:bg-[#2F6B4F]/10 selection:text-[#20211F]">
+
+  <!-- Top spacer / subtle environment indicator -->
+  
+
+  <!-- Main Centered Authentication Shell Container -->
+  <main class="w-full flex-1 flex flex-col items-center justify-center my-6">
+    <div class="w-full max-w-[440px] flex flex-col items-center">
+      
+      <!-- Brand Header -->
+      <div class="mb-7 flex items-baseline gap-2 select-none" aria-label="Atlas Office">
+        <span class="text-[23px] font-[650] tracking-[-0.03em] text-[#20211F]">Atlas</span>
+        <span class="text-[11px] font-medium tracking-[0.14em] uppercase text-[#6B6D68]">OFFICE</span>
+      </div>
+
+      <!-- Authentication Card -->
+      <div class="w-full bg-[#FFFFFF] border border-[#E5E5E2] rounded-[12px] p-6 sm:p-8 shadow-subtle state-panel">
+        
+        <!-- Card Heading & Subtitle -->
+        <header class="mb-7 sm:mb-8 text-left">
+          <h1 class="text-[26px] sm:text-[28px] font-[650] leading-[34px] tracking-[-0.025em] text-[#20211F]">
+            Welcome back
+          </h1>
+          <p class="mt-2 text-[14px] sm:text-[15px] leading-[21px] font-normal text-[#6B6D68]">
+            Log in to your Atlas workspace.
+          </p>
+        </header>
+
+        <!-- Form-level Generic Error State (Restrained & Muted) -->
+        <div id="credentialsError" class="hidden mb-5 p-3 rounded-[8px] bg-[#FFF5F4] border border-[#F2C1C1] flex items-start gap-2.5" role="alert">
+          <svg class="w-4 h-4 text-[#B54747] mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"></path>
+          </svg>
+          <span class="text-[13.5px] leading-[19px] font-medium text-[#B54747]">
+            Email or password is incorrect.
+          </span>
+        </div>
+
+        <!-- Login Form -->
+        <form onsubmit="event.preventDefault();" novalidate="" class="flex flex-col">
+          
+          <!-- Email Field Group -->
+          <div class="flex flex-col">
+            <label for="emailInput" class="text-[14px] font-[500] leading-none text-[#20211F] mb-2 flex items-center justify-between">
+              <span class="">Email</span>
+            </label>
+            <div class="relative">
+              <input id="emailInput" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" value="rajesh@shreekiln.in" class="w-full h-[48px] px-3.5 sm:px-4 rounded-[8px] border border-[#D9DAD6] bg-[#FFFFFF] text-[15px] sm:text-[16px] text-[#20211F] placeholder-[#8A8C87] outline-none transition duration-150 focus:border-[#2F6B4F] focus:ring-0 focus:shadow-focusGreen hover:border-[#B5B7B1]">
+            </div>
+          </div>
+
+          <!-- Password Field Group -->
+          <div class="flex flex-col mt-5">
+            <div class="flex items-center justify-between mb-2">
+              <label for="passwordInput" class="text-[14px] font-[500] leading-none text-[#20211F]">
+                Password
+              </label>
+              <a href="#" class="text-[14px] font-[500] text-[#2F6B4F] hover:text-[#285D45] hover:underline focus:outline-none focus:ring-1 focus:ring-[#2F6B4F] rounded transition">
+                Forgot password?
+              </a>
+            </div>
+            <div class="relative flex items-center">
+              <input id="passwordInput" type="password" autocomplete="current-password" value="KilnOps2024Secure" class="w-full h-[48px] pl-3.5 sm:pl-4 pr-11 rounded-[8px] border border-[#D9DAD6] bg-[#FFFFFF] text-[15px] sm:text-[16px] text-[#20211F] placeholder-[#8A8C87] outline-none transition duration-150 focus:border-[#2F6B4F] focus:ring-0 focus:shadow-focusGreen hover:border-[#B5B7B1]">
+              <!-- Quiet Eye Show/Hide Toggle Control (min 48px touch boundary via padding) -->
+              <button type="button" id="togglePasswordBtn" onclick="togglePasswordVisibility()" aria-label="Toggle password visibility" class="absolute right-0 top-0 h-[48px] w-[44px] flex items-center justify-center text-[#8A8C87] hover:text-[#20211F] focus:outline-none focus:text-[#2F6B4F] transition">
+                <!-- Eye Open Icon -->
+                <svg id="eyeOpenIcon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                <!-- Eye Closed Icon -->
+                <svg id="eyeClosedIcon" class="w-5 h-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Primary Action Button -->
+          <div class="mt-6">
+            <button id="submitBtn" type="submit" class="w-full h-[48px] rounded-[8px] bg-[#2F6B4F] text-[#FFFFFF] text-[15px] font-[600] tracking-[-0.01em] hover:bg-[#285D45] active:bg-[#234F3C] focus:outline-none focus:shadow-focusGreen transition duration-150 flex items-center justify-center gap-2">
+              <span id="btnSpinner" class="hidden">
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </span>
+              <span id="btnLabel" class="">Log in</span>
+            </button>
+          </div>
+
+          <!-- Create Account Navigation -->
+          <div class="mt-6 sm:mt-7 text-center">
+            <span class="text-[14px] font-normal text-[#6B6D68]">
+              New to Atlas?
+              <a href="#" class="font-[500] text-[#2F6B4F] hover:text-[#285D45] hover:underline focus:outline-none focus:ring-1 focus:ring-[#2F6B4F] rounded ml-1 transition">
+                Create account
+              </a>
+            </span>
+          </div>
+
+        </form>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Grounding footer with subtle, restrained system context -->
+  
+
+  <script>
+    function togglePasswordVisibility() {
+      const passwordInput = document.getElementById('passwordInput');
+      const eyeOpen = document.getElementById('eyeOpenIcon');
+      const eyeClosed = document.getElementById('eyeClosedIcon');
+      
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        eyeOpen.classList.add('hidden');
+        eyeClosed.classList.remove('hidden');
+      } else {
+        passwordInput.type = 'password';
+        eyeOpen.classList.remove('hidden');
+        eyeClosed.classList.add('hidden');
+      }
+    }
+
+    function setState(state) {
+      const emailInput = document.getElementById('emailInput');
+      const passwordInput = document.getElementById('passwordInput');
+      const submitBtn = document.getElementById('submitBtn');
+      const btnLabel = document.getElementById('btnLabel');
+      const btnSpinner = document.getElementById('btnSpinner');
+      const errorBanner = document.getElementById('credentialsError');
+
+      // Update state button pills styling
+      const buttons = ['default', 'focused', 'error', 'disabled', 'loading'];
+      buttons.forEach(b => {
+        const el = document.getElementById('btn-' + b);
+        if (b === state) {
+          el.className = 'px-2.5 py-1 rounded bg-white text-[#20211F] shadow-sm transition font-medium';
+        } else {
+          el.className = 'px-2.5 py-1 rounded hover:text-[#20211F] text-[#6B6D68] transition';
+        }
+      });
+
+      // Reset base element states
+      errorBanner.classList.add('hidden');
+      emailInput.className = "w-full h-[48px] px-3.5 sm:px-4 rounded-[8px] border border-[#D9DAD6] bg-[#FFFFFF] text-[15px] sm:text-[16px] text-[#20211F] placeholder-[#8A8C87] outline-none transition duration-150 focus:border-[#2F6B4F] focus:ring-0 focus:shadow-focusGreen hover:border-[#B5B7B1]";
+      passwordInput.className = "w-full h-[48px] pl-3.5 sm:pl-4 pr-11 rounded-[8px] border border-[#D9DAD6] bg-[#FFFFFF] text-[15px] sm:text-[16px] text-[#20211F] placeholder-[#8A8C87] outline-none transition duration-150 focus:border-[#2F6B4F] focus:ring-0 focus:shadow-focusGreen hover:border-[#B5B7B1]";
+      submitBtn.disabled = false;
+      submitBtn.className = "w-full h-[48px] rounded-[8px] bg-[#2F6B4F] text-[#FFFFFF] text-[15px] font-[600] tracking-[-0.01em] hover:bg-[#285D45] active:bg-[#234F3C] focus:outline-none focus:shadow-focusGreen transition duration-150 flex items-center justify-center gap-2";
+      btnSpinner.classList.add('hidden');
+      btnLabel.textContent = "Log in";
+
+      if (state === 'default') {
+        // Natural default state
+        emailInput.value = "rajesh@shreekiln.in";
+        passwordInput.value = "KilnOps2024Secure";
+      } else if (state === 'focused') {
+        emailInput.className = "w-full h-[48px] px-3.5 sm:px-4 rounded-[8px] border border-[#2F6B4F] bg-[#FFFFFF] text-[15px] sm:text-[16px] text-[#20211F] placeholder-[#8A8C87] outline-none transition duration-150 shadow-focusGreen";
+        emailInput.focus();
+      } else if (state === 'error') {
+        errorBanner.classList.remove('hidden');
+        emailInput.className = "w-full h-[48px] px-3.5 sm:px-4 rounded-[8px] border border-[#B54747] bg-[#FFFFFF] text-[15px] sm:text-[16px] text-[#20211F] placeholder-[#8A8C87] outline-none transition duration-150 shadow-focusError";
+        passwordInput.className = "w-full h-[48px] pl-3.5 sm:pl-4 pr-11 rounded-[8px] border border-[#B54747] bg-[#FFFFFF] text-[15px] sm:text-[16px] text-[#20211F] placeholder-[#8A8C87] outline-none transition duration-150 shadow-focusError";
+      } else if (state === 'disabled') {
+        submitBtn.disabled = true;
+        submitBtn.className = "w-full h-[48px] rounded-[8px] bg-[#E5E5E2] text-[#8A8C87] text-[15px] font-[600] tracking-[-0.01em] cursor-not-allowed flex items-center justify-center gap-2";
+      } else if (state === 'loading') {
+        submitBtn.disabled = true;
+        submitBtn.className = "w-full h-[48px] rounded-[8px] bg-[#285D45] text-[#FFFFFF] text-[15px] font-[600] tracking-[-0.01em] cursor-wait flex items-center justify-center gap-2";
+        btnSpinner.classList.remove('hidden');
+        btnLabel.textContent = "Logging in…";
+      }
+    }
+  </script>
+
+
+
+
+</body></html>

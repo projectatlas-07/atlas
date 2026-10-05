@@ -59,20 +59,28 @@ select
   (select count(*) from public.mud_accounting_mode_transitions)
 from public.factories as factories
 join public.mud_accounting_states as states on states.factory_id = factories.id
-join lateral (
-  select factory_users.id, factory_users.user_id
-  from public.factory_users
-  where factory_users.factory_id = factories.id and factory_users.is_active
-  order by factory_users.created_at, factory_users.id
-  limit 1
-) as users on true
-where factories.name = 'Test Atlas Clean user'
-  and states.accounting_mode = 'SHADOW';
+join public.factory_users as users
+  on users.factory_id = factories.id
+  and users.is_active = true
+where states.accounting_mode = 'SHADOW'
+  and not exists (
+    select 1 from public.mud_factory_settlements
+    where mud_factory_settlements.factory_id = factories.id
+  )
+  and not exists (
+    select 1 from public.mud_group_legacy_openings
+    where mud_group_legacy_openings.factory_id = factories.id
+  )
+  and 1 = (
+    select count(*) from public.factory_users
+    where factory_users.factory_id = factories.id
+      and factory_users.is_active = true
+  );
 
 do $$
 begin
   if (select count(*) from mud_phase5b1_baseline) <> 1 then
-    raise exception 'FAIL: expected exactly one real Test Atlas Clean SHADOW factory';
+    raise exception 'FAIL: expected exactly one eligible SHADOW baseline factory';
   end if;
 end;
 $$;
@@ -109,8 +117,6 @@ do $$
 declare
   settlement_factory uuid := gen_random_uuid();
   shadow_factory uuid := gen_random_uuid();
-  settlement_brick uuid := gen_random_uuid();
-  shadow_brick uuid := gen_random_uuid();
   settlement_labourer uuid := gen_random_uuid();
   shadow_labourer uuid := gen_random_uuid();
   group_a uuid := gen_random_uuid();
@@ -127,7 +133,6 @@ begin
   perform set_config('mud5b1.group_c', group_c::text, true);
   perform set_config('mud5b1.shadow_group', shadow_group::text, true);
   perform set_config('mud5b1.settlement_labourer', settlement_labourer::text, true);
-  perform set_config('mud5b1.settlement_brick', settlement_brick::text, true);
   perform set_config('mud5b1.shadow_labourer', shadow_labourer::text, true);
   perform set_config('mud5b1.withdrawal_1', gen_random_uuid()::text, true);
   perform set_config('mud5b1.withdrawal_2', gen_random_uuid()::text, true);
@@ -136,12 +141,9 @@ begin
   insert into public.factories(id, name, business_description, address, mobile) values
     (settlement_factory, 'Mud Phase5B1 SETTLEMENT Fixture', 'Rollback verifier', 'Rollback verifier', '9000000061'),
     (shadow_factory, 'Mud Phase5B1 SHADOW Fixture', 'Rollback verifier', 'Rollback verifier', '9000000062');
-  insert into public.brick_types(id, factory_id, name) values
-    (settlement_brick, settlement_factory, 'Settlement Brick'),
-    (shadow_brick, shadow_factory, 'Shadow Brick');
-  insert into public.labourers(id, factory_id, name, assigned_brick_type_id) values
-    (settlement_labourer, settlement_factory, 'Settlement Production Labourer', settlement_brick),
-    (shadow_labourer, shadow_factory, 'Shadow Production Labourer', shadow_brick);
+  insert into public.labourers(id, factory_id, name) values
+    (settlement_labourer, settlement_factory, 'Settlement Production Labourer'),
+    (shadow_labourer, shadow_factory, 'Shadow Production Labourer');
   insert into public.labour_groups(id, factory_id, name, member_count, is_active) values
     (group_a, settlement_factory, 'Group A', 5, true),
     (group_b, settlement_factory, 'Group B', 5, false),
@@ -163,19 +165,19 @@ begin
     (settlement_factory, group_b, 200, date '2026-09-07'),
     (shadow_factory, shadow_group, 100, date '2026-08-24');
 
-  insert into public.production_entries(id, factory_id, labourer_id, brick_type_id, production_date, quantity)
-  select gen_random_uuid(), settlement_factory, settlement_labourer, settlement_brick,
+  insert into public.production_entries(id, factory_id, labourer_id, production_date, quantity)
+  select gen_random_uuid(), settlement_factory, settlement_labourer,
     date '2026-08-31' + days.day_offset, 1000
   from generate_series(0, 6) as days(day_offset);
-  insert into public.production_entries(id, factory_id, labourer_id, brick_type_id, production_date, quantity) values
-    (gen_random_uuid(), settlement_factory, settlement_labourer, settlement_brick, date '2026-09-07', 93000),
-    (gen_random_uuid(), settlement_factory, settlement_labourer, settlement_brick, date '2026-09-08', 93000),
-    (gen_random_uuid(), settlement_factory, settlement_labourer, settlement_brick, date '2026-09-09', 10000),
-    (gen_random_uuid(), settlement_factory, settlement_labourer, settlement_brick, date '2026-09-10', 10000),
-    (gen_random_uuid(), settlement_factory, settlement_labourer, settlement_brick, date '2026-09-11', 10000);
+  insert into public.production_entries(id, factory_id, labourer_id, production_date, quantity) values
+    (gen_random_uuid(), settlement_factory, settlement_labourer, date '2026-09-07', 93000),
+    (gen_random_uuid(), settlement_factory, settlement_labourer, date '2026-09-08', 93000),
+    (gen_random_uuid(), settlement_factory, settlement_labourer, date '2026-09-09', 10000),
+    (gen_random_uuid(), settlement_factory, settlement_labourer, date '2026-09-10', 10000),
+    (gen_random_uuid(), settlement_factory, settlement_labourer, date '2026-09-11', 10000);
 
-  insert into public.production_entries(id, factory_id, labourer_id, brick_type_id, production_date, quantity)
-  select gen_random_uuid(), shadow_factory, shadow_labourer, shadow_brick,
+  insert into public.production_entries(id, factory_id, labourer_id, production_date, quantity)
+  select gen_random_uuid(), shadow_factory, shadow_labourer,
     date '2026-08-24' + days.day_offset, 1000
   from generate_series(0, 13) as days(day_offset);
 end;
@@ -414,9 +416,9 @@ reset role;
 -- 10 Sep after the advancing withdrawals above.
 select pg_temp.expect_error(
   'settled Production insert', 'P3306',
-  format('insert into public.production_entries(id,factory_id,labourer_id,brick_type_id,production_date,quantity) values (%L::uuid,%L::uuid,%L::uuid,%L::uuid,date %L,1)',
+  format('insert into public.production_entries(id,factory_id,labourer_id,production_date,quantity) values (%L::uuid,%L::uuid,%L::uuid,date %L,1)',
     gen_random_uuid(), current_setting('mud5b1.settlement_factory'),
-    current_setting('mud5b1.settlement_labourer'), current_setting('mud5b1.settlement_brick'), '2026-09-10')
+    current_setting('mud5b1.settlement_labourer'), '2026-09-10')
 );
 select pg_temp.expect_error(
   'settled Production update', 'P3306',
@@ -443,10 +445,10 @@ begin
     and production_date = date '2026-09-11';
   if not found then raise exception 'FAIL: post-cutoff Production update found no row'; end if;
 
-  insert into public.production_entries(id, factory_id, labourer_id, brick_type_id, production_date, quantity)
+  insert into public.production_entries(id, factory_id, labourer_id, production_date, quantity)
   values (inserted_id, current_setting('mud5b1.settlement_factory')::uuid,
     current_setting('mud5b1.settlement_labourer')::uuid,
-    current_setting('mud5b1.settlement_brick')::uuid, date '2026-09-12', 1);
+    date '2026-09-12', 1);
   delete from public.production_entries where id = inserted_id;
   if found then
     raise notice 'PASS: post-cutoff Production insert, update, and delete succeed';

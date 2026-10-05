@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Atlas Office — Verify Email</title>
+<!-- Tailwind CSS CDN with forms plugin -->
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<!-- Custom Tailwind Configuration -->
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'atlas-bg': '#F7F7F5',
+            'atlas-card': '#FFFFFF',
+            'atlas-border': '#E5E5E2',
+            'atlas-input-border': '#D9DAD6',
+            'atlas-text-primary': '#20211F',
+            'atlas-text-secondary': '#6B6D68',
+            'atlas-placeholder': '#8A8C87',
+            'atlas-green': '#2F6B4F',
+            'atlas-green-hover': '#285D45',
+            'atlas-green-active': '#234F3C',
+            'atlas-error': '#B54747',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+          },
+          boxShadow: {
+            'atlas-subtle': '0 1px 3px rgba(0, 0, 0, 0.02)',
+          }
+        }
+      }
+    }
+  </script>
+<!-- Custom Typography & Global Defaults -->
+<style data-purpose="base-styling">
+    body {
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #F7F7F5;
+      color: #20211F;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-atlas-bg flex flex-col items-center justify-center p-4 sm:p-6">
+<!-- BEGIN: MainAuthenticationShell -->
+<main class="w-full flex flex-col items-center" data-purpose="auth-shell">
+<!-- BEGIN: BrandWordmark -->
+<header class="flex items-center gap-2 mb-[28px]" data-purpose="brand-header">
+<span class="text-[22px] font-bold tracking-[-0.02em] text-atlas-text-primary">Atlas</span>
+<span class="text-[11px] font-semibold tracking-widest text-atlas-text-secondary uppercase pt-[3px]">OFFICE</span>
+</header>
+<!-- END: BrandWordmark -->
+<!-- BEGIN: AuthenticationCard -->
+<section class="w-full max-w-[440px] bg-atlas-card border border-atlas-border rounded-xl p-6 sm:p-8" data-purpose="auth-card">
+<!-- Card Title and Supporting Description -->
+<div class="mb-7" data-purpose="card-heading-group"><h1 class="text-[24px] leading-[30px] font-bold text-atlas-text-primary tracking-[-0.015em]">Verify your email</h1><p class="text-[14px] leading-[22px] text-atlas-text-secondary mt-2">Enter the 6-digit code we sent to<br/><span class="font-medium text-atlas-text-primary">rajesh@shreekiln.in</span></p></div>
+<!-- Registration Form -->
+<form class="mt-7" id="otp-form" novalidate=""><div class="flex justify-between gap-2" data-purpose="otp-inputs"><input autocomplete="one-time-code" autofocus="" class="otp-input w-[46px] h-[48px] sm:w-[50px] sm:h-[50px] text-center text-[22px] font-semibold text-atlas-text-primary bg-white border border-atlas-input-border rounded-lg transition-colors focus:outline-none focus:border-atlas-green focus:ring-2 focus:ring-atlas-green/15" data-index="0" inputmode="numeric" maxlength="1" pattern="[0-9]*" type="text"/><input autocomplete="off" class="otp-input w-[46px] h-[48px] sm:w-[50px] sm:h-[50px] text-center text-[22px] font-semibold text-atlas-text-primary bg-white border border-atlas-input-border rounded-lg transition-colors focus:outline-none focus:border-atlas-green focus:ring-2 focus:ring-atlas-green/15" data-index="1" inputmode="numeric" maxlength="1" pattern="[0-9]*" type="text"/><input autocomplete="off" class="otp-input w-[46px] h-[48px] sm:w-[50px] sm:h-[50px] text-center text-[22px] font-semibold text-atlas-text-primary bg-white border border-atlas-input-border rounded-lg transition-colors focus:outline-none focus:border-atlas-green focus:ring-2 focus:ring-atlas-green/15" data-index="2" inputmode="numeric" maxlength="1" pattern="[0-9]*" type="text"/><input autocomplete="off" class="otp-input w-[46px] h-[48px] sm:w-[50px] sm:h-[50px] text-center text-[22px] font-semibold text-atlas-text-primary bg-white border border-atlas-input-border rounded-lg transition-colors focus:outline-none focus:border-atlas-green focus:ring-2 focus:ring-atlas-green/15" data-index="3" inputmode="numeric" maxlength="1" pattern="[0-9]*" type="text"/><input autocomplete="off" class="otp-input w-[46px] h-[48px] sm:w-[50px] sm:h-[50px] text-center text-[22px] font-semibold text-atlas-text-primary bg-white border border-atlas-input-border rounded-lg transition-colors focus:outline-none focus:border-atlas-green focus:ring-2 focus:ring-atlas-green/15" data-index="4" inputmode="numeric" maxlength="1" pattern="[0-9]*" type="text"/><input autocomplete="off" class="otp-input w-[46px] h-[48px] sm:w-[50px] sm:h-[50px] text-center text-[22px] font-semibold text-atlas-text-primary bg-white border border-atlas-input-border rounded-lg transition-colors focus:outline-none focus:border-atlas-green focus:ring-2 focus:ring-atlas-green/15" data-index="5" inputmode="numeric" maxlength="1" pattern="[0-9]*" type="text"/></div><p class="hidden text-[13px] text-atlas-error mt-2.5 text-center" id="otp-error" role="alert">The code is incorrect or has expired.</p><div class="mt-6"><button class="w-full min-h-[48px] bg-[#EAECE9] text-[#8A8C87] text-[15px] font-semibold rounded-lg flex items-center justify-center transition-colors duration-150 cursor-not-allowed disabled:cursor-not-allowed" disabled="" id="verify-button" type="submit"><span id="verify-btn-text">Verify email</span><span class="hidden items-center gap-2" id="verify-btn-spinner"><svg class="animate-spin h-4 w-4 text-white" fill="none" viewbox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" fill="currentColor"></path></svg><span>Verifying…</span></span></button></div></form>
+<!-- BEGIN: LoginRedirectLink -->
+<div class="mt-6 space-y-3.5 text-center text-[14px]" data-purpose="verify-footer-nav"><div class="text-atlas-text-secondary">Didn’t receive the code? <span class="text-[#8A8C87]" id="timer-container">Resend in <span id="countdown-timer">00:42</span></span><button class="hidden text-atlas-green hover:underline font-medium focus:outline-none" id="resend-btn" type="button">Resend code</button></div><div><span class="text-atlas-text-secondary">Wrong email? </span><a class="text-atlas-green hover:underline font-medium" href="#">Change email</a></div></div>
+<!-- END: LoginRedirectLink -->
+</section>
+<!-- END: AuthenticationCard -->
+</main>
+<!-- END: MainAuthenticationShell -->
+<!-- BEGIN: InteractiveHandlers -->
+<script data-purpose="password-visibility-toggle">
+    // Helper function to toggle password visibility
+    function setupPasswordToggle(inputId, toggleBtnId, eyeIconId, eyeOffIconId) {
+      const input = document.getElementById(inputId);
+      const toggleBtn = document.getElementById(toggleBtnId);
+      const eyeIcon = document.getElementById(eyeIconId);
+      const eyeOffIcon = document.getElementById(eyeOffIconId);
+
+      if (!input || !toggleBtn) return;
+
+      toggleBtn.addEventListener('click', () => {
+        const isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        eyeIcon.classList.toggle('hidden', isPassword);
+        eyeOffIcon.classList.toggle('hidden', !isPassword);
+      });
+    }
+
+    // Attach toggles to both password fields
+    setupPasswordToggle('password', 'toggle-password-btn', 'eye-icon-password', 'eye-off-icon-password');
+    setupPasswordToggle('confirm-password', 'toggle-confirm-password-btn', 'eye-icon-confirm', 'eye-off-icon-confirm');
+  </script>
+<script data-purpose="client-validation-and-submission">
+    const form = document.getElementById('signup-form');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirm-password');
+
+    const emailError = document.getElementById('email-error');
+    const passwordError = document.getElementById('password-error');
+    const confirmPasswordError = document.getElementById('confirm-password-error');
+
+    const submitBtn = document.getElementById('submit-button');
+    const btnText = document.getElementById('button-text');
+    const btnSpinner = document.getElementById('button-spinner');
+
+    function resetErrors() {
+      [emailError, passwordError, confirmPasswordError].forEach(el => el.classList.add('hidden'));
+      [emailInput, passwordInput, confirmPasswordInput].forEach(el => {
+        el.classList.remove('border-atlas-error', 'focus:border-atlas-error', 'focus:ring-atlas-error/15');
+        el.classList.add('border-atlas-input-border');
+      });
+    }
+
+    function markError(inputEl, errorEl) {
+      errorEl.classList.remove('hidden');
+      inputEl.classList.remove('border-atlas-input-border');
+      inputEl.classList.add('border-atlas-error', 'focus:border-atlas-error', 'focus:ring-atlas-error/15');
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      resetErrors();
+
+      let hasError = false;
+      const emailValue = emailInput.value.trim();
+      const passwordValue = passwordInput.value;
+      const confirmPasswordValue = confirmPasswordInput.value;
+
+      // Restrained client-side email format validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailValue || !emailRegex.test(emailValue)) {
+        markError(emailInput, emailError);
+        hasError = true;
+      }
+
+      // Password length validation (at least 12 characters)
+      if (passwordValue.length < 12) {
+        markError(passwordInput, passwordError);
+        hasError = true;
+      }
+
+      // Confirm password match check
+      if (confirmPasswordValue !== passwordValue || confirmPasswordValue.length === 0) {
+        markError(confirmPasswordInput, confirmPasswordError);
+        hasError = true;
+      }
+
+      if (hasError) return;
+
+      // Loading state simulation
+      submitBtn.disabled = true;
+      btnText.classList.add('hidden');
+      btnSpinner.classList.remove('hidden');
+      btnSpinner.classList.add('inline-flex');
+
+      setTimeout(() => {
+        // Reset after simulated request
+        submitBtn.disabled = false;
+        btnText.classList.remove('hidden');
+        btnSpinner.classList.remove('inline-flex');
+        btnSpinner.classList.add('hidden');
+      }, 1500);
+    });
+  </script>
+<!-- END: InteractiveHandlers -->
+</body></html>

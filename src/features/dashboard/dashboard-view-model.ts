@@ -3,6 +3,7 @@ import {
   formatIndianCurrency,
   formatIndianNumber,
 } from "../../lib/formatting.ts";
+import { ATLAS_UI_STRINGS } from "../../lib/strings.ts";
 import type { OwnerDashboardSnapshot } from "./types.ts";
 
 const MONEY_WITH_PAISE = {
@@ -28,6 +29,7 @@ export type DashboardAttentionItem = {
 export function buildDashboardPresentation(snapshot: OwnerDashboardSnapshot) {
   const productionRecorded = snapshot.today.flows.productionQuantity > 0;
   const currentOutstanding = snapshot.today.stocks.currentCustomerOutstanding;
+  const cashBook = snapshot.today.cashBook;
   const attention: DashboardAttentionItem[] = [];
 
   if (!productionRecorded) {
@@ -62,19 +64,24 @@ export function buildDashboardPresentation(snapshot: OwnerDashboardSnapshot) {
       description: "Purchases and expenses recorded today.",
       href: "#purchases-expenses",
     },
-    {
-      label: "Cash In",
-      value: formatMoney(snapshot.today.flows.cashIn),
-      description: "All Cash Book Money In recorded today.",
-      href: "#cash-book",
-    },
-    {
-      label: "Cash Out",
-      value: formatMoney(snapshot.today.flows.cashOut),
-      description: "All Cash Book Money Out recorded today.",
-      href: "#cash-book",
-    },
   ];
+
+  if (cashBook.status === "started") {
+    activity.push(
+      {
+        label: "Cash In",
+        value: formatMoney(cashBook.moneyIn),
+        description: "All Cash Book Money In recorded today.",
+        href: "#cash-book",
+      },
+      {
+        label: "Cash Out",
+        value: formatMoney(cashBook.moneyOut),
+        description: "All Cash Book Money Out recorded today.",
+        href: "#cash-book",
+      },
+    );
+  }
 
   return {
     todayDateLabel: formatDateOnly(snapshot.today.dateTo),
@@ -109,8 +116,12 @@ export function buildDashboardPresentation(snapshot: OwnerDashboardSnapshot) {
     currentPosition: [
       {
         label: "Cash balance",
-        value: formatMoney(snapshot.today.stocks.cashBalance),
-        description: `Balance as of ${formatDateOnly(snapshot.today.dateTo)}.`,
+        value: cashBook.status === "started"
+          ? formatMoney(cashBook.balance)
+          : ATLAS_UI_STRINGS.dashboard.cashBookNotStarted,
+        description: cashBook.status === "started"
+          ? `Balance as of ${formatDateOnly(snapshot.today.dateTo)}.`
+          : ATLAS_UI_STRINGS.dashboard.cashBookSetupDescription,
         href: "#cash-book" as const,
       },
       {
@@ -121,12 +132,10 @@ export function buildDashboardPresentation(snapshot: OwnerDashboardSnapshot) {
       },
     ],
     activity,
-    hasRecordedActivity: [
-      snapshot.today.flows.paymentsReceived,
-      snapshot.today.flows.expenses,
-      snapshot.today.flows.cashIn,
-      snapshot.today.flows.cashOut,
-    ].some((value) => value !== 0),
+    hasRecordedActivity: snapshot.today.flows.paymentsReceived !== 0
+      || snapshot.today.flows.expenses !== 0
+      || (cashBook.status === "started"
+        && (cashBook.moneyIn !== 0 || cashBook.moneyOut !== 0)),
   };
 }
 

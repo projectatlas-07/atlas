@@ -138,6 +138,15 @@ test("read-only Input remains focusable and visually distinct", () => {
   }
 });
 
+test("Input reserves token spacing for an optional trailing action", () => {
+  const html = renderToStaticMarkup(
+    createElement(Input, { withTrailingAction: true, type: "password" }),
+  );
+
+  assert.ok(classNamesFromMarkup(html).has("pr-atlas-16"));
+  assert.doesNotMatch(html, /withTrailingAction=/);
+});
+
 test("ARIA-invalid controls use danger tokens and retain error references", () => {
   for (const html of [
     renderToStaticMarkup(
