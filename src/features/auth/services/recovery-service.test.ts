@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
+import { AUTH_EMAIL_OTP_LENGTH } from "./auth-config.ts";
 
 await mock.module("../../../lib/supabase/client.ts", {
   namedExports: {
@@ -16,7 +17,6 @@ await mock.module("../../../lib/supabase/client.ts", {
 });
 
 const {
-  CURRENT_RECOVERY_OTP_LENGTH,
   requestPasswordRecovery,
   resendRecoveryCode,
   signOutAfterRecovery,
@@ -66,7 +66,7 @@ test("recovery resend uses resetPasswordForEmail again and maps rate limits safe
 
 test("recovery OTP uses type recovery, then validates the current user", async () => {
   const calls: unknown[] = [];
-  const result = await verifyRecoveryOtp("person@example.com", "12345678", {
+  const result = await verifyRecoveryOtp("person@example.com", "123456", {
     async verifyOtp(params) {
       calls.push(params);
       return { error: null };
@@ -77,9 +77,9 @@ test("recovery OTP uses type recovery, then validates the current user", async (
     },
   });
 
-  assert.equal(CURRENT_RECOVERY_OTP_LENGTH, 8);
+  assert.equal(AUTH_EMAIL_OTP_LENGTH, 6);
   assert.deepEqual(calls, [
-    { email: "person@example.com", token: "12345678", type: "recovery" },
+    { email: "person@example.com", token: "123456", type: "recovery" },
     "getUser",
   ]);
   assert.deepEqual(result, { ok: true, userId: "user-a" });
@@ -87,7 +87,7 @@ test("recovery OTP uses type recovery, then validates the current user", async (
 
 test("wrong or expired recovery OTP returns one safe message and stops before getUser", async () => {
   let getUserCalls = 0;
-  const result = await verifyRecoveryOtp("person@example.com", "00000000", {
+  const result = await verifyRecoveryOtp("person@example.com", "000000", {
     async verifyOtp() { return { error: new Error("expired provider detail") }; },
     async getUser() {
       getUserCalls += 1;

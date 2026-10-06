@@ -1,7 +1,6 @@
 import { supabase } from "../../../lib/supabase/client.ts";
 import { ATLAS_UI_STRINGS } from "../../../lib/strings.ts";
 
-export const CURRENT_RECOVERY_OTP_LENGTH = 8;
 export const RECOVERY_RESEND_COOLDOWN_SECONDS = 60;
 
 type ResetDependencies = Readonly<{

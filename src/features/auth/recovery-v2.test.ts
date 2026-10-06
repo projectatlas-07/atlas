@@ -34,7 +34,7 @@ test("public recovery request is neutral and cannot expose account existence", (
 });
 
 test("recovery code uses the adaptable numeric OTP control and recovery verification type", () => {
-  assert.match(verifyPage, /<AuthOtpInput[\s\S]*length=\{CURRENT_RECOVERY_OTP_LENGTH\}/);
+  assert.match(verifyPage, /<AuthOtpInput[\s\S]*length=\{AUTH_EMAIL_OTP_LENGTH\}/);
   assert.match(otpInput, /inputMode="numeric"/);
   assert.match(otpInput, /autoComplete="one-time-code"/);
   assert.match(otpInput, /maxLength=\{length\}/);

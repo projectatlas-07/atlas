@@ -8,6 +8,7 @@ import { Feedback } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/form-controls";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { AuthOtpInput } from "@/features/auth/components/signup-otp-input";
+import { AUTH_EMAIL_OTP_LENGTH } from "@/features/auth/services/auth-config";
 import {
   clearPendingRecoveryEmail,
   clearPendingRecoveryState,
@@ -18,7 +19,6 @@ import {
   savePendingRecoverySession,
 } from "@/features/auth/services/pending-recovery-state";
 import {
-  CURRENT_RECOVERY_OTP_LENGTH,
   RECOVERY_RESEND_COOLDOWN_SECONDS,
   requestPasswordRecovery,
   resendRecoveryCode,
@@ -88,7 +88,7 @@ export default function RecoveryCodePage() {
   async function verifyCode(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!pendingEmail || isVerifyingRef.current) return;
-    if (token.length !== CURRENT_RECOVERY_OTP_LENGTH) {
+    if (token.length !== AUTH_EMAIL_OTP_LENGTH) {
       setVerificationError(ATLAS_UI_STRINGS.auth.otpRequired);
       return;
     }
@@ -198,12 +198,12 @@ export default function RecoveryCodePage() {
           <label htmlFor="recovery-code" className="mb-atlas-2 block text-atlas-sm font-atlas-medium text-atlas-text">{ATLAS_UI_STRINGS.auth.recoveryCode}</label>
           <AuthOtpInput
             id="recovery-code"
-            length={CURRENT_RECOVERY_OTP_LENGTH}
+            length={AUTH_EMAIL_OTP_LENGTH}
             value={token}
             onValueChange={(value) => { setToken(value); setVerificationError(""); }}
             invalid={Boolean(verificationError)}
           />
-          <p className="mt-atlas-2 text-atlas-sm text-atlas-text-muted">{CURRENT_RECOVERY_OTP_LENGTH}-digit code</p>
+          <p className="mt-atlas-2 text-atlas-sm text-atlas-text-muted">{AUTH_EMAIL_OTP_LENGTH}-digit code</p>
         </div>
 
         <div className="mt-atlas-6">

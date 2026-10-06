@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
+import { AUTH_EMAIL_OTP_LENGTH } from "./auth-config.ts";
 
 await mock.module("../../../lib/supabase/client.ts", {
   namedExports: {
@@ -24,7 +25,6 @@ await mock.module("./factory-access-service.ts", {
 });
 
 const {
-  CURRENT_SIGNUP_OTP_LENGTH,
   formatResendCountdown,
   nextResendCountdown,
   normalizeSignupOtp,
@@ -91,7 +91,7 @@ test("an unexpected signup session is signed out locally and reported as configu
 
 test("verification sends the signup OTP, validates the user, and routes a factory member to Office", async () => {
   const calls: string[] = [];
-  const result = await verifySignupOtp("new@example.com", "12345678", {
+  const result = await verifySignupOtp("new@example.com", "123456", {
     async verifyOtp(params) {
       calls.push(`verify:${JSON.stringify(params)}`);
       return { error: null };
@@ -107,7 +107,7 @@ test("verification sends the signup OTP, validates the user, and routes a factor
   });
 
   assert.deepEqual(calls, [
-    'verify:{"email":"new@example.com","token":"12345678","type":"signup"}',
+    'verify:{"email":"new@example.com","token":"123456","type":"signup"}',
     "getUser",
     "factory",
   ]);
@@ -115,7 +115,7 @@ test("verification sends the signup OTP, validates the user, and routes a factor
 });
 
 test("a verified user without active factory membership routes to onboarding", async () => {
-  const result = await verifySignupOtp("new@example.com", "12345678", {
+  const result = await verifySignupOtp("new@example.com", "123456", {
     async verifyOtp() { return { error: null }; },
     async getUser() { return { data: { user: { id: "user-a" } }, error: null }; },
     async resolveFactoryAccess() {
@@ -128,7 +128,7 @@ test("a verified user without active factory membership routes to onboarding", a
 
 test("wrong or expired OTP returns one stable message and stops before identity resolution", async () => {
   let getUserCalls = 0;
-  const result = await verifySignupOtp("new@example.com", "00000000", {
+  const result = await verifySignupOtp("new@example.com", "000000", {
     async verifyOtp() { return { error: new Error("expired token detail") }; },
     async getUser() {
       getUserCalls += 1;
@@ -162,9 +162,9 @@ test("resend is explicit and uses the Supabase signup resend type", async () => 
 });
 
 test("OTP normalization and resend countdown remain configurable and deterministic", () => {
-  assert.equal(CURRENT_SIGNUP_OTP_LENGTH, 8);
-  assert.equal(normalizeSignupOtp("12 3a456789"), "12345678");
-  assert.equal(normalizeSignupOtp("12345678", 6), "123456");
+  assert.equal(AUTH_EMAIL_OTP_LENGTH, 6);
+  assert.equal(normalizeSignupOtp("12 3a456789"), "123456");
+  assert.equal(normalizeSignupOtp("123456", 4), "1234");
   assert.equal(nextResendCountdown(1), 0);
   assert.equal(nextResendCountdown(0), 0);
   assert.equal(formatResendCountdown(60), "1:00");

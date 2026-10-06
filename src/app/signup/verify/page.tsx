@@ -7,6 +7,7 @@ import { Feedback } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/form-controls";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { SignupOtpInput } from "@/features/auth/components/signup-otp-input";
+import { AUTH_EMAIL_OTP_LENGTH } from "@/features/auth/services/auth-config";
 import {
   clearPendingSignupEmail,
   consumeSignupOtpRecentlySent,
@@ -14,7 +15,6 @@ import {
   savePendingSignupEmail,
 } from "@/features/auth/services/pending-signup-state";
 import {
-  CURRENT_SIGNUP_OTP_LENGTH,
   SIGNUP_RESEND_COOLDOWN_SECONDS,
   formatResendCountdown,
   nextResendCountdown,
@@ -76,7 +76,7 @@ export default function VerifySignupEmailPage() {
   async function verifyEmail(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!pendingEmail || isVerifyingRef.current) return;
-    if (token.length !== CURRENT_SIGNUP_OTP_LENGTH) {
+    if (token.length !== AUTH_EMAIL_OTP_LENGTH) {
       setVerificationError(ATLAS_UI_STRINGS.auth.otpRequired);
       return;
     }
@@ -216,7 +216,7 @@ export default function VerifySignupEmailPage() {
           </label>
           <SignupOtpInput
             id="signup-verification-code"
-            length={CURRENT_SIGNUP_OTP_LENGTH}
+            length={AUTH_EMAIL_OTP_LENGTH}
             value={token}
             onValueChange={(value) => {
               setToken(value);
@@ -225,7 +225,7 @@ export default function VerifySignupEmailPage() {
             invalid={Boolean(verificationError)}
           />
           <p className="mt-atlas-2 text-atlas-sm text-atlas-text-muted">
-            {CURRENT_SIGNUP_OTP_LENGTH}-digit code
+            {AUTH_EMAIL_OTP_LENGTH}-digit code
           </p>
         </div>
 

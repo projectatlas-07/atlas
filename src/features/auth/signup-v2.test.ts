@@ -31,7 +31,7 @@ test("password visibility controls are accessible and preserve password-manager 
 });
 
 test("verification uses an adaptable numeric one-time-code input and no email URL state", () => {
-  assert.match(verifyPage, /<SignupOtpInput[\s\S]*length=\{CURRENT_SIGNUP_OTP_LENGTH\}/);
+  assert.match(verifyPage, /<SignupOtpInput[\s\S]*length=\{AUTH_EMAIL_OTP_LENGTH\}/);
   assert.match(otpInput, /inputMode="numeric"/);
   assert.match(otpInput, /pattern="\[0-9\]\*"/);
   assert.match(otpInput, /autoComplete="one-time-code"/);

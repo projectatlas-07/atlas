@@ -4,8 +4,8 @@ import {
   resolveAuthenticatedFactoryId,
   type FactoryResolutionResult,
 } from "./factory-access-service.ts";
+import { AUTH_EMAIL_OTP_LENGTH } from "./auth-config.ts";
 
-export const CURRENT_SIGNUP_OTP_LENGTH = 8;
 export const SIGNUP_RESEND_COOLDOWN_SECONDS = 60;
 
 type AuthErrorLike = Readonly<{ code?: string }>;
@@ -167,7 +167,7 @@ export async function resendSignupOtp(
   }
 }
 
-export function normalizeSignupOtp(value: string, length = CURRENT_SIGNUP_OTP_LENGTH): string {
+export function normalizeSignupOtp(value: string, length = AUTH_EMAIL_OTP_LENGTH): string {
   return value.replace(/\D/g, "").slice(0, length);
 }
 
