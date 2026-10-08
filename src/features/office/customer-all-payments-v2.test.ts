@@ -31,13 +31,16 @@ test("Customer Payments opens and returns from one mounted All Payments view", (
   assert.match(sales, /hidden=\{customerPaymentsView !== "all"\}/);
   assert.match(expanded, /← Back to Customer Payments/);
   assert.match(sales, /onBack=\{\(\) => showCustomerPaymentsView\("main"\)\}/);
-  assert.match(sales, /function cacheSavedPayment[\s\S]*office-factory-customer-payments/);
+  assert.match(model, /refreshCustomerPaymentQueries[\s\S]*office-factory-customer-payments/);
   assert.match(sales, /receivedNowAmount > 0[\s\S]*office-factory-customer-payments/);
 });
 
 test("All Payments reads the complete authoritative factory-wide payment model", () => {
   assert.match(expanded, /queryFn: \(\) => listFactoryCustomerPayments\(factoryId\)/);
   assert.match(expanded, /enabled: isActive/);
+  assert.match(expanded, /const paymentsCurrent = isCustomerPaymentReadCurrent/);
+  assert.match(expanded, /const payments = paymentsCurrent \? paymentsQuery\.data \?\? \[\] : \[\]/);
+  assert.match(expanded, /getQueryState\(factoryPaymentsKey\(factoryId\)\)\?\.isInvalidated/);
   assert.doesNotMatch(expanded, /\blistCustomerPayments\b|supabase|\.from\(|\.rpc\(|\bfetch\(/);
   for (const value of [
     "payment.customerNameSnapshot",

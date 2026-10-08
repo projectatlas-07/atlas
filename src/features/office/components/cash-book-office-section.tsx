@@ -33,6 +33,7 @@ import {
   NEW_CUSTOMER_PAYMENT_MODES,
 } from "@/features/sales/types";
 import { getLocalDate } from "@/lib/local-date";
+import { ATLAS_UI_STRINGS } from "@/lib/strings";
 
 const cashBookDayKey = (factoryId: string, businessDate: string) =>
   ["office-cash-book-day", factoryId, businessDate] as const;
@@ -399,7 +400,7 @@ function CashBookEntryRow({ entry, confirmingVoid, isVoiding, onAskVoid, onCance
       <p className={`shrink-0 text-lg font-extrabold tabular-nums ${isVoid ? "text-slate-500 line-through" : entry.direction === "in" ? "text-emerald-700" : "text-red-700"}`}>{formatSalesMoney(entry.amount)}</p>
     </div>
     <div className="mt-3 flex flex-wrap items-center gap-2">
-      {receiptHref && <Link href={receiptHref} target="_blank" rel="noreferrer" className="text-sm font-semibold text-cyan-800 hover:underline">Open receipt</Link>}
+      {receiptHref && <Link href={receiptHref} target="_blank" rel="noreferrer" className="text-sm font-semibold text-cyan-800 hover:underline">{ATLAS_UI_STRINGS.payment.openReceipt}</Link>}
       {isManual && !isVoid && !confirmingVoid && <button type="button" onClick={onAskVoid} disabled={Boolean(isVoiding)} className="text-sm font-semibold text-red-700 hover:underline disabled:opacity-50">Void Entry</button>}
       {isManual && !isVoid && confirmingVoid && <div className="flex flex-wrap items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs">
         <span className="font-semibold text-red-800">Void this entry? It will stay in history and stop affecting totals.</span>

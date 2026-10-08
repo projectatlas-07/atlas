@@ -4,14 +4,123 @@ import type {
   Customer,
   CustomerOutstandingChallan,
   CustomerPayment,
+  CustomerPaymentResult,
   NewCustomerPaymentMode,
 } from "@/features/sales/types";
+import type { QueryClient } from "@tanstack/react-query";
+import { ATLAS_UI_STRINGS } from "../../lib/strings.ts";
 import { isLocalDate, shiftLocalDate } from "../../lib/local-date.ts";
 import {
   formatChallanLabel,
   isNewCustomerPaymentMode,
   NEW_CUSTOMER_PAYMENT_MODES,
+  CustomerPaymentUnknownOutcomeError,
+  isCustomerPaymentId,
 } from "../sales/types.ts";
+
+export type CustomerPaymentSaveOutcome =
+  | { status: "saved"; payment: CustomerPaymentResult; refresh: "pending" | "current" | "outdated" }
+  | { status: "unknown" | "failed"; message: string };
+
+// Presentation callbacks and reads must never turn a confirmed write into failure.
+export async function saveCustomerPaymentAndRefresh(
+  input: CreateCustomerPaymentWithMethodsInput,
+  create: (input: CreateCustomerPaymentWithMethodsInput) => Promise<CustomerPaymentResult>,
+  onConfirmed: (payment: CustomerPaymentResult) => void,
+  onSaved: (payment: CustomerPaymentResult) => void | Promise<void>,
+  refresh: () => Promise<void>,
+): Promise<CustomerPaymentSaveOutcome> {
+  let payment: CustomerPaymentResult;
+  try {
+    payment = await create(input);
+    if (!isCustomerPaymentId(payment.id)) throw new CustomerPaymentUnknownOutcomeError();
+  } catch (error) {
+    return error instanceof CustomerPaymentUnknownOutcomeError
+      ? { status: "unknown", message: ATLAS_UI_STRINGS.payment.unknownOutcome }
+      : { status: "failed", message: error instanceof Error ? error.message : "Could not save this customer payment." };
+  }
+  let callbackFailed = false;
+  try { onConfirmed(payment); } catch { callbackFailed = true; }
+  const results = await Promise.allSettled([
+    Promise.resolve().then(() => onSaved(payment)),
+    Promise.resolve().then(refresh),
+  ]);
+  return { status: "saved", payment,
+    refresh: callbackFailed || results.some((result) => result.status === "rejected") ? "outdated" : "current" };
+}
+
+export async function refreshCustomerPaymentQueries(
+  client: QueryClient,
+  factoryId: string,
+  customerId: string,
+  submittedChallanIds: readonly string[],
+): Promise<void> {
+  // Submitted IDs select reads only; they are never rendered as saved allocations.
+  const financialKeys: readonly (readonly string[])[] = [
+    ["office-customer-payment-summary", factoryId, customerId],
+    ["office-customer-payment-candidates", factoryId, customerId],
+    ["office-customer-payment-history", factoryId, customerId],
+    ["office-factory-customer-payments", factoryId],
+    ...[...new Set(submittedChallanIds)].map((id) => ["office-challan-payment-state", factoryId, id]),
+  ];
+  const relatedKeys: readonly (readonly string[])[] = [
+    ["office-sales-challans", factoryId],
+    ["office-sales-register", factoryId],
+    ["office-cash-book-day", factoryId],
+    ...[...new Set(submittedChallanIds)].map((id) => ["office-sales-challan", factoryId, id]),
+  ];
+  const cache = client.getQueryCache();
+  const financialQueries = [...new Map(financialKeys.flatMap((queryKey) =>
+    cache.findAll({ queryKey })).map((query) => [query.queryHash, query])).values()];
+
+  // Post-save callers reach here after confirmed success. Cancel/revert discards first-load results
+  // when services ignore AbortSignal. No pre-save request can supply this refresh.
+  await Promise.all(financialQueries.map((query) =>
+    client.cancelQueries({ queryKey: query.queryKey, exact: true }, { revert: true })));
+  await Promise.all(financialKeys.map((queryKey) =>
+    client.invalidateQueries({ queryKey, refetchType: "none" })));
+
+  const watched = new Set([...financialQueries, ...relatedKeys.flatMap((queryKey) => cache.findAll({ queryKey }))]);
+  let stopWatching = () => {};
+  let rejectPaused!: () => void;
+  const paused = new Promise<never>((_, reject) => {
+    rejectPaused = () => reject(new Error(ATLAS_UI_STRINGS.payment.balancesOutdated));
+    stopWatching = cache.subscribe((event) => {
+      if (watched.has(event.query) && event.query.state.fetchStatus === "paused") rejectPaused();
+    });
+  });
+  try {
+    const reads = financialQueries.map((query) => {
+      const before = query.state.dataUpdateCount;
+      // Explicit fetch also refreshes registered financial queries behind hidden tabs.
+      // Cancellation + forced fetch proves start order; timestamps alone cannot.
+      return client.fetchQuery({ ...query.options, queryKey: query.queryKey, staleTime: 0 }).then(() => {
+        if (!(query.state.dataUpdateCount > before && query.state.status === "success"
+          && query.state.fetchStatus === "idle" && !query.state.isInvalidated && !query.state.error)) {
+          throw new Error(ATLAS_UI_STRINGS.payment.balancesOutdated);
+        }
+      });
+    });
+    // Start every invalidation, but do not block the saved UI behind a paused read.
+    const completed = Promise.all([...reads, ...relatedKeys.map((queryKey) =>
+      client.invalidateQueries({ queryKey, refetchType: "all" }, { throwOnError: true }))]);
+    if ([...watched].some((query) => query.state.fetchStatus === "paused")) rejectPaused();
+    await Promise.race([completed, paused]);
+  } catch {
+    throw new Error(ATLAS_UI_STRINGS.payment.balancesOutdated);
+  } finally {
+    stopWatching();
+  }
+}
+
+export function isCustomerPaymentReadCurrent(state: {
+  isFetching: boolean;
+  error: unknown;
+  isInvalidated?: boolean;
+  dataUpdatedAt: number;
+}): boolean {
+  return !state.isFetching && !state.error && !state.isInvalidated && state.dataUpdatedAt > 0;
+}
 
 export type CustomerPaymentForm = {
   paymentDate: string;

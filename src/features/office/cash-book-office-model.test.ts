@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { ATLAS_UI_STRINGS } from "../../lib/strings.ts";
 import type { CashBookMovement } from "../cash-book/types.ts";
 import {
   formatCustomerPaymentMethods,
@@ -117,7 +118,8 @@ test("customer and multi-Challan payments remain one Money In source row with re
   assert.equal([customerPayment].length, 1);
   assert.match(sectionSource, /dayQuery\.data\.moneyIn/);
   assert.match(sectionSource, /getCashBookReceiptHref/);
-  assert.match(sectionSource, /Open receipt/);
+  assert.match(sectionSource, /\{ATLAS_UI_STRINGS\.payment\.openReceipt\}<\/Link>/);
+  assert.equal(ATLAS_UI_STRINGS.payment.openReceipt, "Open receipt");
   assert.doesNotMatch(sectionSource, /allocations\.map/);
 });
 

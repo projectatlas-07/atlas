@@ -295,6 +295,26 @@ export type CustomerPayment = {
   allocations: CustomerPaymentAllocation[];
 };
 
+export type CustomerPaymentHeader = Omit<CustomerPayment, "allocations" | "methods">;
+
+// Missing children are unavailable, not an authoritative empty receipt.
+export type CustomerPaymentResult =
+  | (CustomerPayment & { detailsStatus: "ready" })
+  | (CustomerPaymentHeader & { detailsStatus: "unavailable" });
+
+export function isCustomerPaymentId(value: unknown): value is string {
+  return typeof value === "string"
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+    && value !== "00000000-0000-0000-0000-000000000000";
+}
+
+export class CustomerPaymentUnknownOutcomeError extends Error {
+  constructor() {
+    super("Customer payment outcome is unknown.");
+    this.name = "CustomerPaymentUnknownOutcomeError";
+  }
+}
+
 export type CustomerPaymentAllocationInput = {
   challanId: string;
   amount: number;

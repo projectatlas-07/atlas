@@ -5,42 +5,34 @@ import { useEffect, useState } from "react";
 import { resolveAuthenticatedFactoryId } from "@/features/auth/services/factory-access-service";
 import { formatPrintableDate, formatPrintableMoney } from "@/features/sales/challan-print-model";
 import {
-  buildPrintablePaymentReceipt,
+  loadPaymentReceiptDetails,
+  type PaymentReceiptLoadState,
   type PrintablePaymentReceipt,
 } from "@/features/sales/payment-receipt-model";
 import { getCustomerPayment } from "@/features/sales/services/customer-payment-service";
 import { formatChallanLabel } from "@/features/sales/types";
-
-type LoadState =
-  | { status: "loading" }
-  | { status: "error"; message: string }
-  | { status: "ready"; receipt: PrintablePaymentReceipt };
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ATLAS_UI_STRINGS } from "@/lib/strings";
 
 export function PaymentReceiptScreen({ paymentId }: Readonly<{ paymentId: string }>) {
-  const [state, setState] = useState<LoadState>({ status: "loading" });
+  const [state, setState] = useState<PaymentReceiptLoadState>({ status: "loading" });
+  const [retryNumber, setRetryNumber] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     async function loadReceipt() {
-      try {
+      setState({ status: "loading" });
+      const loaded = await loadPaymentReceiptDetails(paymentId, async () => {
         const factory = await resolveAuthenticatedFactoryId();
-        if (cancelled) return;
-        if (!factory.ok) {
-          setState({ status: "error", message: factory.error.message });
-          return;
-        }
-        const payment = await getCustomerPayment(factory.factoryId, paymentId);
-        if (!cancelled) setState({ status: "ready", receipt: buildPrintablePaymentReceipt(payment) });
-      } catch (error) {
-        if (!cancelled) setState({
-          status: "error",
-          message: error instanceof Error ? error.message : "Could not load this payment receipt.",
-        });
-      }
+        if (!factory.ok) throw new Error("Payment access is unavailable.");
+        return getCustomerPayment(factory.factoryId, paymentId);
+      });
+      if (!cancelled) setState(loaded);
     }
     void loadReceipt();
     return () => { cancelled = true; };
-  }, [paymentId]);
+  }, [paymentId, retryNumber]);
 
   useEffect(() => {
     if (state.status !== "ready") return;
@@ -52,8 +44,19 @@ export function PaymentReceiptScreen({ paymentId }: Readonly<{ paymentId: string
   if (state.status === "loading") {
     return <main className="flex min-h-screen items-center justify-center bg-stone-100 px-4 text-sm font-medium text-slate-600">Loading payment receipt...</main>;
   }
-  if (state.status === "error") {
-    return <main className="flex min-h-screen items-center justify-center bg-stone-100 px-4 py-10"><section className="w-full max-w-lg rounded-xl border border-red-200 bg-white p-6 text-center shadow-sm"><h1 className="text-xl font-bold">Receipt unavailable</h1><p role="alert" className="mt-3 text-sm text-red-700">{state.message}</p><Link href="/office" className="mt-5 inline-flex h-10 items-center rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white">Back to Office</Link></section></main>;
+  if (state.status !== "ready") {
+    return <main className="flex min-h-screen items-center justify-center bg-atlas-background px-atlas-4 py-atlas-6">
+      <div className="w-full max-w-lg text-center">
+        <Card as="section" style={{ color: "inherit" }}>
+          <div className="p-atlas-2">
+            <h1 className="text-atlas-xl font-atlas-semibold">{state.status === "not-found" ? ATLAS_UI_STRINGS.payment.notFound : "Receipt unavailable"}</h1>
+            <p role="alert" className="mt-atlas-3 text-atlas-sm text-atlas-text-muted">{state.message}</p>
+            <div className="mt-atlas-4"><Button variant="secondary" onClick={() => setRetryNumber((current) => current + 1)}>{ATLAS_UI_STRINGS.payment.retryDetails}</Button></div>
+            <Link href="/office" className="mt-atlas-4 inline-flex min-h-atlas-12 items-center text-atlas-primary">Back to Office</Link>
+          </div>
+        </Card>
+      </div>
+    </main>;
   }
 
   const receipt = state.receipt;

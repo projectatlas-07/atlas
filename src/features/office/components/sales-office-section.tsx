@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { forwardRef, useEffect, useId, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { isCustomerPaymentReadCurrent } from "@/features/office/customer-payment-office-model";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState, Feedback } from "@/components/ui/feedback";
@@ -107,7 +108,7 @@ import type {
   Challan,
   ChallanHeader,
   Customer,
-  CustomerPayment,
+  CustomerPaymentResult,
   FactoryPrintableProfile,
   Vehicle,
 } from "@/features/sales/types";
@@ -343,7 +344,10 @@ export function SalesOfficeSection({
     void queryClient.invalidateQueries({ queryKey: vehiclesKey(factoryId) });
   }
 
-  function cacheSavedPayment(payment: CustomerPayment) {
+  function cacheSavedPayment(payment: CustomerPaymentResult) {
+    // Unavailable children must never be treated as empty saved allocations.
+    // The payment handler invalidates all submitted targets independently.
+    if (payment.detailsStatus !== "ready") return;
     queryClient.setQueryData<ChallanHeader[]>(
       challansKey(factoryId),
       (current = []) => applyPaymentLocks(current, payment),
@@ -353,17 +357,7 @@ export function SalesOfficeSection({
         challanKey(factoryId, allocation.challanId),
         (current) => current ? { ...current, isLocked: true } : current,
       );
-      void queryClient.invalidateQueries({
-        queryKey: challanKey(factoryId, allocation.challanId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: challanPaymentStateKey(factoryId, allocation.challanId),
-      });
     }
-    void queryClient.invalidateQueries({ queryKey: challansKey(factoryId) });
-    void queryClient.invalidateQueries({ queryKey: ["office-factory-customer-payments", factoryId] });
-    void queryClient.invalidateQueries({ queryKey: ["office-sales-register", factoryId] });
-    void queryClient.invalidateQueries({ queryKey: ["office-cash-book-day", factoryId] });
   }
 
   function cacheSavedFactoryProfile(profile: FactoryPrintableProfile) {
@@ -1995,6 +1989,7 @@ function ChallanDetail({
   onCancelVoid: () => void;
   onConfirmVoid: () => void;
 }>) {
+  const queryClient = useQueryClient();
   const eligibility = getChallanEligibility(challan);
   const flexibleLines = getSavedChallanFlexibleLineViews(challan.flexibleLines);
   const vehicleDetails = getSavedChallanVehicleDetails(challan);
@@ -2010,14 +2005,24 @@ function ChallanDetail({
     queryKey: customerPaymentHistoryKey(challan.factoryId, challan.customerId),
     queryFn: () => listCustomerPayments(challan.factoryId, challan.customerId),
   });
-  const paymentStatus = paymentStateQuery.data
+  const paymentStateCurrent = isCustomerPaymentReadCurrent({
+    isFetching: paymentStateQuery.isFetching, error: paymentStateQuery.error,
+    dataUpdatedAt: paymentStateQuery.dataUpdatedAt,
+    isInvalidated: queryClient.getQueryState(challanPaymentStateKey(challan.factoryId, challan.id))?.isInvalidated,
+  });
+  const paymentHistoryCurrent = isCustomerPaymentReadCurrent({
+    isFetching: paymentHistoryQuery.isFetching, error: paymentHistoryQuery.error,
+    dataUpdatedAt: paymentHistoryQuery.dataUpdatedAt,
+    isInvalidated: queryClient.getQueryState(customerPaymentHistoryKey(challan.factoryId, challan.customerId))?.isInvalidated,
+  });
+  const paymentStatus = paymentStateCurrent && paymentStateQuery.data
     ? resolveStatusPresentation(
         CHALLAN_PAYMENT_STATUS,
         paymentStateQuery.data.paymentState,
       )
     : null;
   const paymentHistory = getSavedChallanPaymentHistoryEntries(
-    paymentHistoryQuery.data ?? [],
+    paymentHistoryCurrent ? paymentHistoryQuery.data ?? [] : [],
     challan.id,
   );
 
@@ -2236,14 +2241,14 @@ function ChallanDetail({
             numeric
             emphasize
           />
-          {paymentStateQuery.data && (
+          {paymentStateCurrent && paymentStateQuery.data && (
             <>
               <SnapshotValue label="Paid" value={formatIndianCurrency(paymentStateQuery.data.totalPaid, MONEY_WITH_PAISE)} numeric />
                 <SnapshotValue label={ATLAS_UI_STRINGS.payment.outstanding} value={formatIndianCurrency(paymentStateQuery.data.outstandingAmount, MONEY_WITH_PAISE)} numeric emphasize={paymentStateQuery.data.outstandingAmount > 0} />
             </>
           )}
         </dl>
-        {paymentStateQuery.isLoading && (
+        {!paymentStateCurrent && !paymentStateQuery.error && (
           <div className="mt-atlas-4"><Feedback tone="neutral" role="status">Loading payment position...</Feedback></div>
         )}
         {paymentStateQuery.error && (
@@ -2263,14 +2268,14 @@ function ChallanDetail({
         <details className="border-y border-atlas-border">
           <summary className="flex min-h-atlas-12 cursor-pointer items-center justify-between gap-atlas-3 py-atlas-2 font-atlas-semibold focus-visible:outline-none focus-visible:ring-atlas-focus focus-visible:ring-offset-atlas-focus">
             <span id="saved-challan-payment-history-heading">{ATLAS_UI_STRINGS.payment.history}</span>
-            {!paymentHistoryQuery.isLoading && !paymentHistoryQuery.error && (
+            {paymentHistoryCurrent && (
               <span className="text-atlas-xs font-atlas-medium text-atlas-text-muted">
                 {paymentHistory.length} {paymentHistory.length === 1 ? "allocation" : "allocations"}
               </span>
             )}
           </summary>
           <div className="border-t border-atlas-border py-atlas-4">
-            {paymentHistoryQuery.isLoading && <Feedback tone="neutral" role="status">{ATLAS_UI_STRINGS.payment.loadingHistory}</Feedback>}
+            {!paymentHistoryCurrent && !paymentHistoryQuery.error && <Feedback tone="neutral" role="status">{ATLAS_UI_STRINGS.payment.loadingHistory}</Feedback>}
             {paymentHistoryQuery.error && (
               <Feedback tone="danger" role="alert">
                 <div className="flex flex-col gap-atlas-3 sm:flex-row sm:items-center sm:justify-between">
@@ -2279,10 +2284,10 @@ function ChallanDetail({
                 </div>
               </Feedback>
             )}
-            {!paymentHistoryQuery.isLoading && !paymentHistoryQuery.error && paymentHistory.length === 0 && (
+            {paymentHistoryCurrent && paymentHistory.length === 0 && (
               <EmptyState title="No payments allocated" description="No customer payment has been allocated to this Challan." />
             )}
-            {!paymentHistoryQuery.isLoading && !paymentHistoryQuery.error && paymentHistory.length > 0 && (
+            {paymentHistoryCurrent && paymentHistory.length > 0 && (
               <>
                 <div className="hidden md:block">
                   <TableContainer>
@@ -2302,7 +2307,7 @@ function ChallanDetail({
                           <TableRow key={entry.key}>
                             <TableCell>{formatDateOnly(entry.paymentDate)}</TableCell>
                             <TableCell>{formatCustomerPaymentMethods(entry.methods, entry.paymentMode)}</TableCell>
-                            <TableCell><Link className="font-atlas-semibold text-atlas-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-atlas-focus" href={`/office/payments/${entry.paymentId}`} target="_blank" rel="noreferrer">Open receipt</Link></TableCell>
+                            <TableCell><Link className="font-atlas-semibold text-atlas-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-atlas-focus" href={`/office/payments/${entry.paymentId}`} target="_blank" rel="noreferrer">{ATLAS_UI_STRINGS.payment.openReceipt}</Link></TableCell>
                             <TableCell>{entry.note || "—"}</TableCell>
                             <TableCell numeric><span className="font-atlas-semibold">{formatIndianCurrency(entry.allocatedAmount, MONEY_WITH_PAISE)}</span></TableCell>
                           </TableRow>
@@ -2321,7 +2326,7 @@ function ChallanDetail({
                         </div>
                         <p className="font-atlas-semibold tabular-nums text-atlas-text">{formatIndianCurrency(entry.allocatedAmount, MONEY_WITH_PAISE)}</p>
                       </div>
-                      <Link className="mt-atlas-2 inline-flex min-h-atlas-12 items-center text-atlas-sm font-atlas-semibold text-atlas-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-atlas-focus" href={`/office/payments/${entry.paymentId}`} target="_blank" rel="noreferrer">Open receipt</Link>
+                      <Link className="mt-atlas-2 inline-flex min-h-atlas-12 items-center text-atlas-sm font-atlas-semibold text-atlas-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-atlas-focus" href={`/office/payments/${entry.paymentId}`} target="_blank" rel="noreferrer">{ATLAS_UI_STRINGS.payment.openReceipt}</Link>
                     </li>
                   ))}
                 </ul>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -22,6 +22,7 @@ import {
 import { CustomerPaymentDetailDrawer } from "@/features/office/components/customer-payment-detail-drawer";
 import {
   filterCustomerPaymentsForExpandedView,
+  isCustomerPaymentReadCurrent,
   type CustomerDuesDatePreset,
   type CustomerPaymentHistorySort,
 } from "@/features/office/customer-payment-office-model";
@@ -74,6 +75,7 @@ export function AllCustomerPaymentsExpandedView({
   isActive: boolean;
   onBack: () => void;
 }>) {
+  const queryClient = useQueryClient();
   const [localToday] = useState(() => getLocalDate());
   const [searchText, setSearchText] = useState("");
   const [period, setPeriod] = useState<CustomerDuesDatePreset>("all");
@@ -86,7 +88,12 @@ export function AllCustomerPaymentsExpandedView({
     queryFn: () => listFactoryCustomerPayments(factoryId),
     enabled: isActive,
   });
-  const payments = paymentsQuery.data ?? [];
+  const paymentsCurrent = isCustomerPaymentReadCurrent({
+    isFetching: paymentsQuery.isFetching, error: paymentsQuery.error,
+    dataUpdatedAt: paymentsQuery.dataUpdatedAt,
+    isInvalidated: queryClient.getQueryState(factoryPaymentsKey(factoryId))?.isInvalidated,
+  });
+  const payments = paymentsCurrent ? paymentsQuery.data ?? [] : [];
   const selectedPayment = payments.find((payment) => payment.id === selectedPaymentId) ?? null;
   const filtered = filterCustomerPaymentsForExpandedView(payments, {
     searchText,
@@ -116,12 +123,12 @@ export function AllCustomerPaymentsExpandedView({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-atlas-3">
-          {!paymentsQuery.isLoading && !errorMessage && (
+          {paymentsCurrent && (
             <p className="text-atlas-xs font-atlas-medium text-atlas-text-muted">
               {formatIndianNumber(payments.length)} {payments.length === 1 ? "payment" : "payments"}
             </p>
           )}
-          <Button variant="secondary" onClick={() => { void paymentsQuery.refetch(); }}>Refresh</Button>
+          <Button variant="secondary" onClick={() => { void paymentsQuery.refetch(); }}>{ATLAS_UI_STRINGS.payment.refresh}</Button>
         </div>
       </header>
 
@@ -171,7 +178,7 @@ export function AllCustomerPaymentsExpandedView({
       </div>
 
       <div className="mt-atlas-4">
-        {paymentsQuery.isLoading && (
+        {!paymentsCurrent && !errorMessage && (
           <Feedback tone="neutral" role="status">Loading customer payments...</Feedback>
         )}
         {errorMessage && (
@@ -184,20 +191,20 @@ export function AllCustomerPaymentsExpandedView({
             </div>
           </Feedback>
         )}
-        {!paymentsQuery.isLoading && !errorMessage && !filtered.error && payments.length === 0 && (
+        {paymentsCurrent && !filtered.error && payments.length === 0 && (
           <EmptyState
             title="No customer payments yet"
             description="Recorded customer payments will appear here."
           />
         )}
-        {!paymentsQuery.isLoading && !errorMessage && !filtered.error
+        {paymentsCurrent && !filtered.error
           && payments.length > 0 && filtered.payments.length === 0 && (
           <EmptyState
             title="No matching payments"
             description="Change the customer search or date filters to see more history."
           />
         )}
-        {!paymentsQuery.isLoading && !errorMessage && !filtered.error
+        {paymentsCurrent && !filtered.error
           && filtered.payments.length > 0 && (
           <>
             <p className="mb-atlas-2 text-atlas-xs font-atlas-medium text-atlas-text-muted">

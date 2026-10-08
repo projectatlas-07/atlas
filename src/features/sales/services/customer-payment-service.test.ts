@@ -1,5 +1,14 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
+import { onlineManager, QueryClient, QueryObserver } from "@tanstack/react-query";
+import {
+  emptyCustomerPaymentForm, isCustomerPaymentReadCurrent,
+  refreshCustomerPaymentQueries, saveCustomerPaymentAndRefresh,
+} from "../../office/customer-payment-office-model.ts";
+import { CustomerPaymentUnknownOutcomeError } from "../types.ts";
+import { loadPaymentReceiptDetails } from "../payment-receipt-model.ts";
+import { ATLAS_UI_STRINGS } from "../../../lib/strings.ts";
+import type { CustomerPaymentForm } from "../../office/customer-payment-office-model.ts";
 
 type Row = Record<string, unknown>;
 type DatabaseError = {
@@ -8,7 +17,7 @@ type DatabaseError = {
   details: string | null;
   hint: string | null;
 };
-type Response = { data: Row | Row[] | null; error: DatabaseError | null };
+type Response = { data: Row | Row[] | null; error: DatabaseError | null; status?: number };
 type Call = [method: string, value?: unknown, secondValue?: unknown];
 
 const calls: Call[] = [];
@@ -113,7 +122,7 @@ function reset(): void {
 }
 
 const paymentRow = {
-  id: "payment-1",
+  id: "11111111-1111-4111-8111-111111111111",
   factory_id: "factory-a",
   customer_id: "customer-a",
   customer_name_snapshot: "Customer A at payment",
@@ -133,14 +142,14 @@ const paymentRow = {
 const allocationRows = [{
   id: "allocation-1",
   factory_id: "factory-a",
-  payment_id: "payment-1",
+  payment_id: "11111111-1111-4111-8111-111111111111",
   challan_id: "challan-2",
   allocated_amount: "30000",
   created_at: "2026-08-27T10:00:00Z",
 }, {
   id: "allocation-2",
   factory_id: "factory-a",
-  payment_id: "payment-1",
+  payment_id: "11111111-1111-4111-8111-111111111111",
   challan_id: "challan-1",
   allocated_amount: "30000",
   created_at: "2026-08-27T10:00:00Z",
@@ -148,7 +157,7 @@ const allocationRows = [{
 
 const paymentMethodRows = [{
   factory_id: "factory-a",
-  payment_id: "payment-1",
+  payment_id: "11111111-1111-4111-8111-111111111111",
   mode: "upi",
   split_amount: null,
   created_at: "2026-08-27T10:00:00Z",
@@ -179,7 +188,8 @@ test("creates one payment through the controlled RPC with explicit multi-Challan
     ],
   });
 
-  assert.equal(result.id, "payment-1");
+  assert.equal(result.id, "11111111-1111-4111-8111-111111111111");
+  assert.ok(result.detailsStatus === "ready");
   assert.equal(result.amount, 60_000);
   assert.equal(result.note, "Bank reference 42");
   assert.equal(result.paymentMode, "upi");
@@ -243,8 +253,9 @@ test("creates one multi-mode payment through the new RPC without changing alloca
     ],
   });
 
-  assert.equal(result.id, "payment-1");
+  assert.equal(result.id, "11111111-1111-4111-8111-111111111111");
   assert.equal(result.paymentMode, "multiple");
+  assert.ok(result.detailsStatus === "ready");
   assert.deepEqual(result.methods, [
     { mode: "cheque", splitAmount: 50_000 },
     { mode: "upi", splitAmount: 10_000 },
@@ -296,7 +307,8 @@ test("new writer sends unsplit methods as explicit NULL amounts", async () => {
     data: { ...paymentRow, payment_mode: "multiple" },
     error: null,
   });
-  tableResponses.set("customer_payment_allocations", { data: [], error: null });
+  tableResponses.set("customer_payment_allocations", { data: allocationRows, error: null });
+  tableResponses.set("challans", { data: challanNumberRows, error: null });
   tableResponses.set("customer_payment_methods", {
     data: [{ ...paymentMethodRows[0], mode: "upi" }, {
       ...paymentMethodRows[0], mode: "cheque",
@@ -317,6 +329,7 @@ test("new writer sends unsplit methods as explicit NULL amounts", async () => {
     { mode: "upi", amount: null },
     { mode: "cheque", amount: null },
   ]);
+  assert.ok(result.detailsStatus === "ready");
   assert.deepEqual(result.methods, [
     { mode: "cheque", splitAmount: null },
     { mode: "upi", splitAmount: null },
@@ -435,17 +448,17 @@ test("lists immutable payment history with source payment and Challan IDs", asyn
 
   const payments = await listCustomerPayments("factory-a", "customer-a");
   assert.equal(payments.length, 1);
-  assert.equal(payments[0]?.id, "payment-1");
+  assert.equal(payments[0]?.id, "11111111-1111-4111-8111-111111111111");
   assert.deepEqual(payments[0]?.methods, [{ mode: "upi", splitAmount: null }]);
   assert.deepEqual(payments[0]?.allocations.map((allocation: { paymentId: string; challanId: string }) => ({
     paymentId: allocation.paymentId,
     challanId: allocation.challanId,
   })), [
-    { paymentId: "payment-1", challanId: "challan-2" },
-    { paymentId: "payment-1", challanId: "challan-1" },
+    { paymentId: "11111111-1111-4111-8111-111111111111", challanId: "challan-2" },
+    { paymentId: "11111111-1111-4111-8111-111111111111", challanId: "challan-1" },
   ]);
   assert.deepEqual(calls.find(([method]) => method === "in"), [
-    "in", "payment_id", ["payment-1"],
+    "in", "payment_id", ["11111111-1111-4111-8111-111111111111"],
   ]);
   assert.ok(calls.some((call) => call[0] === "eq"
     && call[1] === "customer_id"
@@ -621,24 +634,27 @@ test("loads one receipt source with immutable payment-time snapshots and Challan
   tableResponses.set("customer_payment_allocations", { data: allocationRows, error: null });
   tableResponses.set("customer_payment_methods", { data: paymentMethodRows, error: null });
   tableResponses.set("challans", { data: challanNumberRows, error: null });
-  const payment = await getCustomerPayment("factory-a", "payment-1");
+  const payment = await getCustomerPayment("factory-a", "11111111-1111-4111-8111-111111111111");
+  assert.ok(payment.detailsStatus === "ready");
   assert.equal(payment.companyNameSnapshot, "Atlas Bricks at payment");
   assert.equal(payment.customerAddressSnapshot, "Old customer address");
   assert.deepEqual(payment.methods, [{ mode: "upi", splitAmount: null }]);
   assert.deepEqual(payment.allocations.map((allocation: { challanNumber: string | null }) => allocation.challanNumber), ["42", "41"]);
   assert.deepEqual(calls.filter(([method]) => method === "eq").slice(0, 2), [
     ["eq", "factory_id", "factory-a"],
-    ["eq", "id", "payment-1"],
+    ["eq", "id", "11111111-1111-4111-8111-111111111111"],
   ]);
 });
 
 test("falls back to a legacy scalar without inventing a split when child methods are missing", async () => {
   reset();
   tableResponses.set("customer_payments", { data: [paymentRow], error: null });
-  tableResponses.set("customer_payment_allocations", { data: [], error: null });
+  tableResponses.set("customer_payment_allocations", { data: allocationRows, error: null });
+  tableResponses.set("challans", { data: challanNumberRows, error: null });
   tableResponses.set("customer_payment_methods", { data: [], error: null });
 
-  const payment = await getCustomerPayment("factory-a", "payment-1");
+  const payment = await getCustomerPayment("factory-a", "11111111-1111-4111-8111-111111111111");
+  assert.ok(payment.detailsStatus === "ready");
   assert.deepEqual(payment.methods, [{ mode: "upi", splitAmount: null }]);
 
   reset();
@@ -647,7 +663,9 @@ test("falls back to a legacy scalar without inventing a split when child methods
   });
   tableResponses.set("customer_payment_allocations", { data: [], error: null });
   tableResponses.set("customer_payment_methods", { data: [], error: null });
-  assert.deepEqual((await getCustomerPayment("factory-a", "payment-1")).methods, []);
+  const unavailable = await getCustomerPayment("factory-a", "11111111-1111-4111-8111-111111111111");
+  assert.equal(unavailable.detailsStatus, "unavailable");
+  assert.equal("methods" in unavailable, false);
 });
 
 test("lists outstanding Challans with one goods batch and authoritative payment states", async () => {
@@ -863,7 +881,7 @@ test("rejects successful RPC responses that omit their result row", async () => 
       paymentMode: "cash",
       allocations: [{ challanId: "challan-1", amount: 1 }],
     }),
-    /returned no payment/,
+    (error: unknown) => error instanceof CustomerPaymentUnknownOutcomeError,
   );
 
   reset();
@@ -872,4 +890,375 @@ test("rejects successful RPC responses that omit their result row", async () => 
     () => getChallanPaymentState("factory-a", "challan-1"),
     /returned no state/,
   );
+});
+
+const submission = {
+  factoryId: "factory-a", customerId: "customer-a", paymentDate: "2026-08-27",
+  amount: 60_000, methods: [{ mode: "upi" as const, splitAmount: 30_000 }, { mode: "cash" as const, splitAmount: 30_000 }],
+  allocations: [{ challanId: "challan-1", amount: 30_000 }, { challanId: "challan-2", amount: 30_000 }],
+};
+const readError = { message: "Provider detail must not leak", code: "PGRST000", details: null, hint: null };
+
+function prepareSubmission(split: boolean) {
+  reset();
+  rpcResponses.set(split ? "create_customer_payment_with_methods" : "create_customer_payment", {
+    data: { ...paymentRow, payment_mode: split ? "multiple" : "upi" }, error: null,
+  });
+  tableResponses.set("customer_payment_allocations", { data: allocationRows, error: null });
+  tableResponses.set("challans", { data: challanNumberRows, error: null });
+  tableResponses.set("customer_payment_methods", { data: split ? [
+    { ...paymentMethodRows[0], mode: "upi", split_amount: "30000" },
+    { ...paymentMethodRows[0], mode: "cash", split_amount: "30000" },
+  ] : paymentMethodRows, error: null });
+  return () => split ? createCustomerPaymentWithMethods(submission)
+    : createCustomerPayment({ ...submission, paymentMode: "upi" });
+}
+
+for (const split of [false, true]) {
+  const label = split ? "split-mode" : "single-mode";
+  for (const failure of ["allocations", "methods", "references", "missing-reference", "method-mapping", "missing-children"]) {
+    test(`${label} committed success survives ${failure} hydration failure without fabricated receipt children`, async () => {
+      const create = prepareSubmission(split);
+      if (failure === "allocations") tableResponses.set("customer_payment_allocations", { data: null, error: readError });
+      if (failure === "methods") tableResponses.set("customer_payment_methods", { data: null, error: readError });
+      if (failure === "references") tableResponses.set("challans", { data: null, error: readError });
+      if (failure === "missing-reference") tableResponses.set("challans", { data: [], error: null });
+      if (failure === "method-mapping") tableResponses.set("customer_payment_methods", { data: [{ ...paymentMethodRows[0], split_amount: "not-money" }], error: null });
+      if (failure === "missing-children") tableResponses.set("customer_payment_methods", { data: [], error: null });
+      const result = await create();
+      assert.equal(result.id, paymentRow.id);
+      assert.equal(result.amount, 60_000);
+      assert.equal(result.detailsStatus, "unavailable");
+      assert.equal("allocations" in result, false);
+      assert.equal("methods" in result, false);
+      assert.equal(calls.filter(([method]) => method === "rpc").length, 1);
+    });
+  }
+  test(`${label} explicit RPC rejection preserves failure and does not hydrate or reset`, async () => {
+    const create = prepareSubmission(split);
+    rpcResponses.set(split ? "create_customer_payment_with_methods" : "create_customer_payment", {
+      data: null, error: { ...readError, code: "P3105", message: "Allocation exceeds outstanding." },
+    });
+    let resets = 0;
+    const outcome = await saveCustomerPaymentAndRefresh(submission, create, () => { resets++; }, () => {}, async () => {});
+    assert.equal(outcome.status, "failed");
+    assert.equal(resets, 0);
+    assert.equal(calls.filter(([method]) => method === "from").length, 0);
+    assert.equal(calls.filter(([method]) => method === "rpc").length, 1);
+  });
+  test(`${label} missing/malformed authoritative ID remains unknown without draft reset or retry`, async () => {
+    for (const row of [null, ...[undefined, null, "", "payment-1", "00000000-0000-0000-0000-000000000000"]
+      .map((id) => ({ ...paymentRow, id }))]) {
+      const create = prepareSubmission(split);
+      rpcResponses.set(split ? "create_customer_payment_with_methods" : "create_customer_payment", {
+        data: row, error: null,
+      });
+      let resets = 0; let refreshed = false;
+      const outcome = await saveCustomerPaymentAndRefresh(submission, create, () => { resets++; }, () => {}, async () => { refreshed = true; });
+      assert.equal(outcome.status, "unknown");
+      assert.equal(resets, 0);
+      assert.equal(refreshed, false);
+      assert.equal(calls.filter(([method]) => method === "rpc").length, 1);
+      assert.equal(calls.filter(([method]) => method === "from").length, 0);
+    }
+  });
+}
+
+test("a lost RPC response remains unknown and never automatically issues another RPC", async () => {
+  const create = prepareSubmission(true);
+  rpcResponses.set("create_customer_payment_with_methods", { data: null, error: { ...readError, code: "", message: "Failed to fetch" }, status: 0 });
+  let resets = 0;
+  const result = await saveCustomerPaymentAndRefresh(submission, create, () => { resets++; }, () => {}, async () => {});
+  assert.equal(result.status, "unknown");
+  assert.equal(resets, 0);
+  assert.equal(calls.filter(([method]) => method === "rpc").length, 1);
+});
+
+test("confirmed split payment resets its draft before a throwing post-save callback and keeps saved status", async () => {
+  const create = prepareSubmission(true);
+  let draft: CustomerPaymentForm = { ...emptyCustomerPaymentForm("2026-08-27"), amount: "60000", paymentModes: ["cash" as const, "upi" as const],
+    paymentMethodAmounts: { cash: "30000", upi: "30000" }, allocations: { "challan-1": "30000", "challan-2": "30000" } };
+  const events: string[] = [];
+  const outcome = await saveCustomerPaymentAndRefresh(submission, create, () => {
+    draft = emptyCustomerPaymentForm("2026-08-27"); events.push("reset");
+  }, () => { events.push("callback"); throw new Error("Post-save failed"); }, async () => { events.push("refresh"); });
+  assert.equal(draft.amount, "");
+  assert.deepEqual(draft.allocations, {});
+  assert.deepEqual(draft.paymentMethodAmounts, {});
+  assert.equal(events[0], "reset");
+  assert.ok(events.includes("refresh"));
+  assert.ok(outcome.status === "saved");
+  assert.equal(outcome.refresh, "outdated");
+  assert.ok(outcome.payment.detailsStatus === "ready");
+  assert.deepEqual(outcome.payment.methods.map((method) => method.splitAmount), [30_000, 30_000]);
+  assert.equal(calls.filter(([method]) => method === "rpc").length, 1);
+});
+
+test("failed hydration and failed refetch stay saved; hidden/customer navigation cannot verify stale balances; Refresh only reads", async () => {
+  const create = prepareSubmission(true);
+  tableResponses.set("customer_payment_methods", { data: null, error: readError });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const key = ["office-customer-payment-summary", "factory-a", "customer-a"];
+  const history = ["office-customer-payment-history", "factory-a", "customer-a"];
+  const allPayments = ["office-factory-customer-payments", "factory-a"];
+  let failReads = true; let refreshReads = 0;
+  const queryFn = async () => { refreshReads++; if (failReads) throw new Error("Read unavailable"); return { totalOutstanding: 10 }; };
+  client.setQueryData(key, { totalOutstanding: 100 });
+  client.setQueryData(history, []);
+  client.setQueryData(allPayments, []);
+  const observer = new QueryObserver(client, { queryKey: key, queryFn, staleTime: Infinity });
+  const historyObserver = new QueryObserver(client, { queryKey: history, queryFn, staleTime: Infinity });
+  const allPaymentsObserver = new QueryObserver(client, { queryKey: allPayments, queryFn, enabled: false });
+  const unsubscribe = observer.subscribe(() => {});
+  const unsubscribeHistory = historyObserver.subscribe(() => {});
+  const unsubscribeAll = allPaymentsObserver.subscribe(() => {});
+  let draft = { ...emptyCustomerPaymentForm("2026-08-27"), amount: "60000" };
+  try {
+    const outcome = await saveCustomerPaymentAndRefresh(submission, create,
+      () => { draft = emptyCustomerPaymentForm("2026-08-27"); }, () => {},
+      () => refreshCustomerPaymentQueries(client, "factory-a", "customer-a", ["challan-1", "challan-2"]));
+    assert.ok(outcome.status === "saved");
+    assert.equal(outcome.payment.id, paymentRow.id);
+    assert.equal(outcome.payment.detailsStatus, "unavailable");
+    assert.equal(outcome.refresh, "outdated");
+    assert.equal(draft.amount, "");
+    const state = client.getQueryState(key)!;
+    assert.equal(isCustomerPaymentReadCurrent({ isFetching: false, error: state.error,
+      isInvalidated: state.isInvalidated, dataUpdatedAt: state.dataUpdatedAt }), false);
+    // Office tabs only hide the observer: retaining cached data does not make it current.
+    assert.equal(client.getQueryData<{ totalOutstanding: number }>(key)?.totalOutstanding, 100);
+    observer.setOptions({ queryKey: ["office-customer-payment-summary", "factory-a", "customer-b"], queryFn, enabled: false });
+    assert.equal(client.getQueryState(key)?.isInvalidated, true);
+    observer.setOptions({ queryKey: key, queryFn, staleTime: Infinity });
+    assert.equal(client.getQueryState(key)?.isInvalidated, true);
+    // All Payments is mounted but disabled behind its tab; invalidation survives navigation.
+    assert.equal(client.getQueryState(allPayments)?.isInvalidated, true);
+    allPaymentsObserver.setOptions({ queryKey: allPayments, queryFn, enabled: true });
+    const navigating = client.getQueryState(allPayments)!;
+    assert.equal(isCustomerPaymentReadCurrent({ isFetching: navigating.fetchStatus === "fetching",
+      error: navigating.error, isInvalidated: navigating.isInvalidated, dataUpdatedAt: navigating.dataUpdatedAt }), false);
+    failReads = false;
+    await refreshCustomerPaymentQueries(client, "factory-a", "customer-a", ["challan-1", "challan-2"]);
+    const fresh = client.getQueryState(key)!;
+    assert.equal(isCustomerPaymentReadCurrent({ isFetching: false, error: fresh.error,
+      isInvalidated: fresh.isInvalidated, dataUpdatedAt: fresh.dataUpdatedAt }), true);
+    const freshAll = client.getQueryState(allPayments)!;
+    assert.equal(isCustomerPaymentReadCurrent({ isFetching: freshAll.fetchStatus === "fetching", error: freshAll.error,
+      isInvalidated: freshAll.isInvalidated, dataUpdatedAt: freshAll.dataUpdatedAt }), true);
+    assert.ok(refreshReads >= 3);
+    assert.equal(calls.filter(([method]) => method === "rpc").length, 1);
+  } finally { unsubscribe(); unsubscribeHistory(); unsubscribeAll(); client.clear(); }
+});
+
+test("submitted Challan IDs are refresh targets only, even when receipt allocations are unavailable", async () => {
+  const keys: unknown[] = [];
+  const client = new QueryClient();
+  const invalidate = client.invalidateQueries.bind(client);
+  client.invalidateQueries = async (filters, options) => { keys.push(filters?.queryKey); return invalidate(filters, options); };
+  await refreshCustomerPaymentQueries(client,
+    "factory-a", "customer-a", ["challan-1", "challan-1", "challan-2"]);
+  assert.ok(keys.some((key) => JSON.stringify(key) === JSON.stringify(["office-challan-payment-state", "factory-a", "challan-1"])));
+  assert.ok(keys.some((key) => JSON.stringify(key) === JSON.stringify(["office-sales-challan", "factory-a", "challan-2"])));
+  assert.equal(keys.length, 11);
+});
+
+test("receipt route distinguishes not found from unavailable children and Retry details never writes", async () => {
+  const create = prepareSubmission(true);
+  tableResponses.set("customer_payment_allocations", { data: null, error: readError });
+  const committed = await create();
+  assert.equal(committed.detailsStatus, "unavailable");
+  tableResponses.set("customer_payments", { data: [{ ...paymentRow, payment_mode: "multiple" }], error: null });
+  const read = () => getCustomerPayment("factory-a", paymentRow.id);
+  const unavailable = await loadPaymentReceiptDetails(paymentRow.id, read);
+  assert.ok(unavailable.status === "details-unavailable");
+  assert.equal(unavailable.paymentId, paymentRow.id);
+  assert.equal(unavailable.message, ATLAS_UI_STRINGS.payment.detailsUnavailable);
+  assert.equal("receipt" in unavailable, false);
+  tableResponses.set("customer_payment_allocations", { data: allocationRows, error: null });
+  const ready = await loadPaymentReceiptDetails(paymentRow.id, read);
+  assert.ok(ready.status === "ready");
+  assert.equal(ready.receipt.allocations.length, 2);
+  assert.equal(calls.filter(([method]) => method === "rpc").length, 1);
+  tableResponses.set("customer_payments", { data: [], error: null });
+  const missing = await loadPaymentReceiptDetails(paymentRow.id, read);
+  assert.equal(missing.status, "not-found");
+  assert.equal(calls.filter(([method]) => method === "rpc").length, 1);
+});
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
+const flushQueries = () => new Promise<void>((resolve) => setImmediate(resolve));
+
+test("post-save freshness rejects pre-save first loads without cancelling an unrelated request", async () => {
+  const create = prepareSubmission(true);
+  tableResponses.set("customer_payment_methods", { data: null, error: readError });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const keys = [
+    ["office-customer-payment-history", "factory-a", "customer-a"],
+    ["office-challan-payment-state", "factory-a", "challan-1"],
+  ];
+  const old = keys.map(() => deferred<string>());
+  const replacement = keys.map(() => deferred<string>());
+  const starts: boolean[][] = keys.map(() => []);
+  let confirmed = false;
+  let settled = false;
+  let draft = "60000";
+  const observers = keys.map((queryKey, index) => new QueryObserver(client, {
+    queryKey, queryFn: () => {
+      starts[index]!.push(confirmed);
+      return starts[index]!.length === 1 ? old[index]!.promise : replacement[index]!.promise;
+    },
+  }));
+  const unsubscribes = observers.map((observer) => observer.subscribe(() => {}));
+  const unrelated = deferred<string>();
+  const unrelatedKey = ["office-production", "factory-a"];
+  let unrelatedStarts = 0;
+  const unrelatedObserver = new QueryObserver(client, { queryKey: unrelatedKey,
+    queryFn: () => { unrelatedStarts++; return unrelated.promise; } });
+  const unsubscribeUnrelated = unrelatedObserver.subscribe(() => {});
+  const save = saveCustomerPaymentAndRefresh(submission, create,
+    () => { confirmed = true; draft = ""; }, () => {},
+    () => refreshCustomerPaymentQueries(client, "factory-a", "customer-a", ["challan-1"]))
+    .then((outcome) => { settled = true; return outcome; });
+  try {
+    await flushQueries();
+    old.forEach((read) => read.resolve("OLD"));
+    await flushQueries();
+    assert.equal(confirmed, true);
+    assert.equal(draft, "");
+    assert.deepEqual(starts, [[false, true], [false, true]], "replacement reads must start after confirmation");
+    assert.equal(settled, false, "CURRENT must wait for replacement-read completion");
+    for (const key of keys) {
+      const state = client.getQueryState(key)!;
+      assert.notEqual(state.data, "OLD");
+      assert.equal(state.error, null, "cancellation must not become a load failure");
+      assert.equal(isCustomerPaymentReadCurrent({ isFetching: state.fetchStatus !== "idle",
+        error: state.error, isInvalidated: state.isInvalidated, dataUpdatedAt: state.dataUpdatedAt }), false);
+    }
+    assert.equal(unrelatedStarts, 1);
+    assert.equal(client.getQueryState(unrelatedKey)?.fetchStatus, "fetching");
+    replacement.forEach((read) => read.resolve("POST-SAVE"));
+    const outcome = await save;
+    assert.ok(outcome.status === "saved");
+    assert.equal(outcome.refresh, "current");
+    assert.equal(outcome.payment.id, paymentRow.id);
+    assert.equal(outcome.payment.detailsStatus, "unavailable");
+    assert.equal("allocations" in outcome.payment, false);
+    assert.equal("methods" in outcome.payment, false);
+    for (const key of keys) assert.equal(client.getQueryData(key), "POST-SAVE");
+    unrelated.resolve("UNRELATED COMPLETED");
+    await flushQueries();
+    assert.equal(client.getQueryData(unrelatedKey), "UNRELATED COMPLETED");
+    assert.equal(unrelatedStarts, 1);
+    assert.equal(calls.filter(([method]) => method === "rpc").length, 1);
+  } finally {
+    old.forEach((read) => read.resolve("OLD"));
+    replacement.forEach((read) => read.resolve("POST-SAVE"));
+    unrelated.resolve("UNRELATED COMPLETED");
+    await save;
+    unsubscribes.forEach((unsubscribe) => unsubscribe());
+    unsubscribeUnrelated(); client.clear();
+  }
+});
+
+test("paused post-save reads stay saved/outdated; repeated offline Refresh never writes and online completion restores CURRENT", { timeout: 2000 }, async () => {
+  const wasOnline = onlineManager.isOnline();
+  const create = prepareSubmission(true);
+  tableResponses.set("customer_payment_methods", { data: null, error: readError });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client.mount();
+  const key = ["office-customer-payment-summary", "factory-a", "customer-a"];
+  client.setQueryData(key, "OLD BALANCE");
+  const completed = deferred<string>();
+  const starts: boolean[] = [];
+  let confirmed = false; let draft = "60000"; let savedId = "";
+  const observer = new QueryObserver(client, { queryKey: key, staleTime: Infinity,
+    queryFn: () => { starts.push(confirmed); return completed.promise; } });
+  const unsubscribe = observer.subscribe(() => {});
+  try {
+    const outcome = await saveCustomerPaymentAndRefresh(submission, create, (payment) => {
+      confirmed = true; draft = ""; savedId = payment.id; onlineManager.setOnline(false);
+    }, () => {}, () => refreshCustomerPaymentQueries(client, "factory-a", "customer-a", []));
+    assert.ok(outcome.status === "saved");
+    assert.equal(outcome.refresh, "outdated", "paused promises must not classify reads as CURRENT");
+    assert.equal(savedId, paymentRow.id);
+    assert.equal(draft, "");
+    assert.equal(outcome.payment.detailsStatus, "unavailable");
+    assert.equal("allocations" in outcome.payment, false);
+    assert.equal("methods" in outcome.payment, false);
+    // The existing saved banner/Refresh action uses this exact outcome condition.
+    assert.notEqual(outcome.refresh, "current");
+    const paused = client.getQueryState(key)!;
+    assert.equal(paused.fetchStatus, "paused");
+    assert.equal(paused.status, "success", "cached success status alone is not post-save freshness");
+    assert.equal(isCustomerPaymentReadCurrent({ isFetching: false, error: paused.error,
+      isInvalidated: paused.isInvalidated, dataUpdatedAt: paused.dataUpdatedAt }), false);
+    assert.deepEqual(starts, []);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await assert.rejects(() => refreshCustomerPaymentQueries(client, "factory-a", "customer-a", []),
+        { message: ATLAS_UI_STRINGS.payment.balancesOutdated });
+    }
+    assert.deepEqual(starts, []);
+    assert.equal(calls.filter(([method]) => method === "rpc").length, 1);
+    onlineManager.setOnline(true);
+    let refreshed = false;
+    const refresh = refreshCustomerPaymentQueries(client, "factory-a", "customer-a", [])
+      .then(() => { refreshed = true; });
+    await flushQueries();
+    assert.ok(starts.length > 0 && starts.every(Boolean));
+    assert.equal(refreshed, false);
+    completed.resolve("POST-SAVE BALANCE");
+    await refresh;
+    const fresh = client.getQueryState(key)!;
+    assert.equal(isCustomerPaymentReadCurrent({ isFetching: fresh.fetchStatus !== "idle", error: fresh.error,
+      isInvalidated: fresh.isInvalidated, dataUpdatedAt: fresh.dataUpdatedAt }), true);
+    assert.equal(fresh.data, "POST-SAVE BALANCE");
+    assert.equal(calls.filter(([method]) => method === "rpc").length, 1);
+  } finally {
+    completed.resolve("POST-SAVE BALANCE");
+    unsubscribe(); client.clear(); client.unmount(); onlineManager.setOnline(wasOnline);
+  }
+});
+
+test("a related read pausing during retry cannot leave the confirmed payment UI blocking indefinitely", { timeout: 2000 }, async () => {
+  const wasOnline = onlineManager.isOnline();
+  const create = prepareSubmission(true);
+  tableResponses.set("customer_payment_methods", { data: null, error: readError });
+  const client = new QueryClient();
+  client.mount();
+  const summaryKey = ["office-customer-payment-summary", "factory-a", "customer-a"];
+  const relatedKey = ["office-sales-register", "factory-a"];
+  client.setQueryData(summaryKey, "OLD");
+  client.setQueryData(relatedKey, "OLD");
+  let relatedStarts = 0; let draft = "60000";
+  const summary = new QueryObserver(client, { queryKey: summaryKey, staleTime: Infinity,
+    queryFn: async () => "POST-SAVE" });
+  const related = new QueryObserver(client, { queryKey: relatedKey, staleTime: Infinity, retry: 1, retryDelay: 0,
+    queryFn: async () => {
+      if (++relatedStarts === 1) { onlineManager.setOnline(false); throw new Error("Network lost during read"); }
+      return "POST-SAVE";
+    } });
+  const unsubscribeSummary = summary.subscribe(() => {});
+  const unsubscribeRelated = related.subscribe(() => {});
+  try {
+    const outcome = await saveCustomerPaymentAndRefresh(submission, create, () => { draft = ""; }, () => {},
+      () => refreshCustomerPaymentQueries(client, "factory-a", "customer-a", []));
+    assert.ok(outcome.status === "saved");
+    assert.equal(outcome.payment.id, paymentRow.id);
+    assert.equal(outcome.refresh, "outdated");
+    assert.equal(draft, "");
+    assert.equal(client.getQueryData(summaryKey), "POST-SAVE");
+    assert.equal(client.getQueryState(relatedKey)?.fetchStatus, "paused");
+    assert.equal(calls.filter(([method]) => method === "rpc").length, 1);
+    onlineManager.setOnline(true);
+    await refreshCustomerPaymentQueries(client, "factory-a", "customer-a", []);
+    assert.equal(client.getQueryData(relatedKey), "POST-SAVE");
+    assert.equal(calls.filter(([method]) => method === "rpc").length, 1);
+  } finally {
+    unsubscribeSummary(); unsubscribeRelated(); client.clear(); client.unmount(); onlineManager.setOnline(wasOnline);
+  }
 });

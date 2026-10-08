@@ -15,6 +15,9 @@ import {
   emptyCustomerPaymentForm,
   filterCustomersForPaymentSelection,
   getCustomerPaymentFormStatus,
+  isCustomerPaymentReadCurrent,
+  refreshCustomerPaymentQueries,
+  saveCustomerPaymentAndRefresh,
   resolveCustomerDuesDateFilter,
   setCustomerPaymentMethodAmount,
   setPaymentAllocation,
@@ -26,6 +29,7 @@ import {
   type CustomerDuesSortOrder,
   type CustomerPaymentForm,
   type CustomerPaymentFormStatus,
+  type CustomerPaymentSaveOutcome,
 } from "@/features/office/customer-payment-office-model";
 import {
   createCustomerPaymentWithMethods,
@@ -39,7 +43,7 @@ import {
   formatCustomerPaymentMode,
   NEW_CUSTOMER_PAYMENT_MODES,
   type Customer,
-  type CustomerPayment,
+  type CustomerPaymentResult,
   type NewCustomerPaymentMode,
 } from "@/features/sales/types";
 import {
@@ -77,7 +81,7 @@ export function CustomerPaymentsSection({
 }: Readonly<{
   factoryId: string;
   customers: readonly Customer[];
-  onPaymentSaved: (payment: CustomerPayment) => void;
+  onPaymentSaved: (payment: CustomerPaymentResult) => void | Promise<void>;
   onViewAll: () => void;
 }>) {
   const queryClient = useQueryClient();
@@ -88,6 +92,9 @@ export function CustomerPaymentsSection({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [saveOutcome, setSaveOutcome] = useState<CustomerPaymentSaveOutcome | null>(null);
+  const savedRefreshTargets = useRef<{ customerId: string; challanIds: string[] } | null>(null);
+  const savingRef = useRef(false);
   const [duesSortOrder, setDuesSortOrder] = useState<CustomerDuesSortOrder>("newest");
   const [duesDatePreset, setDuesDatePreset] = useState<CustomerDuesDatePreset>("all");
   const [customFrom, setCustomFrom] = useState(localToday);
@@ -100,6 +107,10 @@ export function CustomerPaymentsSection({
     customTo,
   );
   const enabled = Boolean(customerId);
+  const candidateQueryKey = [
+    ...candidatesKey(factoryId, customerId), duesDatePreset,
+    duesDateFilter.range?.fromDate ?? "", duesDateFilter.range?.toDate ?? "",
+  ] as const;
 
   const summaryQuery = useQuery({
     queryKey: summaryKey(factoryId, customerId),
@@ -107,12 +118,7 @@ export function CustomerPaymentsSection({
     enabled,
   });
   const candidatesQuery = useQuery({
-    queryKey: [
-      ...candidatesKey(factoryId, customerId),
-      duesDatePreset,
-      duesDateFilter.range?.fromDate ?? "",
-      duesDateFilter.range?.toDate ?? "",
-    ],
+    queryKey: candidateQueryKey,
     queryFn: () => listCustomerOutstandingChallans(
       factoryId,
       customerId,
@@ -125,12 +131,28 @@ export function CustomerPaymentsSection({
     queryFn: () => listCustomerPayments(factoryId, customerId),
     enabled,
   });
+  const balancesCurrent = isCustomerPaymentReadCurrent({
+    isFetching: summaryQuery.isFetching, error: summaryQuery.error,
+    dataUpdatedAt: summaryQuery.dataUpdatedAt,
+    isInvalidated: queryClient.getQueryState(summaryKey(factoryId, customerId))?.isInvalidated,
+  });
+  const candidatesCurrent = isCustomerPaymentReadCurrent({
+    isFetching: candidatesQuery.isFetching, error: candidatesQuery.error,
+    dataUpdatedAt: candidatesQuery.dataUpdatedAt,
+    isInvalidated: queryClient.getQueryState(candidateQueryKey)?.isInvalidated,
+  });
+  const historyCurrent = isCustomerPaymentReadCurrent({
+    isFetching: historyQuery.isFetching, error: historyQuery.error,
+    dataUpdatedAt: historyQuery.dataUpdatedAt,
+    isInvalidated: queryClient.getQueryState(historyKey(factoryId, customerId))?.isInvalidated,
+  });
   const candidates = sortCustomerOutstandingChallans(
-    candidatesQuery.data ?? [],
-    duesSortOrder,
+    candidatesCurrent ? candidatesQuery.data ?? [] : [], duesSortOrder,
   );
-  const history = historyQuery.data ?? [];
-  const status = getCustomerPaymentFormStatus(form, candidates);
+  const history = historyCurrent ? historyQuery.data ?? [] : [];
+  const draftStatus = getCustomerPaymentFormStatus(form, candidates);
+  const status = { ...draftStatus,
+    canSubmit: draftStatus.canSubmit && balancesCurrent && candidatesCurrent && saveOutcome?.status !== "unknown" };
 
   function clearDraftAllocations() {
     setForm((current) => clearCustomerPaymentAllocations(current));
@@ -160,36 +182,43 @@ export function CustomerPaymentsSection({
     setForm(emptyCustomerPaymentForm(localToday));
     setIsNoteOpen(false);
     setError("");
-    setSuccess("");
   }
 
   async function savePayment(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isSaving) return;
+    if (savingRef.current || saveOutcome?.status === "unknown" || !balancesCurrent || !candidatesCurrent) return;
     const input = buildCustomerPaymentInput(factoryId, customerId, form, candidates);
     if (!input) {
       setError(status.error || "Complete the payment and allocations before saving.");
       return;
     }
 
+    savingRef.current = true;
     setIsSaving(true);
     setError("");
     setSuccess("");
     try {
-      const payment = await createCustomerPaymentWithMethods(input);
-      onPaymentSaved(payment);
-      setForm(emptyCustomerPaymentForm(localToday));
-      setIsNoteOpen(false);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: summaryKey(factoryId, customerId) }),
-        queryClient.invalidateQueries({ queryKey: candidatesKey(factoryId, customerId) }),
-        queryClient.invalidateQueries({ queryKey: historyKey(factoryId, customerId) }),
-        queryClient.invalidateQueries({ queryKey: ["office-sales-register", factoryId] }),
-      ]);
-      setSuccess(`Payment ${formatIndianCurrency(payment.amount, MONEY_WITH_PAISE)} saved. Receipt is ready.`);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not save this customer payment.");
+      const outcome = await saveCustomerPaymentAndRefresh(
+        input, createCustomerPaymentWithMethods,
+        (payment) => {
+          setForm(emptyCustomerPaymentForm(localToday));
+          setIsNoteOpen(false);
+          savedRefreshTargets.current = {
+            customerId: input.customerId, challanIds: input.allocations.map((allocation) => allocation.challanId),
+          };
+          setSaveOutcome({ status: "saved", payment, refresh: "pending" });
+          setSuccess(payment.detailsStatus === "unavailable"
+            ? ATLAS_UI_STRINGS.payment.savedDetailsUnavailable
+            : `Payment ${formatIndianCurrency(payment.amount, MONEY_WITH_PAISE)} saved. Receipt is ready.`);
+        },
+        onPaymentSaved,
+        () => refreshCustomerPaymentQueries(queryClient, factoryId, input.customerId,
+          input.allocations.map((allocation) => allocation.challanId)),
+      );
+      setSaveOutcome(outcome);
+      if (outcome.status !== "saved") setError(outcome.message);
     } finally {
+      savingRef.current = false;
       setIsSaving(false);
     }
   }
@@ -199,16 +228,48 @@ export function CustomerPaymentsSection({
     ? queryError.message
     : "Could not load customer payment details.";
 
-  function retryCustomerPaymentQueries() {
-    void Promise.all([
-      summaryQuery.refetch(),
-      candidatesQuery.refetch(),
-      historyQuery.refetch(),
-    ]);
+  async function retryCustomerPaymentQueries() {
+    const savedId = saveOutcome?.status === "saved" ? saveOutcome.payment.id : null;
+    const targets = savedRefreshTargets.current;
+    try {
+      await refreshCustomerPaymentQueries(queryClient, factoryId, customerId, []);
+      if (targets) await refreshCustomerPaymentQueries(queryClient, factoryId, targets.customerId, targets.challanIds);
+      setSaveOutcome((current) => current?.status === "saved" && current.payment.id === savedId
+        ? { ...current, refresh: "current" } : current);
+    } catch {
+      setSaveOutcome((current) => current?.status === "saved" && current.payment.id === savedId
+        ? { ...current, refresh: "outdated" } : current);
+    }
   }
 
   return (
     <section aria-labelledby="customer-payments-heading" className="text-atlas-text">
+      {saveOutcome?.status === "saved" && (
+        <div className="mb-atlas-4 space-y-atlas-3">
+          <Feedback role="status" tone="success">
+            <div className="flex flex-wrap items-center justify-between gap-atlas-3">
+              <span>{success || ATLAS_UI_STRINGS.payment.saved}</span>
+              <Link href={`/office/payments/${saveOutcome.payment.id}`} target="_blank" rel="noreferrer"
+                className="inline-flex min-h-atlas-12 items-center font-atlas-semibold text-atlas-primary underline">
+                {ATLAS_UI_STRINGS.payment.openReceipt} ↗
+              </Link>
+            </div>
+          </Feedback>
+          {saveOutcome.refresh !== "current" && (
+            <Feedback tone="warning" role="status">
+              <div className="flex flex-wrap items-center justify-between gap-atlas-3">
+                <span>{saveOutcome.refresh === "pending" ? ATLAS_UI_STRINGS.payment.refreshing : ATLAS_UI_STRINGS.payment.balancesOutdated}</span>
+                <Button variant="secondary" onClick={() => { void retryCustomerPaymentQueries(); }} disabled={isSaving}>
+                  {ATLAS_UI_STRINGS.payment.refresh}
+                </Button>
+              </div>
+            </Feedback>
+          )}
+        </div>
+      )}
+      {saveOutcome?.status === "unknown" && (
+        <div className="mb-atlas-4"><Feedback tone="warning" role="alert">{saveOutcome.message}</Feedback></div>
+      )}
       <div className="grid gap-atlas-6 xl:grid-cols-4 xl:items-start">
         <div className="space-y-atlas-4 xl:col-span-3">
           <Card as="section" aria-labelledby="customer-payments-heading">
@@ -238,10 +299,11 @@ export function CustomerPaymentsSection({
                   </p>
                 )}
                 <dl className="grid overflow-hidden rounded-atlas-control border border-atlas-border sm:grid-cols-3">
-                  <PaymentSummary label="Active sales" value={summaryQuery.data?.totalActiveSales} />
-                  <PaymentSummary label="Paid / allocated" value={summaryQuery.data?.totalPaymentsAllocated} />
-                  <PaymentSummary label={ATLAS_UI_STRINGS.payment.outstanding} value={summaryQuery.data?.totalOutstanding} emphasized />
+                  <PaymentSummary label="Active sales" value={balancesCurrent ? summaryQuery.data?.totalActiveSales : undefined} />
+                  <PaymentSummary label="Paid / allocated" value={balancesCurrent ? summaryQuery.data?.totalPaymentsAllocated : undefined} />
+                  <PaymentSummary label={ATLAS_UI_STRINGS.payment.outstanding} value={balancesCurrent ? summaryQuery.data?.totalOutstanding : undefined} emphasized />
                 </dl>
+                {!balancesCurrent && <p role="status" className="mt-atlas-2 text-atlas-sm text-atlas-text-muted">{ATLAS_UI_STRINGS.payment.balancesOutdated}</p>}
               </div>
             )}
           </Card>
@@ -368,7 +430,7 @@ export function CustomerPaymentsSection({
                   {candidatesQuery.isLoading && (
                     <Feedback role="status" tone="neutral">Loading outstanding Challans...</Feedback>
                   )}
-                  {!candidatesQuery.isLoading && !duesDateFilter.error && candidates.length === 0 && (
+                  {candidatesCurrent && !duesDateFilter.error && candidates.length === 0 && (
                     <EmptyState
                       title={duesDatePreset === "all" ? "No outstanding Challans" : "No Challans in this period"}
                       description={duesDatePreset === "all" ? "This customer has no active Challan with an outstanding balance." : "No outstanding Challans in this date range."}
@@ -446,7 +508,6 @@ export function CustomerPaymentsSection({
 
                 {!status.canSubmit && form.amount && !status.methodSplitError && <div className="mt-atlas-3"><Feedback tone="warning">{status.error}</Feedback></div>}
                 {error && <div className="mt-atlas-3"><Feedback role="alert" tone="danger">{error}</Feedback></div>}
-                {success && <div className="mt-atlas-3"><Feedback role="status" tone="success">{success}</Feedback></div>}
                 <PaymentReconciliation status={status} isSaving={isSaving} />
               </Card>
             </form>
@@ -461,9 +522,9 @@ export function CustomerPaymentsSection({
             </div>
             {!customerId && <EmptyState title="No customer selected" description="Select a customer to review their saved receipts." />}
             {customerId && queryError && <div className="pt-atlas-4"><Feedback role="alert" tone="danger">{queryErrorMessage}</Feedback></div>}
-            {customerId && !queryError && historyQuery.isLoading && <div className="pt-atlas-4"><Feedback role="status" tone="neutral">{ATLAS_UI_STRINGS.payment.loadingHistory}</Feedback></div>}
-            {customerId && !queryError && !historyQuery.isLoading && history.length === 0 && <EmptyState title="No payments recorded" description="Saved customer payments will appear here." />}
-            {customerId && !queryError && history.length > 0 && (
+            {customerId && !queryError && !historyCurrent && <div className="pt-atlas-4"><Feedback role="status" tone="neutral">{ATLAS_UI_STRINGS.payment.loadingHistory}</Feedback></div>}
+            {customerId && !queryError && historyCurrent && history.length === 0 && <EmptyState title="No payments recorded" description="Saved customer payments will appear here." />}
+            {customerId && !queryError && historyCurrent && history.length > 0 && (
               <ul className="divide-y divide-atlas-border xl:max-h-screen xl:overflow-y-auto">
                 {history.map((payment) => (
                   <li key={payment.id} className="py-atlas-4 first:pt-atlas-4 last:pb-atlas-0">

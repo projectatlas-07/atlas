@@ -5,6 +5,8 @@ import type {
   CreateCustomerPaymentInput,
   CreateCustomerPaymentWithMethodsInput,
   CustomerPayment,
+  CustomerPaymentHeader,
+  CustomerPaymentResult,
   CustomerPaymentAllocation,
   CustomerPaymentAllocationInput,
   CustomerPaymentMethod,
@@ -12,7 +14,7 @@ import type {
   CustomerOutstandingChallan,
   CustomerSalesSummary,
 } from "../types.ts";
-import { isNewCustomerPaymentMode } from "../types.ts";
+import { CustomerPaymentUnknownOutcomeError, isCustomerPaymentId, isNewCustomerPaymentMode } from "../types.ts";
 import { assertFactoryId, assertInclusiveBusinessDateRange } from "../../../lib/business-date-contract.ts";
 import { sumFiniteNumbers, toFiniteNumber } from "../../../lib/numeric-total.ts";
 import { readAllKeysetPages } from "../../../lib/complete-paginated-read.ts";
@@ -237,11 +239,7 @@ function mapAllocation(
   };
 }
 
-function mapPayment(
-  row: CustomerPaymentRow,
-  allocations: CustomerPaymentAllocation[],
-  methods: CustomerPaymentMethod[],
-): CustomerPayment {
+function mapPaymentHeader(row: CustomerPaymentRow): CustomerPaymentHeader {
   return {
     id: row.id,
     factoryId: row.factory_id,
@@ -256,15 +254,73 @@ function mapPayment(
     paymentDate: row.payment_date,
     amount: Number(row.amount),
     paymentMode: row.payment_mode,
+    note: row.note,
+    createdAt: row.created_at,
+  };
+}
+
+function mapPayment(
+  row: CustomerPaymentRow,
+  allocations: CustomerPaymentAllocation[],
+  methods: CustomerPaymentMethod[],
+): CustomerPayment {
+  return {
+    ...mapPaymentHeader(row),
     methods: methods.length > 0
       ? methods
       : row.payment_mode === "multiple"
         ? []
         : [{ mode: row.payment_mode, splitAmount: null }],
-    note: row.note,
-    createdAt: row.created_at,
     allocations,
   };
+}
+
+async function hydratePayment(row: CustomerPaymentRow, requireMethods = false): Promise<CustomerPaymentResult> {
+  const header = mapPaymentHeader(row);
+  try {
+    const [allocations, methodRows] = await Promise.all([
+      listPaymentAllocations(row.factory_id, row.id),
+      listPaymentMethods(row.factory_id, [row.id]),
+    ]);
+    if (allocations.length === 0 || ((requireMethods || row.payment_mode === "multiple") && methodRows.length === 0)) {
+      throw new Error("Receipt children are unavailable.");
+    }
+    return { ...mapPayment(row, allocations, methodRows.map(mapPaymentMethod)), detailsStatus: "ready" };
+  } catch {
+    return { ...header, detailsStatus: "unavailable" };
+  }
+}
+
+async function confirmedPayment(
+  request: PromiseLike<{ data: CustomerPaymentRow | null; error: PostgrestError | null; status?: number }>,
+  factoryId: string,
+  customerId: string,
+): Promise<CustomerPaymentResult> {
+  let response;
+  try {
+    response = await request;
+  } catch {
+    throw new CustomerPaymentUnknownOutcomeError();
+  }
+  if (response.error) {
+    if (response.status === 0 || !response.error.code) throw new CustomerPaymentUnknownOutcomeError();
+    throw new CustomerPaymentServiceError(response.error);
+  }
+  const row = response.data;
+  if (!row || !isCustomerPaymentId(row.id)
+    || row.factory_id !== factoryId || row.customer_id !== customerId
+    || !Number.isFinite(Number(row.amount)) || Number(row.amount) <= 0) {
+    throw new CustomerPaymentUnknownOutcomeError();
+  }
+  return hydratePayment(row, true);
+}
+
+export class CustomerPaymentNotFoundError extends Error {
+  readonly code = "PAYMENT_NOT_FOUND";
+  constructor() {
+    super("Customer payment was not found.");
+    this.name = "CustomerPaymentNotFoundError";
+  }
 }
 
 function mapPaymentMethod(row: CustomerPaymentMethodRow): CustomerPaymentMethod {
@@ -387,7 +443,7 @@ function comparePaymentRowsNewestFirst(
 
 export async function createCustomerPayment(
   input: CreateCustomerPaymentInput,
-): Promise<CustomerPayment> {
+): Promise<CustomerPaymentResult> {
   requireId(input.factoryId, "factoryId");
   requireId(input.customerId, "customerId");
   assertCanonicalPaymentDate(input.paymentDate);
@@ -396,7 +452,7 @@ export async function createCustomerPayment(
   validateAllocations(input.allocations, paymentMinorUnits);
   const note = normalizeNote(input.note);
 
-  const { data, error } = await supabase.rpc("create_customer_payment", {
+  return confirmedPayment(supabase.rpc("create_customer_payment", {
     p_factory_id: input.factoryId,
     p_customer_id: input.customerId,
     p_payment_date: input.paymentDate,
@@ -407,20 +463,12 @@ export async function createCustomerPayment(
       challan_id: allocation.challanId,
       amount: allocation.amount,
     })),
-  });
-
-  if (error) throw new CustomerPaymentServiceError(error);
-  if (!data) throw new Error("create_customer_payment returned no payment.");
-  const [allocations, methodRows] = await Promise.all([
-    listPaymentAllocations(input.factoryId, data.id),
-    listPaymentMethods(input.factoryId, [data.id]),
-  ]);
-  return mapPayment(data, allocations, methodRows.map(mapPaymentMethod));
+  }), input.factoryId, input.customerId);
 }
 
 export async function createCustomerPaymentWithMethods(
   input: CreateCustomerPaymentWithMethodsInput,
-): Promise<CustomerPayment> {
+): Promise<CustomerPaymentResult> {
   requireId(input.factoryId, "factoryId");
   requireId(input.customerId, "customerId");
   assertCanonicalPaymentDate(input.paymentDate);
@@ -429,7 +477,7 @@ export async function createCustomerPaymentWithMethods(
   validateAllocations(input.allocations, paymentMinorUnits);
   const note = normalizeNote(input.note);
 
-  const { data, error } = await supabase.rpc("create_customer_payment_with_methods", {
+  return confirmedPayment(supabase.rpc("create_customer_payment_with_methods", {
     p_factory_id: input.factoryId,
     p_customer_id: input.customerId,
     p_payment_date: input.paymentDate,
@@ -443,15 +491,7 @@ export async function createCustomerPaymentWithMethods(
       challan_id: allocation.challanId,
       amount: allocation.amount,
     })),
-  });
-
-  if (error) throw new CustomerPaymentServiceError(error);
-  if (!data) throw new Error("create_customer_payment_with_methods returned no payment.");
-  const [allocations, methodRows] = await Promise.all([
-    listPaymentAllocations(input.factoryId, data.id),
-    listPaymentMethods(input.factoryId, [data.id]),
-  ]);
-  return mapPayment(data, allocations, methodRows.map(mapPaymentMethod));
+  }), input.factoryId, input.customerId);
 }
 
 export async function getPaymentsReceivedTotal(
@@ -660,7 +700,7 @@ export async function listFactoryCustomerPayments(
 export async function getCustomerPayment(
   factoryId: string,
   paymentId: string,
-): Promise<CustomerPayment> {
+): Promise<CustomerPaymentResult> {
   requireId(factoryId, "factoryId");
   requireId(paymentId, "paymentId");
   const { data, error } = await supabase
@@ -670,12 +710,8 @@ export async function getCustomerPayment(
     .eq("id", paymentId);
   if (error) throw new CustomerPaymentServiceError(error);
   const payment = (data?.[0] ?? null) as CustomerPaymentRow | null;
-  if (!payment) throw new Error("Customer payment was not found.");
-  const [allocations, methodRows] = await Promise.all([
-    listPaymentAllocations(factoryId, paymentId),
-    listPaymentMethods(factoryId, [paymentId]),
-  ]);
-  return mapPayment(payment, allocations, methodRows.map(mapPaymentMethod));
+  if (!payment) throw new CustomerPaymentNotFoundError();
+  return hydratePayment(payment);
 }
 
 export async function listCustomerOutstandingChallans(

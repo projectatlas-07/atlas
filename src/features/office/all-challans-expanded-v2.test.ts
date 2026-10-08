@@ -14,6 +14,10 @@ const model = readFileSync(
   new URL("./sales-office-model.ts", import.meta.url),
   "utf8",
 );
+const paymentModel = readFileSync(
+  new URL("./customer-payment-office-model.ts", import.meta.url),
+  "utf8",
+);
 
 test("main Challans history opens and returns from one mounted expanded view", () => {
   assert.match(sales, /useState<ChallansWorkspaceView>\("main"\)/);
@@ -82,7 +86,9 @@ test("compact presentation preserves every expanded filter input", () => {
 test("expanded history relies on the shared query cache and keeps only error Retry", () => {
   assert.match(sales, /queryKey: challansKey\(factoryId\),[\s\S]*queryFn: \(\) => listChallans\(factoryId\)/);
   assert.match(sales, /function cacheSavedChallan[\s\S]*setQueryData<ChallanHeader\[]>[\s\S]*invalidateQueries\(\{ queryKey: challansKey\(factoryId\) \}\)/);
-  assert.match(sales, /function cacheSavedPayment[\s\S]*applyPaymentLocks[\s\S]*invalidateQueries\(\{ queryKey: challansKey\(factoryId\) \}\)/);
+  assert.match(sales, /function cacheSavedPayment[\s\S]*payment\.detailsStatus !== "ready"[\s\S]*applyPaymentLocks/);
+  assert.match(paymentModel, /\["office-sales-challans", factoryId\]/);
+  assert.match(paymentModel, /client\.invalidateQueries\(\{ queryKey, refetchType: "all" \}, \{ throwOnError: true \}\)/);
   assert.match(sales, /function handleSaved[\s\S]*cacheSavedChallan\(saved\)/);
   assert.match(sales, /async function confirmVoid[\s\S]*cacheSavedChallan\(saved\)/);
   assert.doesNotMatch(expanded, />Refresh</);

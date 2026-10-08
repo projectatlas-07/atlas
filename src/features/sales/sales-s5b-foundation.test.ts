@@ -7,6 +7,7 @@ const verifier = readFileSync(new URL("../../../supabase/verify_sales_s5b.sql", 
 const office = readFileSync(new URL("../office/components/customer-payments-section.tsx", import.meta.url), "utf8");
 const parent = readFileSync(new URL("../office/components/sales-office-section.tsx", import.meta.url), "utf8");
 const service = readFileSync(new URL("./services/customer-payment-service.ts", import.meta.url), "utf8");
+const paymentModel = readFileSync(new URL("../office/customer-payment-office-model.ts", import.meta.url), "utf8");
 const registerService = readFileSync(new URL("./services/sales-register-service.ts", import.meta.url), "utf8");
 
 test("S5B stays bounded to Office payment workflow, history, receipt, and payment display", () => {
@@ -16,14 +17,14 @@ test("S5B stays bounded to Office payment workflow, history, receipt, and paymen
 });
 
 test("Office payment save uses the final multi-mode service and explicitly selected allocations", () => {
-  assert.match(office, /createCustomerPaymentWithMethods\(input\)/);
+  assert.match(office, /saveCustomerPaymentAndRefresh\([\s\S]*input, createCustomerPaymentWithMethods,/);
   assert.match(service, /supabase\.rpc\("create_customer_payment_with_methods"/);
   assert.match(service, /p_payment_methods: input\.methods\.map/);
   assert.match(service, /amount: method\.splitAmount \?\? null/);
   assert.doesNotMatch(office, /auto.?allocate|allocateOldest|oldestAllocation/i);
   assert.match(office, /Nothing is selected automatically/);
   assert.match(office, /status\.canSubmit/);
-  assert.match(office, /if \(isSaving\) return/);
+  assert.match(office, /if \(savingRef\.current \|\| saveOutcome\?\.status === "unknown"/);
   assert.doesNotMatch(office, /\.from\(|\.insert\(|\.update\(|\.delete\(/);
 });
 
@@ -33,7 +34,8 @@ test("successful save refreshes summary, candidates, history, register, and affe
     "office-customer-payment-candidates",
     "office-customer-payment-history",
     "office-sales-register",
-  ]) assert.match(office + parent, new RegExp(key));
+  ]) assert.match(office + parent + paymentModel, new RegExp(key));
+  assert.match(office, /refreshCustomerPaymentQueries\(queryClient, factoryId, input\.customerId/);
   assert.match(parent, /applyPaymentLocks/);
   assert.match(parent, /allocation\.challanId/);
 });

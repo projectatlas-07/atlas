@@ -2,7 +2,33 @@ import {
   formatCustomerPaymentMethods,
   type ChallanNumber,
   type CustomerPayment,
+  type CustomerPaymentResult,
 } from "./types.ts";
+import { ATLAS_UI_STRINGS } from "../../lib/strings.ts";
+
+export type PaymentReceiptLoadState =
+  | { status: "loading" }
+  | { status: "error" | "not-found" | "details-unavailable"; paymentId: string; message: string }
+  | { status: "ready"; receipt: PrintablePaymentReceipt };
+
+export async function loadPaymentReceiptDetails(
+  paymentId: string,
+  readPayment: () => Promise<CustomerPaymentResult>,
+): Promise<PaymentReceiptLoadState> {
+  try {
+    const payment = await readPayment();
+    if (payment.detailsStatus === "unavailable") {
+      return { status: "details-unavailable", paymentId: payment.id,
+        message: ATLAS_UI_STRINGS.payment.detailsUnavailable };
+    }
+    return { status: "ready", receipt: buildPrintablePaymentReceipt(payment) };
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "PAYMENT_NOT_FOUND") {
+      return { status: "not-found", paymentId, message: ATLAS_UI_STRINGS.payment.notFound };
+    }
+    return { status: "error", paymentId, message: "Could not load this payment receipt. Retry details." };
+  }
+}
 
 export type PrintablePaymentReceipt = {
   company: {

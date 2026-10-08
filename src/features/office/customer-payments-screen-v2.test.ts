@@ -26,7 +26,7 @@ test("customer context and money continue to come from authoritative queries and
   assert.match(screen, /listCustomerPayments\(factoryId, customerId\)/);
   assert.match(screen, /getCustomerPaymentFormStatus\(form, candidates\)/);
   assert.match(screen, /buildCustomerPaymentInput\(factoryId, customerId, form, candidates\)/);
-  assert.match(screen, /createCustomerPaymentWithMethods\(input\)/);
+  assert.match(screen, /saveCustomerPaymentAndRefresh\([\s\S]*input, createCustomerPaymentWithMethods,/);
   assert.match(screen, /formatIndianCurrency\(/);
   assert.match(screen, /formatDateOnly\(/);
   assert.match(screen, /formatIndianNumber\(/);
@@ -57,7 +57,7 @@ test("customer searching does not change the selected customer until an option i
   assert.match(screen, /event\.key === "Escape"[\s\S]*setSearchText\(""\)[\s\S]*setIsOpen\(false\)/);
   assert.match(
     screen,
-    /function selectCustomer\(nextCustomerId: string\) \{\s*setCustomerId\(nextCustomerId\);\s*setForm\(emptyCustomerPaymentForm\(localToday\)\);\s*setIsNoteOpen\(false\);\s*setError\(""\);\s*setSuccess\(""\);/,
+    /function selectCustomer\(nextCustomerId: string\) \{\s*setCustomerId\(nextCustomerId\);\s*setForm\(emptyCustomerPaymentForm\(localToday\)\);\s*setIsNoteOpen\(false\);\s*setError\(""\);\s*\}/,
   );
 });
 
@@ -119,13 +119,13 @@ test("optional Note is collapsed by default without changing its form state", ()
 
 test("customer switching and successful save retain the existing full-form reset semantics", () => {
   assert.match(screen, /function selectCustomer\(nextCustomerId: string\)[\s\S]*setForm\(emptyCustomerPaymentForm\(localToday\)\);\s*setIsNoteOpen\(false\)/);
-  assert.match(screen, /const payment = await createCustomerPaymentWithMethods\(input\);[\s\S]*setForm\(emptyCustomerPaymentForm\(localToday\)\);\s*setIsNoteOpen\(false\)/);
+  assert.match(screen, /saveCustomerPaymentAndRefresh\([\s\S]*input, createCustomerPaymentWithMethods,[\s\S]*setForm\(emptyCustomerPaymentForm\(localToday\)\);\s*setIsNoteOpen\(false\)/);
 });
 
 test("standard payment save creates one multi-mode payment and resets the one form", () => {
-  assert.equal((screen.match(/createCustomerPaymentWithMethods\(input\)/g) ?? []).length, 1);
+  assert.equal((screen.match(/input, createCustomerPaymentWithMethods,/g) ?? []).length, 1);
   assert.doesNotMatch(screen, /createCustomerPayment\(input\)/);
-  assert.match(screen, /const payment = await createCustomerPaymentWithMethods\(input\);[\s\S]*onPaymentSaved\(payment\);[\s\S]*setForm\(emptyCustomerPaymentForm\(localToday\)\)/);
+  assert.match(screen, /saveCustomerPaymentAndRefresh\([\s\S]*setForm\(emptyCustomerPaymentForm\(localToday\)\)[\s\S]*onPaymentSaved,/);
   assert.match(screen, /formatCustomerPaymentMethods\(payment\.methods, payment\.paymentMode\)/);
 });
 
@@ -233,7 +233,7 @@ test("one sticky payment footer uses the authoritative form state and submit han
   assert.match(screen, /<MoneyTotal label="Remaining" value=\{status\.remainingAmount\}/);
   assert.match(screen, /type="submit" disabled=\{!status\.canSubmit\} loading=\{isSaving\}/);
   assert.equal((screen.match(/>Save payment<\/Button>/g) ?? []).length, 1);
-  assert.equal((screen.match(/createCustomerPaymentWithMethods\(input\)/g) ?? []).length, 1);
+  assert.equal((screen.match(/input, createCustomerPaymentWithMethods,/g) ?? []).length, 1);
 });
 
 test("the single footer follows Challan rows and sticks to the workspace bottom", () => {
