@@ -152,7 +152,15 @@ begin
     'public.calculate_mud_supply_wages(uuid,uuid,date)'::regprocedure
   ) into mud_definition;
 
-  if daily_save_definition ilike '%transport_weekly_%'
+  -- Migration 75 permits reading weekly headers to reject finalized source saves,
+  -- never writing weekly earnings/details from the daily-entry writer.
+  if daily_save_definition not ilike '%from public.transport_weekly_earnings%'
+    or daily_save_definition not ilike '%transport_weekly_earnings.factory_id = p_factory_id%'
+    or daily_save_definition not ilike '%transport_weekly_earnings.week_start =%'
+    or daily_save_definition not ilike '%p_work_date - (extract(isodow from p_work_date)::integer - 1)%'
+    or daily_save_definition not ilike '%ATLAS_TRANSPORT_WEEK_FINALIZED%'
+    or daily_save_definition not ilike '%P2621%'
+    or daily_save_definition ~* '\m(insert[[:space:]]+into|update|delete[[:space:]]+from|merge[[:space:]]+into|truncate([[:space:]]+table)?)[[:space:]]+(only[[:space:]]+)?("?public"?[[:space:]]*[.][[:space:]]*)?"?transport_weekly_[[:alnum:]_]+'
     or production_definition ilike '%transport_weekly_%'
     or mud_definition ilike '%transport_weekly_%'
     or production_definition not ilike '%production earnings are continuous%'
@@ -224,12 +232,12 @@ begin
   set factory_id = factory_a_id, is_active = true
   where id = mapping_id;
 
-  insert into public.transport_crews (id, factory_id, name, work_direction)
+  insert into public.transport_crews (id, factory_id, name)
   values
-    (field_crew_id, factory_a_id, 'T6 field crew', 'FIELD_TO_KILN'),
-    (kiln_crew_id, factory_a_id, 'T6 kiln crew', 'KILN_TO_FIELD'),
-    (missing_crew_id, factory_a_id, 'T6 missing-rate crew', 'FIELD_TO_KILN'),
-    (crew_b_id, factory_b_id, 'T6 Factory B crew', 'FIELD_TO_KILN');
+    (field_crew_id, factory_a_id, 'T6 field crew'),
+    (kiln_crew_id, factory_a_id, 'T6 kiln crew'),
+    (missing_crew_id, factory_a_id, 'T6 missing-rate crew'),
+    (crew_b_id, factory_b_id, 'T6 Factory B crew');
 
   insert into public.transport_workers (id, factory_id, name)
   select supplied.worker_id, factory_a_id,

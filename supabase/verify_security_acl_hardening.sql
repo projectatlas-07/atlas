@@ -176,8 +176,12 @@ begin
   end if;
   -- Original function-definition baseline was captured after migration 73.
   -- Migration 74 intentionally replaced exactly three withdrawal functions.
+  -- Migration 75 intentionally replaced these independently reviewed Transport RPCs:
+  -- calculate_transport_weekly_wages(uuid,date),
+  -- save_transport_daily_entry(uuid,uuid,date,numeric,uuid[]),
+  -- create_transport_crew_wage_rate(uuid,uuid,date,numeric).
   -- This fingerprint incorporates those authorized definitions.
-  if (SELECT md5(coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.name,x.args),'[]')::text) hash FROM (SELECT p.proname name,pg_get_function_identity_arguments(p.oid) args,pg_get_userbyid(p.proowner) owner,p.prosecdef,p.proconfig,pg_get_functiondef(p.oid) definition FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.prokind IN ('f','p')) x) <> 'c1190c686292ea6b28054e48db09c68a' then
+  if (SELECT md5(coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.name,x.args),'[]')::text) hash FROM (SELECT p.proname name,pg_get_function_identity_arguments(p.oid) args,pg_get_userbyid(p.proowner) owner,p.prosecdef,p.proconfig,pg_get_functiondef(p.oid) definition FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.prokind IN ('f','p')) x) <> '64756e2508e31262f129014ce6103766' then
     raise exception 'FAIL: definitions fingerprint differs outside approved ACL changes';
   end if;
   if (SELECT md5(coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.table_name,x.name),'[]')::text) hash FROM (SELECT c.relname table_name,t.tgname name,t.tgenabled,pg_get_triggerdef(t.oid) definition FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND NOT t.tgisinternal) x) <> '20edd673f7590f3f64a2489df7a89d12' then
