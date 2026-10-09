@@ -234,3 +234,26 @@ test("Sales Register V2 adds no reference-only tax, export, inventory, or accoun
   assert.doesNotMatch(registerSource, /GST|CGST|SGST|IGST|tax rate|taxable value|CSV|Export report|inventory deduction|settlement/i);
   assert.doesNotMatch(registerSource, /\bcreateCustomerPayment\b|\bcreateChallan\b|\bupdateChallan\b|\bvoidChallan\b|\.from\(|\.rpc\(/);
 });
+
+test("Register hides all cached financial presentation until current and wires a read-only eligible-range Refresh", () => {
+  assert.match(registerSource, /Boolean\(range\) && !registerQuery\.isPaused && isCustomerPaymentReadCurrent/);
+  assert.match(registerSource, /isInvalidated: queryClient\.getQueryState\(registerKey\)\?\.isInvalidated/);
+  assert.match(registerSource, /const entries = registerCurrent \? registerQuery\.data \?\? \[\] : \[\]/);
+  assert.match(registerSource, /const summary = registerCurrent \? summarizeSalesRegister\(entries\) : null/);
+  for (const field of ["brickRevenue", "otherRevenue", "totalRevenue", "activeChallans", "totalBrickQuantity", "voidChallans"]) {
+    assert.match(registerSource, new RegExp(`value=\\{summary \\? [^\\n]+summary\\.${field}[^\\n]+ATLAS_UI_STRINGS\\.feedback\\.unavailable`));
+  }
+  // One CURRENT boundary contains both desktop rows and mobile cards, including Paid/Due.
+  const display = registerSource.slice(registerSource.indexOf("{registerCurrent && entries.length > 0"), registerSource.indexOf("function SummaryValue"));
+  assert.match(display, /SalesRegisterTableRow/); assert.match(display, /SalesRegisterMobileCard/);
+  assert.match(registerSource, /registerCurrent && entries\.length === 0/);
+  assert.match(registerSource, /await refreshSalesRegisterQueries\(queryClient, \{ factoryId, range \}\)/);
+  assert.match(registerSource, /if \(!range\) return/);
+  assert.match(registerSource, /disabled=\{!range\}/);
+  assert.doesNotMatch(registerSource, /registerQuery\.refetch|createChallan|createCustomerPayment/);
+  const created = officeSource.slice(officeSource.indexOf("async function handleCreated("), officeSource.indexOf("function handleSaved("));
+  assert.match(created, /refreshSalesRegisterQueries\(queryClient, saved\)/);
+  assert.doesNotMatch(created, /\["office-sales-register", factoryId\]/);
+  assert.match(serviceSource, /await getChallanPaymentState\(factoryId, entry\.challanId\)/);
+  assert.doesNotMatch(serviceSource, /QueryClient|useQuery|office-challan-payment-state|payment_date/);
+});

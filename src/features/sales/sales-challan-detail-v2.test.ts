@@ -63,18 +63,24 @@ test("lifecycle, payment, and financial-lock statuses stay separate and canonica
   assert.match(detail, /<StatusPill label=\{financialLockStatus\.label\}/);
   assert.match(detail, /<StatusPill label=\{paymentStatus\.label\}/);
   assert.match(detail, /getChallanEligibility\(challan\)/);
-  assert.match(office, /disabled=\{!selectedChallanEligibility\.canEdit\}/);
-  assert.match(office, /disabled=\{!selectedChallanEligibility\.canVoid\}/);
+  assert.match(office, /disabled=\{!selectedChallanCurrent \|\| !selectedChallanEligibility\.canEdit\}/);
+  assert.match(office, /disabled=\{!selectedChallanCurrent \|\| !selectedChallanEligibility\.canVoid\}/);
+  assert.match(detail, /financialLockStatus = lockStateCurrent && challan\.isLocked/);
   assert.doesNotMatch(detail, /Correction and void are unavailable because this Challan is financially locked/);
   assert.doesNotMatch(detail, /Payment history financially locks this Challan/);
   assert.match(detail, /This Challan is Void/);
 });
 
-test("Void uses the Vehicle Archive-style modal without changing its handlers", () => {
+test("Void retains its modal and read-only recovery while confirmation is unavailable", () => {
   assert.match(
     detail,
-    /isConfirmingVoid && eligibility\.canVoid[\s\S]*<ChallanVoidConfirmation[\s\S]*challanNumber=\{challan\.challanNumber\}/,
+    /isConfirmingVoid && \([\s\S]*<ChallanVoidConfirmation[\s\S]*challanNumber=\{challan\.challanNumber\}/,
   );
+  assert.match(detail, /canConfirm=\{lockStateCurrent && eligibility\.canVoid\}/);
+  assert.match(detail, /onRefresh=\{onRefreshLocks\}/);
+  assert.match(detail, /!canConfirm && <Feedback[\s\S]*ATLAS_UI_STRINGS\.challan\.locksOutdated/);
+  assert.match(detail, /type="button" onClick=\{onRefresh\}/);
+  assert.match(detail, /disabled=\{!canConfirm\}/);
   assert.ok(detail.includes('`Void Challan ${challanNumber}?`'));
   assert.ok(detail.includes('"Void this Challan?"'));
   assert.ok(detail.includes("Challan stays in history but won’t count as an active sale."));
@@ -90,7 +96,7 @@ test("Void uses the Vehicle Archive-style modal without changing its handlers", 
   assert.match(office, /onCancelVoid=\{\(\) => setIsConfirmingVoid\(false\)\}/);
   assert.match(office, /onConfirmVoid=\{\(\) => void confirmVoid\(selectedChallan\)\}/);
   assert.match(office, /await voidChallan\(factoryId, challan\.id\)[\s\S]*setIsConfirmingVoid\(false\)/);
-  assert.match(office, /disabled=\{!selectedChallanEligibility\.canVoid\}/);
+  assert.match(office, /disabled=\{!selectedChallanCurrent \|\| !selectedChallanEligibility\.canVoid\}/);
 });
 
 test("saved snapshots remain the only customer, company, Vehicle, and wage sources", () => {

@@ -27,6 +27,23 @@ const ENGLISH_SHARED_STRINGS = {
     status: "Status",
     toDate: "To date",
   },
+  challan: {
+    locksOutdated: "Challan lock status is unavailable. Refresh before editing or voiding.",
+    saved: "Challan saved.",
+    detailsUnavailable: "Details unavailable. The Challan is saved. Retry loading its details.",
+    notFound: "Challan not found. Check history or retry loading its details.",
+    postSaveUnavailable: "Challan saved. Some views could not refresh. Retry details or check history.",
+    unknownOutcome: "We could not confirm whether this Challan was saved. Check Challan history before creating another.",
+    inspectHistory: "Check Challan history",
+  },
+  salesRegister: {
+    outdated: "Sales Register is outdated. Refresh to load current totals and payment states.",
+    loadError: "Could not load Sales Register. Refresh to try again.",
+  },
+  cashBook: {
+    outdated: "Cash Book is outdated. Refresh to load current balances and movements.",
+    loadError: "Could not load Cash Book. Refresh to try again.",
+  },
   payment: {
     savedDetailsUnavailable: "Payment saved. Receipt details could not load.",
     saved: "Payment saved.",

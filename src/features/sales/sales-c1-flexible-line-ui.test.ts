@@ -71,13 +71,14 @@ test("manual-only documents and combined previews are enabled without weakening 
   assert.match(model, /form\.lines\.length === 0 && form\.flexibleLines\.length === 0/);
   assert.match(model, /brickPaise \+ flexiblePaise/);
   assert.match(editor, /Notes add ₹0\. The database returns the authoritative saved total/);
-  assert.match(editor, /onSaved\(saved\)/);
+  assert.match(editor, /onSaved!\(saved\)/);
   assert.match(editor, /Authoritative total: \$\{formatSalesMoney\(saved\.challanTotal\)\}/);
   assert.doesNotMatch(model, /challanTotal\s*:/);
 });
 
 test("controlled writes, payment locks, Sales Register, and Correction D print consumption remain intact", () => {
-  assert.match(editor, /await createChallan\(input\)/);
+  assert.match(editor, /await submitChallanCreation\(\s*creationLatch\.current/);
+  assert.match(editor, /: createChallan\(input\)/);
   assert.match(editor, /await updateChallan\(input\)/);
   assert.doesNotMatch(editor, /\.from\(["']challan_flexible_lines["']\)/);
   assert.match(model, /if \(challan\.isLocked\).*canEdit: false/);

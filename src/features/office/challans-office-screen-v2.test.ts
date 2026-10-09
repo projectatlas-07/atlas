@@ -32,11 +32,11 @@ test("opened Challan actions live in one compact row above the work card", () =>
   assert.ok(actionRowIndex < workCardIndex);
   assert.match(
     challansScreen,
-    /mode === "detail" && selectedChallan && selectedChallanEligibility[\s\S]*variant="secondary"[\s\S]*setMode\("edit"\)[\s\S]*disabled=\{!selectedChallanEligibility\.canEdit\}[\s\S]*>\s*Edit\s*<\/Button>/,
+    /mode === "detail" && selectedChallan && selectedChallanEligibility[\s\S]*variant="secondary"[\s\S]*setMode\("edit"\)[\s\S]*disabled=\{!selectedChallanCurrent \|\| !selectedChallanEligibility\.canEdit\}[\s\S]*>\s*Edit\s*<\/Button>/,
   );
   assert.match(
     challansScreen,
-    /variant="danger"[\s\S]*setIsConfirmingVoid\(true\)[\s\S]*disabled=\{!selectedChallanEligibility\.canVoid\}[\s\S]*>\s*Void\s*<\/Button>/,
+    /variant="danger"[\s\S]*setIsConfirmingVoid\(true\)[\s\S]*disabled=\{!selectedChallanCurrent \|\| !selectedChallanEligibility\.canVoid\}[\s\S]*>\s*Void\s*<\/Button>/,
   );
   assert.match(
     challansScreen,
@@ -73,12 +73,12 @@ test("history uses canonical statuses, formatting, and honest async states", () 
   assert.match(challansScreen, /No Challans yet/);
   assert.match(challansScreen, /No matching Challans/);
   assert.doesNotMatch(challansScreen, />Refresh<\/Button>/);
-  assert.match(challansScreen, /challansQuery\.error[\s\S]*challansQuery\.refetch\(\); \}\}>\{ATLAS_UI_STRINGS\.actions\.retry\}/);
+  assert.match(challansScreen, /challansQuery\.error[\s\S]*refreshChallanLocks\(\)\}>\{ATLAS_UI_STRINGS\.actions\.retry\}/);
 });
 
 test("main Challans screen delegates expansion without changing its compact history", () => {
   assert.match(challansScreen, /View all Challans/);
-  assert.match(challansScreen, /<AllChallansExpandedView[\s\S]*challans=\{challans\}/);
+  assert.match(challansScreen, /<AllChallansExpandedView[\s\S]*challans=\{challansCurrent \? challans : \[\]\}/);
   assert.doesNotMatch(challansScreen, /<AllChallansExpandedView[\s\S]*challans=\{compactChallans\}/);
   assert.doesNotMatch(challansScreen, /<TableHeaderCell>Challan \/ date<\/TableHeaderCell>/);
 });

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { isCustomerPaymentReadCurrent, refreshSalesRegisterQueries } from "@/features/office/customer-payment-office-model";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -48,23 +49,32 @@ const MONEY_WITH_PAISE = {
 } as const;
 
 export function SalesRegisterSection({ factoryId }: Readonly<{ factoryId: string }>) {
+  const queryClient = useQueryClient();
   const [localToday] = useState(() => getLocalDate());
   const [preset, setPreset] = useState<SalesDatePreset>("today");
   const [customFrom, setCustomFrom] = useState(localToday);
   const [customTo, setCustomTo] = useState(localToday);
   const range = resolveSalesDateRange(preset, localToday, customFrom, customTo);
+  const registerKey = ["office-sales-register", factoryId, range?.fromDate, range?.toDate] as const;
   const registerQuery = useQuery({
-    queryKey: ["office-sales-register", factoryId, range?.fromDate, range?.toDate],
+    queryKey: registerKey,
     queryFn: () => listSalesRegister(factoryId, range!),
     enabled: range !== null,
   });
-  const entries = registerQuery.data ?? [];
-  const summary = summarizeSalesRegister(entries);
-  const errorMessage = registerQuery.error instanceof Error
-    ? registerQuery.error.message
-    : registerQuery.error
-      ? "Could not load the Sales Register."
-      : "";
+  const registerCurrent = Boolean(range) && !registerQuery.isPaused && isCustomerPaymentReadCurrent({
+    isFetching: registerQuery.isFetching, error: registerQuery.error,
+    dataUpdatedAt: registerQuery.dataUpdatedAt,
+    isInvalidated: queryClient.getQueryState(registerKey)?.isInvalidated,
+  });
+  const entries = registerCurrent ? registerQuery.data ?? [] : [];
+  const summary = registerCurrent ? summarizeSalesRegister(entries) : null;
+  const errorMessage = registerQuery.error ? ATLAS_UI_STRINGS.salesRegister.loadError : "";
+
+  async function refreshRegister() {
+    if (!range) return;
+    try { await refreshSalesRegisterQueries(queryClient, { factoryId, range }); }
+    catch { /* Query state keeps unavailable financial values hidden; Refresh never writes. */ }
+  }
 
   return (
     <Card as="section" aria-labelledby="sales-register-heading">
@@ -84,6 +94,9 @@ export function SalesRegisterSection({ factoryId }: Readonly<{ factoryId: string
         </div>
 
         <div className="flex flex-wrap items-center gap-atlas-2" aria-label="Sales Register date filters">
+          <Button variant="secondary" onClick={() => { void refreshRegister(); }} disabled={!range}>
+            {ATLAS_UI_STRINGS.payment.refresh}
+          </Button>
           <div className="flex flex-wrap gap-atlas-1 rounded-atlas-control bg-atlas-surface-muted p-atlas-1">
             {presets.slice(0, 4).map((option) => (
               <Button
@@ -125,12 +138,12 @@ export function SalesRegisterSection({ factoryId }: Readonly<{ factoryId: string
       )}
 
       <dl className="mt-atlas-4 grid grid-cols-2 overflow-hidden rounded-atlas-card border border-atlas-border bg-atlas-surface-muted sm:grid-cols-3 xl:grid-cols-6">
-        <SummaryValue label="Brick Revenue" value={formatIndianCurrency(summary.brickRevenue, MONEY_WITH_PAISE)} />
-        <SummaryValue label="Other Revenue" value={formatIndianCurrency(summary.otherRevenue, MONEY_WITH_PAISE)} />
-        <SummaryValue label="Total Revenue" value={formatIndianCurrency(summary.totalRevenue, MONEY_WITH_PAISE)} emphasized />
-        <SummaryValue label="Active Challans" value={formatIndianNumber(summary.activeChallans)} />
-        <SummaryValue label="Brick quantity" value={formatIndianNumber(summary.totalBrickQuantity)} />
-        <SummaryValue label="Void Challans" value={formatIndianNumber(summary.voidChallans)} />
+        <SummaryValue label="Brick Revenue" value={summary ? formatIndianCurrency(summary.brickRevenue, MONEY_WITH_PAISE) : ATLAS_UI_STRINGS.feedback.unavailable} />
+        <SummaryValue label="Other Revenue" value={summary ? formatIndianCurrency(summary.otherRevenue, MONEY_WITH_PAISE) : ATLAS_UI_STRINGS.feedback.unavailable} />
+        <SummaryValue label="Total Revenue" value={summary ? formatIndianCurrency(summary.totalRevenue, MONEY_WITH_PAISE) : ATLAS_UI_STRINGS.feedback.unavailable} emphasized />
+        <SummaryValue label="Active Challans" value={summary ? formatIndianNumber(summary.activeChallans) : ATLAS_UI_STRINGS.feedback.unavailable} />
+        <SummaryValue label="Brick quantity" value={summary ? formatIndianNumber(summary.totalBrickQuantity) : ATLAS_UI_STRINGS.feedback.unavailable} />
+        <SummaryValue label="Void Challans" value={summary ? formatIndianNumber(summary.voidChallans) : ATLAS_UI_STRINGS.feedback.unavailable} />
       </dl>
 
       <div className="mt-atlas-4">
@@ -141,20 +154,23 @@ export function SalesRegisterSection({ factoryId }: Readonly<{ factoryId: string
           <Feedback tone="danger" role="alert">
             <div className="flex flex-col gap-atlas-3 sm:flex-row sm:items-center sm:justify-between">
               <span>{errorMessage}</span>
-              <Button variant="secondary" onClick={() => { void registerQuery.refetch(); }}>
+              <Button variant="secondary" onClick={() => { void refreshRegister(); }}>
                 {ATLAS_UI_STRINGS.actions.retry}
               </Button>
             </div>
           </Feedback>
         )}
-        {!registerQuery.isLoading && !errorMessage && range && entries.length === 0 && (
+        {range && !registerCurrent && !registerQuery.isLoading && !errorMessage && (
+          <Feedback tone="warning" role="status">{ATLAS_UI_STRINGS.salesRegister.outdated}</Feedback>
+        )}
+        {registerCurrent && entries.length === 0 && (
           <EmptyState
             title="No Challans in this date range"
             description="Choose another period to review saved Sales records."
           />
         )}
 
-        {!registerQuery.isLoading && !errorMessage && entries.length > 0 && (
+        {registerCurrent && entries.length > 0 && (
           <>
             <div className="hidden md:block">
               <div className="max-h-screen overflow-y-auto">

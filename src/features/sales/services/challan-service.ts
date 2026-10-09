@@ -12,7 +12,12 @@ import type {
   FactoryPrintableProfile,
   UpdateChallanInput,
 } from "../types.ts";
-import { isNewCustomerPaymentMode } from "../types.ts";
+import {
+  ChallanNotFoundError,
+  ChallanUnknownOutcomeError,
+  isChallanId,
+  isNewCustomerPaymentMode,
+} from "../types.ts";
 
 const FACTORY_COLUMNS =
   "id, name, business_description, village, post_office, police_station, district, state, address, mobile, gstin, created_at, updated_at";
@@ -581,13 +586,48 @@ export async function getChallan(
     .maybeSingle();
 
   if (error) throw new ChallanServiceError(error);
-  if (!data) throw new Error("Challan was not found.");
+  if (!data) throw new ChallanNotFoundError();
   return { ...mapHeader(data), ...await listChallanLines(factoryId, challanId) };
 }
 
-export async function createChallan(input: CreateChallanInput): Promise<Challan> {
+async function confirmedChallanHeader(
+  request: () => PromiseLike<{ data: ChallanRow | null; error: PostgrestError | null; status?: number }>,
+  input: CreateChallanInput,
+): Promise<ChallanHeader> {
+  let response;
+  try {
+    response = await request();
+  } catch {
+    throw new ChallanUnknownOutcomeError();
+  }
+  if (!response) throw new ChallanUnknownOutcomeError();
+  if (response.error) {
+    if (response.status === 0 || !response.error.code) throw new ChallanUnknownOutcomeError();
+    throw new ChallanServiceError(response.error);
+  }
+  const row = response.data;
+  const snapshotFields = [
+    "customer_name_snapshot", "customer_address_snapshot", "customer_mobile_snapshot",
+    "company_name_snapshot", "company_business_description_snapshot",
+    "company_address_snapshot", "company_mobile_snapshot",
+  ] as const;
+  if (!row || !isChallanId(row.id) || row.factory_id !== input.factoryId
+    || row.customer_id !== input.customerId || row.challan_date !== input.challanDate
+    || !(row.challan_number === null || typeof row.challan_number === "string")
+    || !(typeof row.challan_total === "number" || (typeof row.challan_total === "string" && row.challan_total.trim() !== ""))
+    || !Number.isFinite(Number(row.challan_total)) || Number(row.challan_total) < 0
+    || row.status !== "active" || typeof row.is_locked !== "boolean"
+    || snapshotFields.some((field) => typeof row[field] !== "string")
+    || typeof row.created_at !== "string" || !Number.isFinite(Date.parse(row.created_at))
+    || typeof row.updated_at !== "string" || !Number.isFinite(Date.parse(row.updated_at))) {
+    throw new ChallanUnknownOutcomeError();
+  }
+  return mapHeader(row);
+}
+
+export async function createChallan(input: CreateChallanInput): Promise<ChallanHeader> {
   const validated = validateMutationInput(input);
-  const { data, error } = await supabase.rpc("create_challan", {
+  return confirmedChallanHeader(() => supabase.rpc("create_challan", {
     p_factory_id: input.factoryId,
     p_challan_number: validated.challanNumber,
     p_challan_date: input.challanDate,
@@ -596,16 +636,12 @@ export async function createChallan(input: CreateChallanInput): Promise<Challan>
     p_trip_labour_wage: input.tripLabourWage,
     p_items: validated.items,
     p_flexible_lines: validated.flexibleLines ?? [],
-  });
-
-  if (error) throw new ChallanServiceError(error);
-  if (!data) throw new Error("create_challan returned no Challan.");
-  return { ...mapHeader(data), ...await listChallanLines(input.factoryId, data.id) };
+  }), input);
 }
 
 export async function createChallanWithReceivedPayment(
   input: CreateChallanWithReceivedPaymentInput,
-): Promise<Challan> {
+): Promise<ChallanHeader> {
   const validated = validateMutationInput(input);
   assertCanonicalDate(input.receivedPayment.paymentDate, "paymentDate");
   assertMoney(input.receivedPayment.amount, "receivedPayment.amount", false);
@@ -613,7 +649,7 @@ export async function createChallanWithReceivedPayment(
     throw new Error("Choose a supported payment mode.");
   }
 
-  const { data, error } = await supabase.rpc("create_challan_with_received_payment", {
+  return confirmedChallanHeader(() => supabase.rpc("create_challan_with_received_payment", {
     p_factory_id: input.factoryId,
     p_challan_number: validated.challanNumber,
     p_challan_date: input.challanDate,
@@ -625,11 +661,7 @@ export async function createChallanWithReceivedPayment(
     p_payment_date: input.receivedPayment.paymentDate,
     p_payment_amount: input.receivedPayment.amount,
     p_payment_mode: input.receivedPayment.paymentMode,
-  });
-
-  if (error) throw new ChallanServiceError(error);
-  if (!data) throw new Error("create_challan_with_received_payment returned no Challan.");
-  return { ...mapHeader(data), ...await listChallanLines(input.factoryId, data.id) };
+  }), input);
 }
 
 export async function updateChallan(input: UpdateChallanInput): Promise<Challan> {

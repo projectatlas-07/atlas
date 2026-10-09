@@ -7,9 +7,11 @@ import type {
   CustomerPaymentResult,
   NewCustomerPaymentMode,
 } from "@/features/sales/types";
-import type { QueryClient } from "@tanstack/react-query";
+import type { Query, QueryClient, QueryObserverOptions } from "@tanstack/react-query";
+import { resolveSalesDateRange, type SalesDateRange } from "../sales/sales-register-model.ts";
 import { ATLAS_UI_STRINGS } from "../../lib/strings.ts";
 import { isLocalDate, shiftLocalDate } from "../../lib/local-date.ts";
+import { isCashBookInitializationRequired } from "./cash-book-office-model.ts";
 import {
   formatChallanLabel,
   isNewCustomerPaymentMode,
@@ -62,25 +64,142 @@ export async function refreshCustomerPaymentQueries(
     ["office-customer-payment-history", factoryId, customerId],
     ["office-factory-customer-payments", factoryId],
     ...[...new Set(submittedChallanIds)].map((id) => ["office-challan-payment-state", factoryId, id]),
-  ];
-  const relatedKeys: readonly (readonly string[])[] = [
-    ["office-sales-challans", factoryId],
-    ["office-sales-register", factoryId],
     ["office-cash-book-day", factoryId],
+    ["office-sales-register", factoryId],
+    ["office-sales-challans", factoryId],
     ...[...new Set(submittedChallanIds)].map((id) => ["office-sales-challan", factoryId, id]),
   ];
+  // Lifetime Paid/Due can change in any Challan-date period, not just the payment
+  // date. Invalidate every cached Register range, immediately reading observed ranges only.
+  // Keep the existing all-cached-day Cash Book payment scope.
+  const canFetchCashBook = cashBookFetchEligibility(client, factoryId, true);
+  return refreshFinancialQueryGroups(client, financialKeys, [], (query) => {
+    if (query.queryKey[0] === "office-cash-book-day") return canFetchCashBook(query);
+    if (query.queryKey[0] === "office-sales-register") return salesRegisterFetchEligibility(query, null);
+    if (query.queryKey[0] === "office-sales-challans" || query.queryKey[0] === "office-sales-challan") {
+      return challanLockFetchEligibility(query);
+    }
+    return true;
+  });
+}
+
+// Read-only recovery uses the same cancellation/completion checks as a confirmed payment.
+// Only existing query objects are fetched; submitted IDs never manufacture details.
+export function refreshChallanLockQueries(client: QueryClient, factoryId: string, challanIds?: readonly string[]) {
+  const keys = challanIds === undefined ? [["office-sales-challans", factoryId]]
+    : [...new Set(challanIds)].map((id) => ["office-sales-challan", factoryId, id]);
+  return refreshFinancialQueryGroups(client, keys, [], challanLockFetchEligibility);
+}
+
+function challanLockFetchEligibility(query: Query): boolean {
+  if (query.isDisabled() || typeof query.options.queryFn !== "function") return false;
+  // List filter variants are observer-owned. Dormant variants stay invalidated until opened.
+  if (query.queryKey[0] === "office-sales-challans") return query.isActive();
+  if (typeof query.queryKey[2] !== "string" || !query.queryKey[2]) return false;
+  const enabled = (query.options as QueryObserverOptions).enabled;
+  return query.isActive() || !(enabled === false || (typeof enabled === "function" && !enabled(query)));
+}
+
+// Challan callers pass the validated returned header, not the mutable selected customer.
+// This refresh has no payment-ID dependency and never touches other module queries.
+export async function refreshCustomerFinancialQueries(
+  client: QueryClient,
+  target: Pick<ChallanHeader, "factoryId" | "customerId">,
+  includePaymentHistory: boolean,
+): Promise<void> {
+  const { factoryId, customerId } = target;
+  const financialKeys: readonly (readonly string[])[] = [
+    ["office-customer-payment-summary", factoryId, customerId],
+    ["office-customer-payment-candidates", factoryId, customerId],
+    ...(includePaymentHistory ? [
+      ["office-customer-payment-history", factoryId, customerId],
+      ["office-factory-customer-payments", factoryId],
+    ] : []),
+  ];
+  return refreshFinancialQueryGroups(client, financialKeys, []);
+}
+
+// Post-save targets use the confirmed header; explicit Refresh uses the displayed valid range.
+export async function refreshSalesRegisterQueries(
+  client: QueryClient,
+  target: Pick<ChallanHeader, "factoryId" | "challanDate"> | { factoryId: string; range: SalesDateRange },
+): Promise<void> {
+  const financialKeys = ["range" in target
+    ? ["office-sales-register", target.factoryId, target.range.fromDate, target.range.toDate]
+    : ["office-sales-register", target.factoryId]];
+  return refreshFinancialQueryGroups(client, financialKeys, [], (query) => salesRegisterFetchEligibility(query, target));
+}
+
+function salesRegisterFetchEligibility(query: Query, target: { challanDate: string } | { range: SalesDateRange } | null) {
+  const [, , fromDate, toDate] = query.queryKey;
+  const range = typeof fromDate === "string" && typeof toDate === "string"
+    ? resolveSalesDateRange("custom", fromDate, fromDate, toDate) : null;
+  if (!range || query.isDisabled() || typeof query.options.queryFn !== "function") return false;
+  const enabled = (query.options as QueryObserverOptions).enabled;
+  if (!query.isActive() && (enabled === false || (typeof enabled === "function" && !enabled(query)))) return false;
+  // C6 retains explicit Refresh and relevant inactive Challan-date periods.
+  // Ordinary payments (null target) immediately read only enabled observed variants.
+  return query.isActive() || (target !== null && ("range" in target
+    || (range.fromDate <= target.challanDate && target.challanDate <= range.toDate)));
+}
+
+// Received Now supplies its submitted payment date, not the Challan date.
+// Cash Book balances carry forward: invalidate cached D2 and later days, but
+// immediately read only enabled observed days. Explicit Refresh reads one day.
+// CONSERVATIVE for payments before the permanent start date: SQL excludes those
+// movements, but the day response does not expose startDate to narrow this scope.
+export async function refreshCashBookQueries(
+  client: QueryClient,
+  target: { factoryId: string; paymentDate: string | null } | { factoryId: string; businessDate: string },
+): Promise<void> {
+  const date = "paymentDate" in target ? target.paymentDate : target.businessDate;
+  if (!date || !isLocalDate(date)) return;
+  const keys = [["office-cash-book-day", target.factoryId]];
+  const canFetch = cashBookFetchEligibility(client, target.factoryId, "businessDate" in target);
+  return refreshFinancialQueryGroups(client, keys, [], canFetch, (query) => {
+    const businessDate = query.queryKey[2];
+    return typeof businessDate === "string" && isLocalDate(businessDate)
+      && ("businessDate" in target ? businessDate === date : businessDate >= date);
+  });
+}
+
+function cashBookFetchEligibility(client: QueryClient, factoryId: string, includeInactive: boolean) {
+  // Capture only genuine idle setup errors BEFORE cancel/revert. An initialized
+  // first load has cleared that error; reverting it must not suppress replacement.
+  const idleSetupQueries = new Set(client.getQueryCache().findAll({
+    queryKey: ["office-cash-book-day", factoryId],
+    predicate: (query) => query.state.fetchStatus === "idle" && isCashBookInitializationRequired(query.state.error),
+  }));
+  return (query: Query) => {
+    if (idleSetupQueries.has(query) || query.isDisabled() || typeof query.options.queryFn !== "function") return false;
+    const enabled = (query.options as QueryObserverOptions).enabled;
+    // isDisabled covers all observed readers; a disabled second observer must
+    // not suppress a day still needed by an enabled observer.
+    if (!query.isActive() && (enabled === false || (typeof enabled === "function" && !enabled(query)))) return false;
+    return includeInactive || query.isActive();
+  };
+}
+
+async function refreshFinancialQueryGroups(
+  client: QueryClient,
+  financialKeys: readonly (readonly string[])[],
+  relatedKeys: readonly (readonly string[])[],
+  shouldFetch: (query: Query) => boolean = () => true,
+  shouldInvalidate: (query: Query) => boolean = () => true,
+): Promise<void> {
   const cache = client.getQueryCache();
   const financialQueries = [...new Map(financialKeys.flatMap((queryKey) =>
-    cache.findAll({ queryKey })).map((query) => [query.queryHash, query])).values()];
+    cache.findAll({ queryKey, predicate: shouldInvalidate })).map((query) => [query.queryHash, query])).values()];
 
   // Post-save callers reach here after confirmed success. Cancel/revert discards first-load results
   // when services ignore AbortSignal. No pre-save request can supply this refresh.
   await Promise.all(financialQueries.map((query) =>
     client.cancelQueries({ queryKey: query.queryKey, exact: true }, { revert: true })));
   await Promise.all(financialKeys.map((queryKey) =>
-    client.invalidateQueries({ queryKey, refetchType: "none" })));
+    client.invalidateQueries({ queryKey, predicate: shouldInvalidate, refetchType: "none" })));
 
-  const watched = new Set([...financialQueries, ...relatedKeys.flatMap((queryKey) => cache.findAll({ queryKey }))]);
+  const fetchableQueries = financialQueries.filter(shouldFetch);
+  const watched = new Set([...fetchableQueries, ...relatedKeys.flatMap((queryKey) => cache.findAll({ queryKey }))]);
   let stopWatching = () => {};
   let rejectPaused!: () => void;
   const paused = new Promise<never>((_, reject) => {
@@ -90,7 +209,7 @@ export async function refreshCustomerPaymentQueries(
     });
   });
   try {
-    const reads = financialQueries.map((query) => {
+    const reads = fetchableQueries.map((query) => {
       const before = query.state.dataUpdateCount;
       // Explicit fetch also refreshes registered financial queries behind hidden tabs.
       // Cancellation + forced fetch proves start order; timestamps alone cannot.

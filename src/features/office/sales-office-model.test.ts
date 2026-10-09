@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import type { Challan, Customer, Vehicle } from "@/features/sales/types";
+import { ChallanNotFoundError, ChallanUnknownOutcomeError } from "../sales/types.ts";
+import { ATLAS_UI_STRINGS } from "../../lib/strings.ts";
 import {
   addChallanFlexibleLine,
   addChallanLine,
@@ -14,6 +16,7 @@ import {
   calculateFlexibleLineAmountPreview,
   calculateLineAmountPreview,
   challanFormFromSaved,
+  challanDetailLoadMessage,
   emptyChallanFlexibleLine,
   emptyChallanLine,
   factoryProfileFormFromSaved,
@@ -30,12 +33,19 @@ import {
   removeChallanLine,
   SALES_SECTION_HEADING,
   salesOfficeErrorMessage,
+  submitChallanCreation,
+  runChallanPostSaveOperations,
+  type ChallanCreationLatch,
   selectCustomer,
   updateChallanLineField,
 } from "./sales-office-model.ts";
 
 const sectionSource = readFileSync(
   new URL("./components/sales-office-section.tsx", import.meta.url),
+  "utf8",
+);
+const paymentSectionSource = readFileSync(
+  new URL("./components/customer-payments-section.tsx", import.meta.url),
   "utf8",
 );
 const dashboardSource = readFileSync(
@@ -100,6 +110,231 @@ const savedChallan: Challan = {
   }],
   flexibleLines: [],
 };
+
+const confirmedHeader = { ...savedChallan, id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" };
+
+test("Challan creation synchronously latches two rapid submissions and permanently closes a successful draft", async () => {
+  const latch: ChallanCreationLatch = { phase: "ready" };
+  let creationCalls = 0;
+  let release!: (header: typeof confirmedHeader) => void;
+  const request = new Promise<typeof confirmedHeader>((resolve) => { release = resolve; });
+  const create = () => { creationCalls += 1; return request; };
+  let draft: string | null = "completed lines";
+  let receivedNow: number | null = 800;
+  let selectedId = "";
+  let mode = "create";
+  const first = submitChallanCreation(latch, create,
+    () => { draft = null; receivedNow = null; },
+    (header) => { selectedId = header.id; mode = "detail"; },
+  );
+  assert.equal(latch.phase, "submitting");
+  assert.deepEqual(await submitChallanCreation(latch, create, () => {}, () => {}), { status: "blocked" });
+  assert.equal(creationCalls, 1);
+  release(confirmedHeader);
+  const outcome = await first;
+  assert.deepEqual(outcome, { status: "saved", header: confirmedHeader, postSaveFailed: false });
+  assert.equal(latch.savedId, confirmedHeader.id);
+  assert.equal(latch.phase, "saved");
+  assert.equal(selectedId, confirmedHeader.id);
+  assert.equal(mode, "detail");
+  assert.equal(draft, null);
+  assert.equal(receivedNow, null);
+  assert.deepEqual(await submitChallanCreation(latch, create, () => {}, () => {}), { status: "blocked" });
+  assert.equal(creationCalls, 1);
+});
+
+test("explicit Challan rejection leaves the draft correctable and allows an intentional new attempt", async () => {
+  const latch: ChallanCreationLatch = { phase: "ready" };
+  let calls = 0;
+  let draft: string | null = "original";
+  const rejected = await submitChallanCreation(latch, async () => {
+    calls += 1;
+    throw { code: "P3011", message: "private provider wording" };
+  }, () => { draft = null; }, () => {});
+  assert.equal(rejected.status, "failed");
+  assert.equal(latch.phase, "ready");
+  assert.equal(draft, "original");
+  const succeeded = await submitChallanCreation(latch, async () => { calls += 1; return confirmedHeader; },
+    () => { draft = null; }, () => {});
+  assert.equal(succeeded.status, "saved");
+  assert.equal(calls, 2);
+  assert.equal(draft, null);
+});
+
+test("UNKNOWN Challan creation preserves the draft and blocks mounted-draft resubmission", async () => {
+  for (const invalidResponse of [false, true]) {
+    const latch: ChallanCreationLatch = { phase: "ready" };
+    let calls = 0;
+    const draft = { lines: "unsaved", receivedNow: 800 };
+    const create = async () => {
+      calls += 1;
+      if (!invalidResponse) throw new ChallanUnknownOutcomeError();
+      return { ...confirmedHeader, id: "bad-id" };
+    };
+    let callbackCalls = 0;
+    const onConfirmed = () => { callbackCalls += 1; };
+    const result = await submitChallanCreation(latch, create, onConfirmed, onConfirmed);
+    assert.deepEqual(result, { status: "unknown", message: ATLAS_UI_STRINGS.challan.unknownOutcome });
+    assert.deepEqual(draft, { lines: "unsaved", receivedNow: 800 });
+    assert.equal(latch.phase, "unknown");
+    assert.equal(latch.savedId, undefined);
+    assert.equal(callbackCalls, 0);
+    assert.deepEqual(await submitChallanCreation(latch, create, onConfirmed, onConfirmed), { status: "blocked" });
+    assert.equal(calls, 1);
+  }
+});
+
+test("sync and async post-save failures never undo Challan identity, draft completion or navigation", async () => {
+  for (const failure of ["sync", "async"] as const) {
+    const latch: ChallanCreationLatch = { phase: "ready" };
+    let calls = 0;
+    let draft: string | null = "original";
+    let selectedId = "";
+    let mode = "create";
+    const create = async () => { calls += 1; return confirmedHeader; };
+    const outcome = await submitChallanCreation(latch, create,
+      () => { draft = null; },
+      (header) => {
+        selectedId = header.id;
+        mode = "detail";
+        assert.equal(latch.phase, "saved");
+        if (failure === "sync") throw new Error("cache update failed");
+        return Promise.reject(new Error("refetch failed"));
+      },
+    );
+    assert.deepEqual(outcome, { status: "saved", header: confirmedHeader, postSaveFailed: true });
+    assert.equal(latch.savedId, confirmedHeader.id);
+    assert.equal(draft, null);
+    assert.equal(selectedId, confirmedHeader.id);
+    assert.equal(mode, "detail");
+    assert.deepEqual(await submitChallanCreation(latch, create, () => {}, () => {}), { status: "blocked" });
+    assert.equal(calls, 1);
+  }
+});
+
+test("a callback throwing before navigation still leaves a completed, non-resubmittable Challan draft", async () => {
+  const latch: ChallanCreationLatch = { phase: "ready" };
+  let draft: string | null = "original";
+  const outcome = await submitChallanCreation(latch, async () => confirmedHeader,
+    () => { draft = null; },
+    () => { throw new Error("parent callback failed"); },
+  );
+  assert.equal(outcome.status, "saved");
+  assert.equal(draft, null);
+  assert.equal(latch.phase, "saved");
+  assert.equal(latch.savedId, confirmedHeader.id);
+});
+
+test("saved identity and navigation do not wait for optional asynchronous cache work", async () => {
+  const latch: ChallanCreationLatch = { phase: "ready" };
+  let release!: () => void;
+  const cacheWork = new Promise<void>((resolve) => { release = resolve; });
+  let draft: string | null = "original";
+  let mode = "create";
+  let selectedId = "";
+  let callbackStarted!: () => void;
+  const started = new Promise<void>((resolve) => { callbackStarted = resolve; });
+  const submission = submitChallanCreation(latch, async () => confirmedHeader,
+    () => { draft = null; },
+    (header) => { mode = "detail"; selectedId = header.id; callbackStarted(); return cacheWork; },
+  );
+  await started;
+  assert.equal(mode, "detail");
+  assert.equal(selectedId, confirmedHeader.id);
+  assert.equal(latch.savedId, confirmedHeader.id);
+  assert.equal(draft, null);
+  assert.deepEqual(await submitChallanCreation(latch, async () => confirmedHeader, () => {}, () => {}), { status: "blocked" });
+  release();
+  assert.equal((await submission).status, "saved");
+});
+
+test("optional Challan cache operations all execute and both sync and asynchronous rejections are contained", async () => {
+  const operations: string[] = [];
+  const failed = await runChallanPostSaveOperations([
+    () => { operations.push("cache"); throw new Error("cache failed"); },
+    () => { operations.push("invalidation"); return Promise.reject(new Error("refetch failed")); },
+    async () => { operations.push("other read"); },
+  ]);
+  assert.equal(failed, true);
+  assert.deepEqual(operations, ["cache", "invalidation", "other read"]);
+  assert.equal(await runChallanPostSaveOperations([async () => {}]), false);
+});
+
+test("Challan saved-detail errors distinguish not found from unavailable without raw provider wording", () => {
+  assert.equal(challanDetailLoadMessage(new ChallanNotFoundError(), true), ATLAS_UI_STRINGS.challan.notFound);
+  assert.equal(challanDetailLoadMessage(new Error("private provider wording"), true), ATLAS_UI_STRINGS.challan.detailsUnavailable);
+  assert.notEqual(ATLAS_UI_STRINGS.challan.notFound, ATLAS_UI_STRINGS.challan.detailsUnavailable);
+});
+
+test("Challan editor and parent wire saved-header selection, clearing, read-only Retry and UNKNOWN history inspection", () => {
+  const createdCallback = sectionSource.slice(sectionSource.indexOf("async function handleCreated("), sectionSource.indexOf("function handleSaved("));
+  assert.ok(createdCallback.indexOf("setSelectedChallanId(saved.id)") < createdCallback.indexOf("runChallanPostSaveOperations"));
+  assert.ok(createdCallback.indexOf('setMode("detail")') < createdCallback.indexOf("runChallanPostSaveOperations"));
+  assert.doesNotMatch(createdCallback, /setQueryData<Challan>/); // A header is never a full-detail cache entry.
+  assert.match(sectionSource, /submittingRef\.current \|\| \(!challan && creationLatch\.current\.phase !== "ready"\)/);
+  assert.match(sectionSource, /setForm\(\{\s*challanNumber: "", challanDate: getLocalDate\(\), customerId: ""/);
+  assert.match(sectionSource, /setReceivedPaymentForm\(emptyChallanReceivedPaymentForm\(getLocalDate\(\)\)\)/);
+  assert.match(sectionSource, /challanDetailLoadMessage\(selectedChallanQuery\.error, createdChallan\?\.header\.id === selectedChallanId\)/);
+  assert.match(sectionSource, /onClick=\{\(\) => refreshChallanLocks\(\[selectedChallanId\]\)\}/);
+  assert.match(sectionSource, /onInspectHistory=\{\(\) => showChallansView\("all"\)\}/);
+  assert.match(sectionSource, /if \(!challan && creationOutcome\?\.status === "saved"\)/);
+  assert.match(sectionSource, /href=\{`\/office\/challans\/\$\{creationOutcome\.header\.id\}`\}/);
+});
+
+test("C12 UI wiring gates stale locks in list, detail, open correction and void confirmation", () => {
+  assert.match(sectionSource, /challansCurrent && visibleChallans\.length > 0/);
+  assert.match(sectionSource, /!challansQuery\.isPaused && isCustomerPaymentReadCurrent/);
+  assert.match(sectionSource, /!selectedChallanQuery\.isPaused && isCustomerPaymentReadCurrent/);
+  assert.match(sectionSource, /lockStateCurrent=\{selectedChallanCurrent\}/);
+  assert.match(sectionSource, /if \(challan && !getLiveChallanActionEligibility\(queryClient, factoryId, challan\.id\)\.canEdit\)/);
+  assert.match(sectionSource, /const correctionBlocked = Boolean\(challan && \(!lockStateCurrent \|\| !correctionEligibility\?\.canEdit\)\)/);
+  assert.match(sectionSource, /<fieldset disabled=\{correctionBlocked\}/);
+  assert.match(sectionSource, /key=\{`edit-\$\{selectedChallan\.id\}`\}/);
+  assert.doesNotMatch(sectionSource, /key=\{`edit-[^`]*updatedAt/);
+  assert.match(sectionSource, /onClick=\{onRefreshLocks\}[\s\S]*<fieldset disabled=\{correctionBlocked\}/);
+  assert.match(sectionSource, /mode === "edit" && !selectedChallanCurrent[\s\S]*<ChallanDetail/);
+  assert.match(sectionSource, /if \(!getLiveChallanActionEligibility\(queryClient, factoryId, challan\.id\)\.canVoid\)/);
+  for (const action of ["canEdit", "canVoid"]) {
+    assert.match(sectionSource, new RegExp(`if \\(!getLiveChallanActionEligibility\\(queryClient, factoryId, selectedChallanId\\)\\.${action}\\)`));
+  }
+  assert.match(sectionSource, /isConfirmingVoid && \([\s\S]*canConfirm=\{lockStateCurrent && eligibility\.canVoid\}/);
+  assert.match(sectionSource, /disabled=\{!canConfirm\}/);
+  assert.match(sectionSource, /onRefresh=\{onRefreshLocks\}/);
+  assert.match(sectionSource, /financialLockStatus = lockStateCurrent && challan\.isLocked/);
+  const refresh = sectionSource.slice(sectionSource.indexOf("function refreshChallanLocks"), sectionSource.indexOf("const selectedChallanEligibility"));
+  assert.match(refresh, /refreshChallanLockQueries/);
+  assert.doesNotMatch(refresh, /createCustomerPayment|createChallan|voidChallan|updateChallan/);
+});
+
+test("confirmed Challan customer Refresh targets the authoritative header and keeps paused-read recovery accessible", () => {
+  const refreshCallback = sectionSource.slice(sectionSource.indexOf("async function refreshCreatedCustomer("),
+    sectionSource.indexOf("async function handleCreated("));
+  assert.match(refreshCallback, /refreshCustomerFinancialQueries\(queryClient, saved, receivedNow\)/);
+  assert.doesNotMatch(refreshCallback, /createChallan|createCustomerPayment|setForm/);
+  assert.match(refreshCallback, /customerRefresh: "current"/);
+  assert.match(refreshCallback, /customerRefresh: "outdated"/);
+  assert.match(sectionSource, /refreshCreatedCustomer\(createdChallan\.header, createdChallan\.receivedNow\)/);
+  assert.match(sectionSource, /createdChallan\.customerRefresh !== "current"/);
+  assert.match(sectionSource, /disabled=\{createdChallan\.customerRefresh === "pending"\}/);
+  assert.match(paymentSectionSource, /\(!balancesCurrent \|\| !candidatesCurrent\) &&/);
+  assert.match(paymentSectionSource, /void refreshCustomerBalances\(\)/);
+  const balanceRecovery = paymentSectionSource.slice(paymentSectionSource.indexOf("async function refreshCustomerBalances("),
+    paymentSectionSource.indexOf("\n  return (", paymentSectionSource.indexOf("async function refreshCustomerBalances(")));
+  assert.match(balanceRecovery, /refreshCustomerFinancialQueries\(queryClient, \{ factoryId, customerId \}, false\)/);
+  assert.doesNotMatch(balanceRecovery, /createChallan|createCustomerPayment|setForm/);
+  assert.match(paymentSectionSource, /canSubmit: draftStatus\.canSubmit && balancesCurrent && candidatesCurrent/);
+});
+
+test("Received Now Cash Book freshness receives immutable submitted D2 and the validated saved factory", () => {
+  const submission = sectionSource.slice(sectionSource.indexOf("const receivedPayment = buildChallanReceivedPayment("),
+    sectionSource.indexOf("setCreationOutcome(outcome)"));
+  assert.ok(submission.indexOf("buildChallanReceivedPayment(") < submission.indexOf("await submitChallanCreation("));
+  assert.match(submission, /onCreated!\(header, receivedPayment \?\? undefined\)/);
+  const callback = sectionSource.slice(sectionSource.indexOf("async function handleCreated("), sectionSource.indexOf("function handleSaved("));
+  assert.match(callback, /refreshCashBookQueries\(queryClient, \{ factoryId: saved\.factoryId, paymentDate: receivedPayment\?\.paymentDate \?\? null \}\)/);
+  assert.doesNotMatch(callback, /office-cash-book-day|selectedDate|receivedPaymentForm/);
+  assert.match(callback, /cashBookResult\.status === "rejected"/);
+});
 
 const vehicles: Vehicle[] = [{
   id: "vehicle-a",
@@ -990,7 +1225,8 @@ test("edit and void eligibility respect void and locked lifecycle states", () =>
 
 test("successful writes refresh caches and duplicate submits are blocked", () => {
   assert.match(sectionSource, /if \(isSaving\) return/);
-  assert.match(sectionSource, /await createChallan\(input\)/);
+  assert.match(sectionSource, /await submitChallanCreation\(\s*creationLatch\.current/);
+  assert.match(sectionSource, /: createChallan\(input\)/);
   assert.match(sectionSource, /upsertChallanNewestFirst/);
   assert.match(sectionSource, /setQueryData<Challan>/);
   assert.match(sectionSource, /formatChallanLabel\(saved\.challanNumber\).*created/);

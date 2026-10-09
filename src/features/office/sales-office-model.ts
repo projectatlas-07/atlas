@@ -14,7 +14,93 @@ import type {
 } from "@/features/sales/types";
 import { formatIndianCurrency } from "../../lib/formatting.ts";
 import { isLocalDate, shiftLocalDate } from "../../lib/local-date.ts";
-import { formatChallanLabel, isNewCustomerPaymentMode } from "../sales/types.ts";
+import {
+  ChallanUnknownOutcomeError,
+  formatChallanLabel,
+  isChallanId,
+  isNewCustomerPaymentMode,
+} from "../sales/types.ts";
+import { ATLAS_UI_STRINGS } from "../../lib/strings.ts";
+import type { QueryClient } from "@tanstack/react-query";
+
+export const challanKey = (factoryId: string, challanId: string) =>
+  ["office-sales-challan", factoryId, challanId] as const;
+
+// Read live state on every action, not a render-time snapshot. This only prevents
+// known-stale UI actions; SQL row locks still protect races after this check.
+export function getLiveChallanActionEligibility(client: QueryClient, factoryId: string, challanId: string) {
+  const state = client.getQueryState<Challan>(challanKey(factoryId, challanId));
+  const challan = state?.data;
+  if (!factoryId || !challanId || !state || state.status !== "success" || state.error
+    || state.isInvalidated || state.fetchStatus !== "idle" || state.dataUpdatedAt <= 0
+    || !challan || challan.factoryId !== factoryId || challan.id !== challanId
+    || !Array.isArray(challan.items) || !Array.isArray(challan.flexibleLines)
+    || typeof challan.isLocked !== "boolean" || challan.status !== "active") {
+    return { canEdit: false, canVoid: false };
+  }
+  return getChallanEligibility(challan);
+}
+
+export type ChallanCreationLatch = {
+  phase: "ready" | "submitting" | "saved" | "unknown";
+  savedId?: string;
+};
+
+export type ChallanCreationOutcome =
+  | { status: "saved"; header: ChallanHeader; postSaveFailed: boolean }
+  | { status: "unknown" | "failed"; message: string }
+  | { status: "blocked" };
+
+export async function submitChallanCreation(
+  latch: ChallanCreationLatch,
+  create: () => Promise<ChallanHeader>,
+  onConfirmed: (header: ChallanHeader) => void | Promise<void>,
+  onCreated: (header: ChallanHeader) => void | Promise<void>,
+): Promise<ChallanCreationOutcome> {
+  if (latch.phase !== "ready") return { status: "blocked" };
+  latch.phase = "submitting";
+  let header: ChallanHeader;
+  try {
+    header = await create();
+    if (!header || !isChallanId(header.id)) throw new ChallanUnknownOutcomeError();
+  } catch (error) {
+    if (error instanceof ChallanUnknownOutcomeError) {
+      latch.phase = "unknown";
+      return { status: "unknown", message: ATLAS_UI_STRINGS.challan.unknownOutcome };
+    }
+    latch.phase = "ready";
+    return {
+      status: "failed",
+      message: salesOfficeErrorMessage(error, "Could not create the Challan."),
+    };
+  }
+  latch.phase = "saved";
+  latch.savedId = header.id;
+  const operations = await Promise.allSettled([
+    Promise.resolve().then(() => onConfirmed(header)),
+    Promise.resolve().then(() => onCreated(header)),
+  ]);
+  return {
+    status: "saved",
+    header,
+    postSaveFailed: operations.some((operation) => operation.status === "rejected"),
+  };
+}
+
+export async function runChallanPostSaveOperations(
+  operations: readonly (() => void | Promise<unknown>)[],
+): Promise<boolean> {
+  const results = await Promise.allSettled(operations.map((operation) => Promise.resolve().then(operation)));
+  return results.some((result) => result.status === "rejected");
+}
+
+export function challanDetailLoadMessage(error: unknown, confirmedSaved: boolean): string {
+  if (error && typeof error === "object" && "code" in error && error.code === "CHALLAN_NOT_FOUND") {
+    return ATLAS_UI_STRINGS.challan.notFound;
+  }
+  return confirmedSaved ? ATLAS_UI_STRINGS.challan.detailsUnavailable
+    : salesOfficeErrorMessage(error, "Could not load Challan details.");
+}
 
 export const SALES_SECTION_HEADING = "Sales / Challan";
 

@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Feedback } from "@/components/ui/feedback";
+import { isCustomerPaymentReadCurrent, refreshCashBookQueries } from "@/features/office/customer-payment-office-model";
 import {
   buildCashBookInitializationInput,
   buildCashBookManualEntryInput,
@@ -132,10 +135,24 @@ export function CashBookOfficeSection({ factoryId }: Readonly<{ factoryId: strin
   }
 
   const initializationRequired = isCashBookInitializationRequired(dayQuery.error);
+  const dayCurrent = !dayQuery.isPaused && isCustomerPaymentReadCurrent({
+    isFetching: dayQuery.isFetching, error: dayQuery.error,
+    dataUpdatedAt: dayQuery.dataUpdatedAt,
+    isInvalidated: queryClient.getQueryState(cashBookDayKey(factoryId, selectedDate))?.isInvalidated,
+  });
+
+  async function refreshDay() {
+    try { await refreshCashBookQueries(queryClient, { factoryId, businessDate: selectedDate }); }
+    catch { /* Read-only recovery: query state keeps unavailable amounts hidden. */ }
+  }
 
   return (
     <section aria-label="Cash Book" className="min-h-0">
-      {dayQuery.isLoading && <CashBookMessage>Loading Cash Book...</CashBookMessage>}
+      {dayQuery.isLoading && !dayQuery.isPaused && <CashBookMessage>Loading Cash Book...</CashBookMessage>}
+      {dayQuery.isPaused && !dayQuery.data && !initializationRequired && <Feedback tone="warning">
+        {ATLAS_UI_STRINGS.cashBook.loadError}
+        <Button type="button" variant="secondary" onClick={() => void refreshDay()}>{ATLAS_UI_STRINGS.payment.refresh}</Button>
+      </Feedback>}
       {initializationRequired && <CashBookInitializationSetup
         factoryId={factoryId}
         localToday={localToday}
@@ -144,12 +161,12 @@ export function CashBookOfficeSection({ factoryId }: Readonly<{ factoryId: strin
           void queryClient.invalidateQueries({ queryKey: ["office-cash-book-day", factoryId] });
         }}
       />}
-      {dayQuery.error && !initializationRequired && <div className="rounded-xl border border-red-200 bg-red-50 p-5">
+      {dayQuery.error && !dayQuery.data && !initializationRequired && <div className="rounded-xl border border-red-200 bg-red-50 p-5">
         <p role="alert" className="text-sm font-semibold text-red-800">
-          {cashBookOfficeErrorMessage(dayQuery.error, "Could not load Cash Book.")}
+          {ATLAS_UI_STRINGS.cashBook.loadError}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => void dayQuery.refetch()} className={secondaryButton}>Try again</button>
+          <Button type="button" variant="secondary" onClick={() => void refreshDay()}>{ATLAS_UI_STRINGS.payment.refresh}</Button>
           <button type="button" onClick={() => navigate("today")} className={secondaryButton}>Go to today</button>
           <label className="text-xs font-medium text-slate-600">
             <span className="sr-only">Choose another Cash Book date</span>
@@ -161,7 +178,7 @@ export function CashBookOfficeSection({ factoryId }: Readonly<{ factoryId: strin
       </div>}
 
       {/* ui-exception: the daily workspace needs a viewport-derived desktop height so transaction history receives the remaining Office space. */}
-      {dayQuery.data && <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-var(--atlas-space-16))]">
+      {dayQuery.data && !initializationRequired && <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-var(--atlas-space-16))]">
         <div className="shrink-0 border-b border-slate-200 bg-slate-50 p-4 sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -169,6 +186,7 @@ export function CashBookOfficeSection({ factoryId }: Readonly<{ factoryId: strin
               <p className="mt-1 text-xs text-slate-500">Opening + Money In − Money Out = Closing</p>
             </div>
             <div className="flex flex-wrap items-center gap-2" aria-label="Cash Book date navigation">
+              <Button type="button" variant="secondary" onClick={() => void refreshDay()}>{ATLAS_UI_STRINGS.payment.refresh}</Button>
               <button type="button" onClick={() => navigate("previous")} className={secondaryButton}>← Previous day</button>
               <button type="button" onClick={() => navigate("today")} className={secondaryButton}>Today</button>
               <button type="button" onClick={() => navigate("next")} className={secondaryButton}>Next day →</button>
@@ -182,6 +200,7 @@ export function CashBookOfficeSection({ factoryId }: Readonly<{ factoryId: strin
           </div>
         </div>
 
+        {dayCurrent ? <>
         <CashBookSummary day={dayQuery.data} />
 
         <div className="shrink-0 border-b border-slate-200 px-4 py-3 sm:px-5">
@@ -221,6 +240,7 @@ export function CashBookOfficeSection({ factoryId }: Readonly<{ factoryId: strin
             onConfirmVoid={(entry) => void confirmVoid(entry)}
           />
         </div>
+        </> : <Feedback tone="warning">{ATLAS_UI_STRINGS.cashBook.outdated}</Feedback>}
       </div>}
     </section>
   );

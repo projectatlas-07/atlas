@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { forwardRef, useEffect, useId, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { isCustomerPaymentReadCurrent } from "@/features/office/customer-payment-office-model";
+import {
+  isCustomerPaymentReadCurrent,
+  refreshCustomerFinancialQueries,
+  refreshSalesRegisterQueries,
+  refreshCashBookQueries,
+  refreshChallanLockQueries,
+} from "@/features/office/customer-payment-office-model";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState, Feedback } from "@/components/ui/feedback";
@@ -46,6 +52,7 @@ import {
   calculateChallanTotalPreview,
   calculateFlexibleLineAmountPreview,
   challanFormFromSaved,
+  challanDetailLoadMessage,
   clearBrickTypeFromUnsavedChallanDraft,
   customerFormFromSaved,
   emptyChallanLine,
@@ -56,6 +63,8 @@ import {
   filterChallansByNumber,
   formatSalesMoney,
   getChallanEligibility,
+  getLiveChallanActionEligibility,
+  challanKey,
   getChallanFormError,
   getChallanReceivedPaymentError,
   getCompactChallanHistory,
@@ -72,6 +81,10 @@ import {
   selectVehicleForChallan,
   updateChallanLineField,
   upsertChallanNewestFirst,
+  submitChallanCreation,
+  runChallanPostSaveOperations,
+  type ChallanCreationLatch,
+  type ChallanCreationOutcome,
   type ChallanExtraChargeMode,
   type ChallanFormState,
   type FactoryProfileForm,
@@ -107,6 +120,7 @@ import {
 import type {
   Challan,
   ChallanHeader,
+  CreateChallanWithReceivedPaymentInput,
   Customer,
   CustomerPaymentResult,
   FactoryPrintableProfile,
@@ -140,8 +154,6 @@ type CustomerPaymentsWorkspaceView = "main" | "all";
 const customersKey = (factoryId: string) => ["office-sales-customers", factoryId] as const;
 const factoryProfileKey = (factoryId: string) => ["office-sales-factory-profile", factoryId] as const;
 const challansKey = (factoryId: string) => ["office-sales-challans", factoryId] as const;
-const challanKey = (factoryId: string, challanId: string) =>
-  ["office-sales-challan", factoryId, challanId] as const;
 const challanPaymentStateKey = (factoryId: string, challanId: string) =>
   ["office-challan-payment-state", factoryId, challanId] as const;
 const customerPaymentHistoryKey = (factoryId: string, customerId: string) =>
@@ -253,6 +265,12 @@ export function SalesOfficeSection({
   });
   const [mode, setMode] = useState<WorkspaceMode>("create");
   const [selectedChallanId, setSelectedChallanId] = useState("");
+  const [createdChallan, setCreatedChallan] = useState<{
+    header: ChallanHeader;
+    postSaveFailed: boolean;
+    receivedNow: boolean;
+    customerRefresh: "pending" | "current" | "outdated";
+  } | null>(null);
   const [success, setSuccess] = useState("");
   const [actionError, setActionError] = useState("");
   const [isConfirmingVoid, setIsConfirmingVoid] = useState(false);
@@ -294,6 +312,7 @@ export function SalesOfficeSection({
   });
 
   function openCreate() {
+    setCreatedChallan(null);
     setMode("create");
     setSelectedChallanId("");
     setIsConfirmingVoid(false);
@@ -302,6 +321,7 @@ export function SalesOfficeSection({
   }
 
   function openChallan(challanId: string) {
+    setCreatedChallan((current) => current?.header.id === challanId ? current : null);
     setSelectedChallanId(challanId);
     setMode("detail");
     setIsConfirmingVoid(false);
@@ -367,6 +387,56 @@ export function SalesOfficeSection({
     setSuccess("Factory / Challan Profile saved. Challan creation is now available.");
   }
 
+  async function refreshCreatedCustomer(saved: ChallanHeader, receivedNow: boolean) {
+    setCreatedChallan((current) => current?.header.id === saved.id
+      ? { ...current, customerRefresh: "pending" } : current);
+    try {
+      await refreshCustomerFinancialQueries(queryClient, saved, receivedNow);
+      setCreatedChallan((current) => current?.header.id === saved.id
+        ? { ...current, customerRefresh: "current" } : current);
+    } catch {
+      setCreatedChallan((current) => current?.header.id === saved.id
+        ? { ...current, customerRefresh: "outdated" } : current);
+      throw new Error(ATLAS_UI_STRINGS.payment.balancesOutdated);
+    }
+  }
+
+  async function handleCreated(saved: ChallanHeader, receivedPayment?: Readonly<CreateChallanWithReceivedPaymentInput["receivedPayment"]>) {
+    const receivedNowAmount = receivedPayment?.amount ?? 0;
+    // Navigation and saved identity are independent of optional cache/read work.
+    setSelectedChallanId(saved.id);
+    setMode("detail");
+    const receivedNow = receivedNowAmount > 0;
+    setCreatedChallan({ header: saved, postSaveFailed: false, receivedNow, customerRefresh: "pending" });
+    setActionError("");
+    setSuccess(`${formatChallanLabel(saved.challanNumber)} created. Authoritative total: ${formatSalesMoney(saved.challanTotal)}.${receivedNowAmount > 0 ? ` Received now: ${formatSalesMoney(receivedNowAmount)}.` : ""}`);
+    const keys: readonly (readonly string[])[] = [
+      challansKey(factoryId),
+      challanPaymentStateKey(factoryId, saved.id),
+      ["office-vehicle-wages", factoryId], ["office-vehicle-trips", factoryId],
+    ];
+    const [cacheResult, customerResult, registerResult, cashBookResult] = await Promise.allSettled([
+      runChallanPostSaveOperations([
+        () => {
+          queryClient.setQueryData<ChallanHeader[]>(challansKey(factoryId),
+            (current = []) => upsertChallanNewestFirst(current, saved));
+        },
+        ...keys.map((queryKey) => () => queryClient.invalidateQueries({ queryKey }, { throwOnError: true })),
+      ]),
+      refreshCreatedCustomer(saved, receivedNow),
+      refreshSalesRegisterQueries(queryClient, saved),
+      refreshCashBookQueries(queryClient, { factoryId: saved.factoryId, paymentDate: receivedPayment?.paymentDate ?? null }),
+    ]);
+    const cacheFailed = cacheResult.status === "rejected" || cacheResult.value || registerResult.status === "rejected"
+      || cashBookResult.status === "rejected";
+    if (cacheFailed) {
+      setCreatedChallan((current) => current?.header.id === saved.id ? { ...current, postSaveFailed: true } : current);
+    }
+    if (cacheFailed || customerResult.status === "rejected") {
+      throw new Error(ATLAS_UI_STRINGS.challan.postSaveUnavailable);
+    }
+  }
+
   function handleSaved(
     saved: Challan,
     action: "created" | "updated",
@@ -398,6 +468,10 @@ export function SalesOfficeSection({
 
   async function confirmVoid(challan: Challan) {
     if (isVoiding) return;
+    if (!getLiveChallanActionEligibility(queryClient, factoryId, challan.id).canVoid) {
+      setActionError(ATLAS_UI_STRINGS.challan.locksOutdated);
+      return;
+    }
     setIsVoiding(true);
     setActionError("");
     setSuccess("");
@@ -418,6 +492,19 @@ export function SalesOfficeSection({
   const visibleChallans = filterChallansByNumber(challans, challanNumberSearch);
   const compactChallans = getCompactChallanHistory(visibleChallans);
   const selectedChallan = selectedChallanQuery.data;
+  const challansCurrent = !challansQuery.isPaused && isCustomerPaymentReadCurrent({
+    isFetching: challansQuery.isFetching, error: challansQuery.error,
+    dataUpdatedAt: challansQuery.dataUpdatedAt,
+    isInvalidated: queryClient.getQueryState(challansKey(factoryId))?.isInvalidated,
+  });
+  const selectedChallanCurrent = !selectedChallanQuery.isPaused && isCustomerPaymentReadCurrent({
+    isFetching: selectedChallanQuery.isFetching, error: selectedChallanQuery.error,
+    dataUpdatedAt: selectedChallanQuery.dataUpdatedAt,
+    isInvalidated: queryClient.getQueryState(challanKey(factoryId, selectedChallanId))?.isInvalidated,
+  });
+  function refreshChallanLocks(ids?: readonly string[]) {
+    void refreshChallanLockQueries(queryClient, factoryId, ids).catch(() => {});
+  }
   const selectedChallanEligibility = selectedChallan
     ? getChallanEligibility(selectedChallan)
     : null;
@@ -429,6 +516,19 @@ export function SalesOfficeSection({
     <>
       {(activeArea === "sales" || activeArea === "settings") && <>
         {success && <div className="mb-atlas-4"><Feedback tone="success" role="status">{success}</Feedback></div>}
+        {createdChallan?.header.id === selectedChallanId && createdChallan.postSaveFailed && <div className="mb-atlas-4"><Feedback tone="warning" role="status">{ATLAS_UI_STRINGS.challan.postSaveUnavailable}</Feedback></div>}
+        {createdChallan?.header.id === selectedChallanId && createdChallan.customerRefresh !== "current" && <div className="mb-atlas-4">
+          <Feedback tone="warning" role="status">
+            <div className="flex flex-wrap items-center justify-between gap-atlas-3">
+              <span>{createdChallan.customerRefresh === "pending"
+                ? ATLAS_UI_STRINGS.payment.refreshing : ATLAS_UI_STRINGS.payment.balancesOutdated}</span>
+              <Button variant="secondary" disabled={createdChallan.customerRefresh === "pending"}
+                onClick={() => { void refreshCreatedCustomer(createdChallan.header, createdChallan.receivedNow).catch(() => {}); }}>
+                {ATLAS_UI_STRINGS.payment.refresh}
+              </Button>
+            </div>
+          </Feedback>
+        </div>}
         {actionError && <div className="mb-atlas-4"><Feedback tone="danger" role="alert">{actionError}</Feedback></div>}
       </>}
       <section id="sales" aria-label="Sales workspace" hidden={activeArea !== "sales"}>
@@ -458,15 +558,15 @@ export function SalesOfficeSection({
               <>
                 <Button
                   variant="secondary"
-                  onClick={() => { setMode("edit"); setSuccess(""); setActionError(""); }}
-                  disabled={!selectedChallanEligibility.canEdit}
+                  onClick={() => { if (!getLiveChallanActionEligibility(queryClient, factoryId, selectedChallanId).canEdit) { setActionError(ATLAS_UI_STRINGS.challan.locksOutdated); return; } setMode("edit"); setSuccess(""); setActionError(""); }}
+                  disabled={!selectedChallanCurrent || !selectedChallanEligibility.canEdit}
                 >
                   Edit
                 </Button>
                 <Button
                   variant="danger"
-                  onClick={() => { setIsConfirmingVoid(true); setSuccess(""); setActionError(""); }}
-                  disabled={!selectedChallanEligibility.canVoid}
+                  onClick={() => { if (!getLiveChallanActionEligibility(queryClient, factoryId, selectedChallanId).canVoid) { setActionError(ATLAS_UI_STRINGS.challan.locksOutdated); return; } setIsConfirmingVoid(true); setSuccess(""); setActionError(""); }}
+                  disabled={!selectedChallanCurrent || !selectedChallanEligibility.canVoid}
                 >
                   Void
                 </Button>
@@ -477,6 +577,12 @@ export function SalesOfficeSection({
             </Button>
           </div>
           <Card as="section" aria-label="Challan work area">
+          {mode !== "create" && selectedChallanId && !selectedChallanCurrent && !selectedChallanQuery.isLoading && <Feedback tone="warning" role="status">
+            <div className="flex flex-wrap items-center justify-between gap-atlas-3">
+              <span>{ATLAS_UI_STRINGS.challan.locksOutdated}</span>
+              <Button variant="secondary" onClick={() => refreshChallanLocks([selectedChallanId])}>{ATLAS_UI_STRINGS.payment.refresh}</Button>
+            </div>
+          </Feedback>}
           {mode === "create" && <ChallanEditor
             key="create-challan"
             factoryId={factoryId}
@@ -494,11 +600,12 @@ export function SalesOfficeSection({
             isLoadingFactoryProfile={factoryProfileQuery.isLoading}
             onCustomerSaved={cacheSavedCustomer}
             onVehicleSaved={cacheSavedVehicle}
-            onSaved={(saved, receivedNowAmount) => handleSaved(saved, "created", receivedNowAmount)}
+            onCreated={handleCreated}
+            onInspectHistory={() => showChallansView("all")}
           />}
 
           {mode === "edit" && selectedChallan && <ChallanEditor
-            key={`edit-${selectedChallan.id}-${selectedChallan.updatedAt}`}
+            key={`edit-${selectedChallan.id}`}
             factoryId={factoryId}
             customers={customers}
             customersUnavailable={customersQuery.isLoading || Boolean(customersQuery.error)}
@@ -513,7 +620,9 @@ export function SalesOfficeSection({
             profileComplete={profileComplete}
             isLoadingFactoryProfile={factoryProfileQuery.isLoading}
             challan={selectedChallan}
+            lockStateCurrent={selectedChallanCurrent}
             onCustomerSaved={cacheSavedCustomer}
+            onRefreshLocks={() => refreshChallanLocks([selectedChallan.id])}
             onVehicleSaved={cacheSavedVehicle}
             onCancel={() => setMode("detail")}
             onSaved={(saved) => handleSaved(saved, "updated")}
@@ -523,16 +632,18 @@ export function SalesOfficeSection({
           {mode === "detail" && selectedChallanId && selectedChallanQuery.isLoading && <Feedback tone="neutral" role="status">Loading Challan details...</Feedback>}
           {mode === "detail" && selectedChallanId && selectedChallanQuery.error && <Feedback tone="danger" role="alert">
             <div className="flex flex-col gap-atlas-3 sm:flex-row sm:items-center sm:justify-between">
-              <span>{salesOfficeErrorMessage(selectedChallanQuery.error, "Could not load Challan details.")}</span>
-              <Button variant="secondary" onClick={() => { void selectedChallanQuery.refetch(); }}>{ATLAS_UI_STRINGS.actions.retry}</Button>
+              <span>{challanDetailLoadMessage(selectedChallanQuery.error, createdChallan?.header.id === selectedChallanId)}</span>
+              <Button variant="secondary" onClick={() => refreshChallanLocks([selectedChallanId])}>{ATLAS_UI_STRINGS.actions.retry}</Button>
             </div>
           </Feedback>}
-          {mode === "detail" && selectedChallan && <ChallanDetail
+          {(mode === "detail" || (mode === "edit" && !selectedChallanCurrent)) && selectedChallan && <ChallanDetail
             challan={selectedChallan}
+            lockStateCurrent={selectedChallanCurrent}
             isConfirmingVoid={isConfirmingVoid}
             isVoiding={isVoiding}
             onCancelVoid={() => setIsConfirmingVoid(false)}
             onConfirmVoid={() => void confirmVoid(selectedChallan)}
+            onRefreshLocks={() => refreshChallanLocks([selectedChallan.id])}
           />}
           </Card>
         </div>
@@ -563,17 +674,23 @@ export function SalesOfficeSection({
                 <Feedback tone="danger" role="alert">
                   <div className="flex flex-col gap-atlas-3">
                     <span>{salesOfficeErrorMessage(challansQuery.error, "Could not load Challans.")}</span>
-                    <div><Button variant="secondary" onClick={() => { void challansQuery.refetch(); }}>{ATLAS_UI_STRINGS.actions.retry}</Button></div>
+                    <div><Button variant="secondary" onClick={() => refreshChallanLocks()}>{ATLAS_UI_STRINGS.actions.retry}</Button></div>
                   </div>
                 </Feedback>
               )}
-              {!challansQuery.isLoading && !challansQuery.error && challans.length === 0 && (
+              {!challansQuery.isLoading && !challansQuery.error && !challansCurrent && <Feedback tone="warning" role="status">
+                <div className="flex flex-wrap items-center justify-between gap-atlas-3">
+                  <span>{ATLAS_UI_STRINGS.challan.locksOutdated}</span>
+                  <Button variant="secondary" onClick={() => refreshChallanLocks()}>{ATLAS_UI_STRINGS.payment.refresh}</Button>
+                </div>
+              </Feedback>}
+              {challansCurrent && challans.length === 0 && (
                 <EmptyState title="No Challans yet" description="Create the first Challan to start the operational history." />
               )}
-              {!challansQuery.isLoading && !challansQuery.error && challans.length > 0 && visibleChallans.length === 0 && (
+              {challansCurrent && challans.length > 0 && visibleChallans.length === 0 && (
                 <EmptyState title="No matching Challans" description="Try another Challan number." />
               )}
-              {!challansQuery.isLoading && !challansQuery.error && visibleChallans.length > 0 && (
+              {challansCurrent && visibleChallans.length > 0 && (
                 <ul className="max-h-screen divide-y divide-atlas-border overflow-y-auto">
                   {compactChallans.map((challan) => {
                     const isSelected = isChallanHistoryRowSelected(
@@ -626,11 +743,11 @@ export function SalesOfficeSection({
       </div>
       <div hidden={challansView !== "all"}>
         <AllChallansExpandedView
-          challans={challans}
+          challans={challansCurrent ? challans : []}
           isLoading={challansQuery.isLoading}
           errorMessage={challansQuery.error
             ? salesOfficeErrorMessage(challansQuery.error, "Could not load Challans.")
-            : ""}
+            : challansCurrent ? "" : ATLAS_UI_STRINGS.challan.locksOutdated}
           selectedChallanId={selectedChallanId}
           onBack={() => showChallansView("main")}
           onOpen={(challanId) => {
@@ -638,7 +755,7 @@ export function SalesOfficeSection({
             setChallansView("main");
             resetOfficePageScroll();
           }}
-          onRetry={() => { void challansQuery.refetch(); }}
+          onRetry={() => refreshChallanLocks()}
         />
       </div>
       </div>
@@ -879,9 +996,13 @@ function ChallanEditor({
   profileComplete,
   isLoadingFactoryProfile,
   challan,
+  lockStateCurrent = true,
+  onRefreshLocks,
   onCustomerSaved,
   onVehicleSaved,
   onSaved,
+  onCreated,
+  onInspectHistory,
   onCancel,
 }: Readonly<{
   factoryId: string;
@@ -897,12 +1018,17 @@ function ChallanEditor({
   onBrickTypesChanged: () => Promise<void>;
   profileComplete: boolean;
   isLoadingFactoryProfile: boolean;
-  challan?: Challan;
   onCustomerSaved: (customer: Customer) => void;
   onVehicleSaved: (vehicle: Vehicle) => void;
-  onSaved: (challan: Challan, receivedNowAmount?: number) => void;
+  onInspectHistory?: () => void;
   onCancel?: () => void;
-}>) {
+  lockStateCurrent?: boolean;
+  onRefreshLocks?: () => void;
+} & (
+  | { challan?: undefined; onCreated: (header: ChallanHeader, receivedPayment?: Readonly<CreateChallanWithReceivedPaymentInput["receivedPayment"]>) => void | Promise<void>; onSaved?: never }
+  | { challan: Challan; onSaved: (challan: Challan) => void; onCreated?: never }
+)>) {
+  const queryClient = useQueryClient();
   const nextLineNumber = useRef((challan?.items.length ?? 1) + 1);
   const nextFlexibleLineNumber = useRef((challan?.flexibleLines.length ?? 0) + 1);
   const [form, setForm] = useState<ChallanFormState>(() => challan
@@ -927,6 +1053,9 @@ function ChallanEditor({
   const [customerEdit, setCustomerEdit] = useState<QuickCustomerForm>({ name: "", address: "", mobile: "" });
   const [isUpdatingCustomer, setIsUpdatingCustomer] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const submittingRef = useRef(false);
+  const creationLatch = useRef<ChallanCreationLatch>({ phase: "ready" });
+  const [creationOutcome, setCreationOutcome] = useState<ChallanCreationOutcome | null>(null);
   const [error, setError] = useState("");
   const [customerError, setCustomerError] = useState("");
   const [showQuickVehicle, setShowQuickVehicle] = useState(false);
@@ -1172,7 +1301,12 @@ function ChallanEditor({
 
   async function submitChallan(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (challan && !getLiveChallanActionEligibility(queryClient, factoryId, challan.id).canEdit) {
+      setError(ATLAS_UI_STRINGS.challan.locksOutdated);
+      return;
+    }
     if (isSaving) return;
+    if (submittingRef.current || (!challan && creationLatch.current.phase !== "ready")) return;
     if (!challan && !profileComplete) {
       setError("Complete the Factory / Challan Profile before creating a Challan.");
       return;
@@ -1189,14 +1323,15 @@ function ChallanEditor({
       setError(receivedPaymentError);
       return;
     }
+    submittingRef.current = true;
     setIsSaving(true);
     setError("");
     try {
-      let saved: Challan;
       if (challan) {
         const input = buildUpdateChallanInput(factoryId, challan.id, form);
         if (!input) throw new Error("Could not prepare this Challan update.");
-        saved = await updateChallan(input);
+        const saved = await updateChallan(input);
+        onSaved!(saved);
       } else {
         const input = buildCreateChallanInput(factoryId, form);
         if (!input) throw new Error("Could not prepare this Challan.");
@@ -1204,49 +1339,47 @@ function ChallanEditor({
           receivedPaymentForm,
           totalPreview,
         );
-        saved = receivedPayment
-          ? await createChallanWithReceivedPayment({ ...input, receivedPayment })
-          : await createChallan(input);
+        const outcome = await submitChallanCreation(
+          creationLatch.current,
+          () => receivedPayment
+            ? createChallanWithReceivedPayment({ ...input, receivedPayment })
+            : createChallan(input),
+          () => {
+            setForm({
+              challanNumber: "", challanDate: getLocalDate(), customerId: "", vehicleId: "",
+              selectedVehicleIsActive: true, vehicleDeliveryWageTrackingEnabled: false,
+              tripLabourWage: "", lines: [emptyChallanLine("new-line-1")], flexibleLines: [],
+            });
+            setReceivedPaymentForm(emptyChallanReceivedPaymentForm(getLocalDate()));
+          },
+          (header) => onCreated!(header, receivedPayment ?? undefined),
+        );
+        setCreationOutcome(outcome);
+        if (outcome.status === "failed") setError(outcome.message);
       }
-      onSaved(
-        saved,
-        challan ? undefined : buildChallanReceivedPayment(
-          receivedPaymentForm,
-          totalPreview,
-        )?.amount,
-      );
     } catch (caught) {
       setError(salesOfficeErrorMessage(caught, `Could not ${challan ? "update" : "create"} the Challan.`));
     } finally {
+      submittingRef.current = false;
       setIsSaving(false);
     }
   }
 
-  if (challan && correctionEligibility && !correctionEligibility.canEdit) {
-    const unavailableMessage = correctionEligibility.reason === "locked"
+  if (!challan && creationOutcome?.status === "saved") {
+    return <section aria-label="Saved Challan">
+      <Feedback tone="success" role="status">{ATLAS_UI_STRINGS.challan.saved}</Feedback>
+      {creationOutcome.postSaveFailed && <Feedback tone="warning" role="status">{ATLAS_UI_STRINGS.challan.postSaveUnavailable}</Feedback>}
+      <Link href={`/office/challans/${creationOutcome.header.id}`} target="_blank" rel="noreferrer"
+        className="inline-flex min-h-atlas-12 items-center text-atlas-primary">{ATLAS_UI_STRINGS.actions.open}</Link>
+    </section>;
+  }
+
+  const correctionBlocked = Boolean(challan && (!lockStateCurrent || !correctionEligibility?.canEdit));
+  const correctionUnavailableMessage = !lockStateCurrent
+    ? ATLAS_UI_STRINGS.challan.locksOutdated
+    : correctionEligibility?.reason === "locked"
       ? "This Challan is financially locked because a payment has been allocated. Corrections are unavailable."
       : "This Challan is Void. Void Challans are retained as immutable history and cannot be corrected.";
-
-    return (
-      <section aria-labelledby="challan-editor-heading" className="mx-auto max-w-6xl text-atlas-text">
-        <p className="text-atlas-xs font-atlas-semibold uppercase tracking-atlas-wide text-atlas-text-muted">
-          Challan correction
-        </p>
-        <div className="mt-atlas-1 flex flex-wrap items-center gap-atlas-2">
-          <h3 id="challan-editor-heading" className="text-atlas-2xl font-atlas-semibold text-atlas-text">
-            {formatChallanLabel(challan.challanNumber)}
-          </h3>
-          {challanStatus && <StatusPill label={challanStatus.label} tone={challanStatus.tone} />}
-        </div>
-        <div className="mt-atlas-4">
-          <Feedback role="alert" tone={correctionEligibility.reason === "void" ? "danger" : "warning"}>
-            {unavailableMessage}
-          </Feedback>
-        </div>
-        {onCancel && <div className="mt-atlas-4"><Button variant="secondary" type="button" onClick={onCancel}>{ATLAS_UI_STRINGS.actions.close}</Button></div>}
-      </section>
-    );
-  }
 
   return (
     <section aria-labelledby="challan-editor-heading" className="mx-auto max-w-6xl text-atlas-text">
@@ -1276,11 +1409,20 @@ function ChallanEditor({
         </dl>
       </Card></div>}
 
+      {!challan && creationOutcome?.status === "unknown" && <Feedback tone="warning" role="alert">
+        <p>{creationOutcome.message}</p>
+        {onInspectHistory && <Button variant="secondary" onClick={onInspectHistory}>{ATLAS_UI_STRINGS.challan.inspectHistory}</Button>}
+      </Feedback>}
       <form
         className="mt-atlas-6 space-y-atlas-6"
         onKeyDown={preventImplicitCreateSubmit}
         onSubmit={(event) => void submitChallan(event)}
       >
+        {correctionBlocked && <Feedback tone={correctionEligibility?.reason === "void" ? "danger" : "warning"} role="status">
+          <span>{correctionUnavailableMessage}</span>
+          {onRefreshLocks && <Button variant="secondary" type="button" onClick={onRefreshLocks}>{ATLAS_UI_STRINGS.payment.refresh}</Button>}
+        </Feedback>}
+        <fieldset disabled={correctionBlocked} className="min-w-0 space-y-atlas-6">
         {!challan && !isLoadingFactoryProfile && !profileComplete && <Feedback role="alert" tone="warning">Complete the Factory / Challan Profile before creating a Challan.</Feedback>}
         <div className="grid gap-atlas-3 sm:grid-cols-3 sm:items-end">
           <div className="sm:col-span-2">
@@ -1593,6 +1735,7 @@ function ChallanEditor({
           </div>}
         </fieldset>}
 
+        </fieldset>
         {error && <Feedback role="alert" tone="danger">{error}</Feedback>}
         <div className="sticky bottom-atlas-0 z-20 flex flex-col gap-atlas-4 border-t border-atlas-border-strong bg-atlas-background py-atlas-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -1602,7 +1745,7 @@ function ChallanEditor({
           </div>
           <div className="flex flex-wrap gap-atlas-2">
             {onCancel && <ChallanButton v2 variant="secondary" legacyClassName={secondaryButton} type="button" onClick={onCancel} disabled={isSaving}>{ATLAS_UI_STRINGS.actions.cancel}</ChallanButton>}
-            <ChallanButton ref={saveButtonRef} v2 variant="primary" legacyClassName={primaryButton} data-challan-focus="save" type="submit" loading={isSaving} loadingLabel="Saving Challan..." disabled={isSaving || (form.lines.length > 0 && (isLoadingBrickTypes || Boolean(brickTypesError))) || (!challan && (!profileComplete || isLoadingFactoryProfile))}>{challan ? "Save corrections" : "Save Challan"}</ChallanButton>
+            <ChallanButton ref={saveButtonRef} v2 variant="primary" legacyClassName={primaryButton} data-challan-focus="save" type="submit" loading={isSaving} loadingLabel="Saving Challan..." disabled={correctionBlocked || isSaving || (form.lines.length > 0 && (isLoadingBrickTypes || Boolean(brickTypesError))) || (!challan && (!profileComplete || isLoadingFactoryProfile || creationOutcome?.status === "unknown"))}>{challan ? "Save corrections" : "Save Challan"}</ChallanButton>
           </div>
         </div>
       </form>
@@ -1978,23 +2121,27 @@ function BrickTypeCombobox({
 
 function ChallanDetail({
   challan,
+  lockStateCurrent,
   isConfirmingVoid,
   isVoiding,
   onCancelVoid,
   onConfirmVoid,
+  onRefreshLocks,
 }: Readonly<{
   challan: Challan;
+  lockStateCurrent: boolean;
   isConfirmingVoid: boolean;
   isVoiding: boolean;
   onCancelVoid: () => void;
   onConfirmVoid: () => void;
+  onRefreshLocks: () => void;
 }>) {
   const queryClient = useQueryClient();
   const eligibility = getChallanEligibility(challan);
   const flexibleLines = getSavedChallanFlexibleLineViews(challan.flexibleLines);
   const vehicleDetails = getSavedChallanVehicleDetails(challan);
   const challanStatus = resolveStatusPresentation(CHALLAN_STATUS, challan.status);
-  const financialLockStatus = challan.isLocked
+  const financialLockStatus = lockStateCurrent && challan.isLocked
     ? resolveBooleanStatusPresentation(CHALLAN_FINANCIAL_LOCK_STATUS, true)
     : null;
   const paymentStateQuery = useQuery({
@@ -2074,12 +2221,14 @@ function ChallanDetail({
 
       </header>
 
-      {isConfirmingVoid && eligibility.canVoid && (
+      {isConfirmingVoid && (
         <ChallanVoidConfirmation
           challanNumber={challan.challanNumber}
           isVoiding={isVoiding}
           onCancel={onCancelVoid}
           onConfirm={onConfirmVoid}
+          canConfirm={lockStateCurrent && eligibility.canVoid}
+          onRefresh={onRefreshLocks}
         />
       )}
 
@@ -2345,11 +2494,15 @@ function ChallanVoidConfirmation({
   isVoiding,
   onCancel,
   onConfirm,
+  canConfirm,
+  onRefresh,
 }: Readonly<{
   challanNumber: Challan["challanNumber"];
   isVoiding: boolean;
   onCancel: () => void;
   onConfirm: () => void;
+  canConfirm: boolean;
+  onRefresh: () => void;
 }>) {
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
   const cancelRef = useRef(onCancel);
@@ -2420,12 +2573,17 @@ function ChallanVoidConfirmation({
           </div>
           <Button variant="ghost" aria-label="Close confirmation" disabled={isVoiding} onClick={onCancel}><span aria-hidden="true">×</span></Button>
         </div>
+        {!canConfirm && <Feedback tone="warning" role="status">
+          <span>{ATLAS_UI_STRINGS.challan.locksOutdated}</span>
+          <Button variant="secondary" type="button" onClick={onRefresh}>{ATLAS_UI_STRINGS.payment.refresh}</Button>
+        </Feedback>}
         <div className="mt-atlas-5 flex flex-col gap-atlas-2 sm:flex-row sm:justify-end">
           <Button variant="secondary" disabled={isVoiding} onClick={onCancel}>{ATLAS_UI_STRINGS.actions.cancel}</Button>
           <Button
             ref={confirmButtonRef}
             variant="danger"
             loading={isVoiding}
+            disabled={!canConfirm}
             loadingLabel="Voiding..."
             onClick={onConfirm}
           >

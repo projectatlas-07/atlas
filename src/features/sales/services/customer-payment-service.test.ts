@@ -1224,20 +1224,20 @@ test("paused post-save reads stay saved/outdated; repeated offline Refresh never
   }
 });
 
-test("a related read pausing during retry cannot leave the confirmed payment UI blocking indefinitely", { timeout: 2000 }, async () => {
+test("a Register read pausing during retry cannot leave the confirmed payment UI blocking indefinitely", { timeout: 2000 }, async () => {
   const wasOnline = onlineManager.isOnline();
   const create = prepareSubmission(true);
   tableResponses.set("customer_payment_methods", { data: null, error: readError });
   const client = new QueryClient();
   client.mount();
   const summaryKey = ["office-customer-payment-summary", "factory-a", "customer-a"];
-  const relatedKey = ["office-sales-register", "factory-a"];
+  const relatedKey = ["office-sales-register", "factory-a", "2026-08-25", "2026-08-26"];
   client.setQueryData(summaryKey, "OLD");
   client.setQueryData(relatedKey, "OLD");
   let relatedStarts = 0; let draft = "60000";
   const summary = new QueryObserver(client, { queryKey: summaryKey, staleTime: Infinity,
     queryFn: async () => "POST-SAVE" });
-  const related = new QueryObserver(client, { queryKey: relatedKey, staleTime: Infinity, retry: 1, retryDelay: 0,
+  const related = new QueryObserver(client, { queryKey: relatedKey, enabled: true, staleTime: Infinity, retry: 1, retryDelay: 0,
     queryFn: async () => {
       if (++relatedStarts === 1) { onlineManager.setOnline(false); throw new Error("Network lost during read"); }
       return "POST-SAVE";
@@ -1249,6 +1249,7 @@ test("a related read pausing during retry cannot leave the confirmed payment UI 
       () => refreshCustomerPaymentQueries(client, "factory-a", "customer-a", []));
     assert.ok(outcome.status === "saved");
     assert.equal(outcome.payment.id, paymentRow.id);
+    assert.equal(relatedStarts, 1, "eligible Register replacement read must actually start before pausing");
     assert.equal(outcome.refresh, "outdated");
     assert.equal(draft, "");
     assert.equal(client.getQueryData(summaryKey), "POST-SAVE");

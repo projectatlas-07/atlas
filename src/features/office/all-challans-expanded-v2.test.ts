@@ -96,7 +96,9 @@ test("expanded history relies on the shared query cache and keeps only error Ret
     expanded,
     /errorMessage[\s\S]*<Button variant="secondary" onClick=\{onRetry\}>\{ATLAS_UI_STRINGS\.actions\.retry\}<\/Button>/,
   );
-  assert.match(sales, /onRetry=\{\(\) => \{ void challansQuery\.refetch\(\); \}\}/);
+  assert.match(sales, /onRetry=\{\(\) => refreshChallanLocks\(\)\}/);
+  assert.match(sales, /challans=\{challansCurrent \? challans : \[\]\}/);
+  assert.match(sales, /challansCurrent \? "" : ATLAS_UI_STRINGS\.challan\.locksOutdated/);
 });
 
 test("expanded desktop table and mobile cards expose the same authoritative context", () => {

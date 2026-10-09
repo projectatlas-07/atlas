@@ -31,12 +31,17 @@ test("saved snapshots are visibly separate from correction inputs", () => {
   assert.match(editor, /Corrected total preview · derived/);
 });
 
-test("locked and void Challans cannot render an editable correction form", () => {
+test("locked, void and unavailable Challans retain the draft but disable correction with read-only recovery", () => {
   assert.match(editor, /const correctionEligibility = challan \? getChallanEligibility\(challan\) : null/);
-  assert.match(editor, /if \(challan && correctionEligibility && !correctionEligibility\.canEdit\)/);
+  assert.match(editor, /const correctionBlocked = Boolean\(challan && \(!lockStateCurrent \|\| !correctionEligibility\?\.canEdit\)\)/);
+  assert.match(editor, /<fieldset disabled=\{correctionBlocked\}/);
   assert.match(editor, /financially locked because a payment has been allocated/);
   assert.match(editor, /Void Challans are retained as immutable history/);
-  assert.match(editor, /tone=\{correctionEligibility\.reason === "void" \? "danger" : "warning"\}/);
+  assert.match(editor, /tone=\{correctionEligibility\?\.reason === "void" \? "danger" : "warning"\}/);
+  assert.match(editor, /!lockStateCurrent\s*\? ATLAS_UI_STRINGS\.challan\.locksOutdated/);
+  assert.match(editor, /type="button" onClick=\{onRefreshLocks\}[\s\S]*<fieldset disabled=\{correctionBlocked\}/);
+  assert.match(editor, /onSubmit=\{\(event\) => void submitChallan\(event\)\}/);
+  assert.match(editor, /if \(challan && !getLiveChallanActionEligibility\(queryClient, factoryId, challan\.id\)\.canEdit\)/);
 });
 
 test("correction keeps existing authority, payload, and Direct Amount contracts", () => {
@@ -62,7 +67,7 @@ test("create and correction share one sticky authoritative total and save footer
   assert.equal((editor.match(/Save corrections/g) ?? []).length, 1);
   assert.match(
     editor,
-    /type="submit"[\s\S]*loading=\{isSaving\}[\s\S]*disabled=\{isSaving \|\| \(form\.lines\.length > 0/,
+    /type="submit"[\s\S]*loading=\{isSaving\}[\s\S]*disabled=\{correctionBlocked \|\| isSaving \|\| \(form\.lines\.length > 0/,
   );
   assert.doesNotMatch(
     editor,

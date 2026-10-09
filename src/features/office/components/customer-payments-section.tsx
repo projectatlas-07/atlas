@@ -17,6 +17,7 @@ import {
   getCustomerPaymentFormStatus,
   isCustomerPaymentReadCurrent,
   refreshCustomerPaymentQueries,
+  refreshCustomerFinancialQueries,
   saveCustomerPaymentAndRefresh,
   resolveCustomerDuesDateFilter,
   setCustomerPaymentMethodAmount,
@@ -242,6 +243,14 @@ export function CustomerPaymentsSection({
     }
   }
 
+  async function refreshCustomerBalances() {
+    try {
+      await refreshCustomerFinancialQueries(queryClient, { factoryId, customerId }, false);
+    } catch {
+      // Existing query gates keep unavailable values hidden; recovery never writes.
+    }
+  }
+
   return (
     <section aria-labelledby="customer-payments-heading" className="text-atlas-text">
       {saveOutcome?.status === "saved" && (
@@ -303,7 +312,12 @@ export function CustomerPaymentsSection({
                   <PaymentSummary label="Paid / allocated" value={balancesCurrent ? summaryQuery.data?.totalPaymentsAllocated : undefined} />
                   <PaymentSummary label={ATLAS_UI_STRINGS.payment.outstanding} value={balancesCurrent ? summaryQuery.data?.totalOutstanding : undefined} emphasized />
                 </dl>
-                {!balancesCurrent && <p role="status" className="mt-atlas-2 text-atlas-sm text-atlas-text-muted">{ATLAS_UI_STRINGS.payment.balancesOutdated}</p>}
+                {(!balancesCurrent || !candidatesCurrent) && <div className="mt-atlas-2 flex flex-wrap items-center justify-between gap-atlas-3">
+                  <p role="status" className="text-atlas-sm text-atlas-text-muted">{ATLAS_UI_STRINGS.payment.balancesOutdated}</p>
+                  <Button variant="secondary" onClick={() => { void refreshCustomerBalances(); }} disabled={isSaving}>
+                    {ATLAS_UI_STRINGS.payment.refresh}
+                  </Button>
+                </div>}
               </div>
             )}
           </Card>

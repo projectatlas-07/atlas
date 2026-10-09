@@ -85,8 +85,8 @@ test("the client uses one RPC for Received Now and preserves the old Pay Later p
   assert.match(service, /p_payment_mode: input\.receivedPayment\.paymentMode/);
   assert.match(office, /Received now/);
   assert.match(office, /Pay later/);
-  assert.match(office, /await createChallanWithReceivedPayment\(\{ \.\.\.input, receivedPayment \}\)/);
-  assert.match(office, /: await createChallan\(input\)/);
+  assert.match(office, /await submitChallanCreation\(\s*creationLatch\.current/);
+  assert.match(office, /\(\) => receivedPayment\s*\? createChallanWithReceivedPayment\(\{ \.\.\.input, receivedPayment \}\)\s*: createChallan\(input\)/);
   assert.match(supabaseTypes, /create_challan_with_received_payment:/);
 });
 

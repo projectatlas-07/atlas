@@ -136,6 +136,26 @@ export type Challan = ChallanHeader & {
   flexibleLines: ChallanFlexibleLine[];
 };
 
+export function isChallanId(value: unknown): value is string {
+  // Both authoritative record IDs use the same non-zero UUID validation.
+  return isCustomerPaymentId(value);
+}
+
+export class ChallanUnknownOutcomeError extends Error {
+  constructor() {
+    super("Challan creation outcome is unknown.");
+    this.name = "ChallanUnknownOutcomeError";
+  }
+}
+
+export class ChallanNotFoundError extends Error {
+  readonly code = "CHALLAN_NOT_FOUND";
+  constructor() {
+    super("Challan was not found.");
+    this.name = "ChallanNotFoundError";
+  }
+}
+
 type ChallanItemInputBase = {
   brickTypeId: string;
   quantity: number;

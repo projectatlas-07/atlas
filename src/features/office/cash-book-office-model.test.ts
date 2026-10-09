@@ -100,6 +100,31 @@ test("Cash Book removes redundant headers and keeps its daily workspace viewport
   }
 });
 
+test("Cash Book gates summary and both responsive movement columns behind authoritative freshness", () => {
+  assert.match(sectionSource, /const dayCurrent = !dayQuery\.isPaused && isCustomerPaymentReadCurrent/);
+  assert.match(sectionSource, /isInvalidated: queryClient\.getQueryState\(cashBookDayKey\(factoryId, selectedDate\)\)\?\.isInvalidated/);
+  const gated = sectionSource.slice(sectionSource.indexOf("{dayCurrent ? <>"),
+    sectionSource.indexOf('</> : <Feedback tone="warning">'));
+  assert.match(gated, /<CashBookSummary day=\{dayQuery\.data\}/);
+  assert.match(gated, /entries=\{dayQuery\.data\.moneyIn\}/);
+  assert.match(gated, /entries=\{dayQuery\.data\.moneyOut\}/);
+  assert.match(gated, /lg:grid-cols-2/);
+  assert.match(sectionSource, /ATLAS_UI_STRINGS\.cashBook\.outdated/);
+  assert.match(sectionSource, /dayQuery\.data && !initializationRequired/);
+  assert.match(sectionSource, /dayQuery\.isPaused && !dayQuery\.data && !initializationRequired/);
+  assert.match(sectionSource, /initializationRequired && <CashBookInitializationSetup/);
+});
+
+test("Cash Book Refresh is read-only and remains available during paused or failed reads", () => {
+  const refresh = sectionSource.slice(sectionSource.indexOf("async function refreshDay()"), sectionSource.indexOf("return ("));
+  assert.match(refresh, /refreshCashBookQueries\(queryClient, \{ factoryId, businessDate: selectedDate \}\)/);
+  assert.doesNotMatch(refresh, /create|initializeCashBook|voidCashBookManualEntry/);
+  const controls = sectionSource.match(/<Button[^>]+onClick=\{\(\) => void refreshDay\(\)\}[^>]*>/g) ?? [];
+  assert.equal(controls.length, 3);
+  assert.ok(controls.every((control) => !control.includes("disabled=")));
+  assert.match(sectionSource, /ATLAS_UI_STRINGS\.payment\.refresh/);
+});
+
 test("daily histories use one bounded mobile region and independent desktop column scrolling", () => {
   const columns = sectionSource.slice(
     sectionSource.indexOf("function CashBookColumn"),

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
+import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import { summarizeSalesRegister } from "../sales-register-model.ts";
+import { refreshCustomerPaymentQueries, isCustomerPaymentReadCurrent } from "../../office/customer-payment-office-model.ts";
 
 type DatabaseError = {
   message: string;
@@ -14,6 +16,7 @@ type Call = [method: string, value?: unknown, secondValue?: unknown];
 const calls: Call[] = [];
 let response: Response = { data: [], error: null };
 const rpcResponses = new Map<string, Response>();
+let heldPaymentRead: Promise<Response> | null = null;
 
 function applyRequestedOrdering(rows: unknown[]): unknown[] {
   const orderCalls = calls.filter(([method]) => method === "order") as Array<[
@@ -33,6 +36,9 @@ function applyRequestedOrdering(rows: unknown[]): unknown[] {
 }
 
 function queryBuilder() {
+  // Model the service's actual inclusive date predicates, not prefiltered fixtures.
+  let fromDate: string | null = null;
+  let toDate: string | null = null;
   const builder = {
     select(columns: string) {
       calls.push(["select", columns]);
@@ -44,10 +50,12 @@ function queryBuilder() {
     },
     gte(column: string, value: string) {
       calls.push(["gte", column, value]);
+      if (column === "challan_date") fromDate = value;
       return builder;
     },
     lte(column: string, value: string) {
       calls.push(["lte", column, value]);
+      if (column === "challan_date") toDate = value;
       return builder;
     },
     order(column: string, options: { ascending: boolean }) {
@@ -60,7 +68,10 @@ function queryBuilder() {
     ) {
       const orderedResponse = response.data === null
         ? response
-        : { ...response, data: applyRequestedOrdering(response.data) };
+        : { ...response, data: applyRequestedOrdering(response.data.filter((value) => {
+          const date = String((value as Record<string, unknown>).challan_date);
+          return (!fromDate || date >= fromDate) && (!toDate || date <= toDate);
+        })) };
       return Promise.resolve(orderedResponse).then(onFulfilled, onRejected);
     },
   };
@@ -74,6 +85,7 @@ const fakeSupabase = {
   },
   rpc(functionName: string, args: Record<string, unknown>) {
     calls.push(["rpc", functionName, args]);
+    if (functionName === "get_challan_payment_state" && heldPaymentRead) return heldPaymentRead;
     return Promise.resolve(rpcResponses.get(functionName) ?? { data: [], error: null });
   },
 };
@@ -92,6 +104,7 @@ function reset(): void {
   calls.length = 0;
   response = { data: [], error: null };
   rpcResponses.clear();
+  heldPaymentRead = null;
 }
 
 function registerRow(
@@ -144,6 +157,78 @@ test("Sales Register orders by business date, then newest creation, then stable 
     calls.some(([method, column]) => method === "order" && column === "challan_number"),
     false,
   );
+});
+
+test("Register awaits fresh lifetime payment reads inside its own query, ignoring separate cached payment state and payment date", async () => {
+  reset();
+  response.data = [registerRow("challan-a", "2026-08-26", "2026-08-26T12:00:00Z", "3500", "active")];
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const paymentKey = ["office-challan-payment-state", "factory-a", "challan-a"];
+  client.setQueryData(paymentKey, { totalPaid: 0, outstandingAmount: 3500 });
+  let release!: (value: Response) => void;
+  heldPaymentRead = new Promise((resolve) => { release = resolve; });
+  const range = { fromDate: "2026-08-26", toDate: "2026-08-26" };
+  const registerKey = ["office-sales-register", "factory-a", range.fromDate, range.toDate];
+  let completed = false;
+  const read = client.fetchQuery({ queryKey: registerKey, queryFn: () => listSalesRegister("factory-a", range) })
+    .then((entries) => { completed = true; return entries; });
+  try {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.equal(completed, false); assert.equal(client.getQueryData(registerKey), undefined);
+    assert.deepEqual(calls.filter(([method]) => method === "rpc"), [["rpc", "get_challan_payment_state", {
+      p_factory_id: "factory-a", p_challan_id: "challan-a",
+    }]]);
+    // A receipt dated D2 (September 2) contributes lifetime allocations to a D1 (August 26) row.
+    // The read RPC accepts no payment-date filter; Register inclusion is Challan-date-only.
+    release({ data: [{ challan_id: "challan-a", challan_status: "active", sale_total: "3500",
+      total_paid: "1250.75", outstanding_amount: "2249.25", payment_state: "partially_paid" }], error: null });
+    const entries = await read;
+    assert.equal(entries[0].paidAmount, 1250.75); assert.equal(entries[0].outstandingAmount, 2249.25);
+    assert.equal(entries[0].paymentState, "partially_paid");
+    assert.deepEqual(calls.filter(([method]) => method === "gte" || method === "lte"), [
+      ["gte", "challan_date", "2026-08-26"], ["lte", "challan_date", "2026-08-26"],
+    ]);
+    assert.deepEqual(client.getQueryData(paymentKey), { totalPaid: 0, outstandingAmount: 3500 });
+  } finally { release({ data: [], error: null }); await read; client.clear(); }
+});
+
+test("C10 out-of-range allocation refreshes observed Register without including that Challan in its totals", async () => {
+  reset();
+  response.data = [
+    registerRow("inside-period", "2026-07-20", "2026-07-20T12:00:00Z", "500", "active"),
+    registerRow("allocated-outside-period", "2026-08-26", "2026-08-26T12:00:00Z", "3500", "active"),
+  ];
+  rpcResponses.set("get_challan_payment_state", { data: [{ challan_id: "inside-period", challan_status: "active",
+    sale_total: "500", total_paid: "0", outstanding_amount: "500", payment_state: "unpaid" }], error: null });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
+  const range = { fromDate: "2026-07-01", toDate: "2026-07-31" };
+  const key = ["office-sales-register", "factory-a", range.fromDate, range.toDate];
+  client.setQueryData(key, []);
+  const inactiveRange = { fromDate: "2026-08-01", toDate: "2026-08-31" };
+  const inactiveKey = ["office-sales-register", "factory-a", inactiveRange.fromDate, inactiveRange.toDate];
+  client.setQueryData(inactiveKey, []);
+  const observer = new QueryObserver(client, { queryKey: key, staleTime: Infinity,
+    queryFn: () => listSalesRegister("factory-a", range) });
+  const stop = observer.subscribe(() => {});
+  try {
+    // A confirmed September payment allocates to the August Challan. Range eligibility
+    // is deliberately independent of payment date and allocation membership.
+    await refreshCustomerPaymentQueries(client, "factory-a", "customer-a", ["allocated-outside-period"]);
+    const result = observer.getCurrentResult();
+    assert.equal(isCustomerPaymentReadCurrent({ isFetching: result.isFetching, error: result.error,
+      dataUpdatedAt: result.dataUpdatedAt, isInvalidated: client.getQueryState(key)?.isInvalidated }), true);
+    assert.deepEqual(result.data?.map((entry) => entry.challanId), ["inside-period"]);
+    assert.equal(summarizeSalesRegister(result.data!).totalRevenue, 500);
+    assert.equal(result.data?.[0].paidAmount, 0); assert.equal(result.data?.[0].outstandingAmount, 500);
+    assert.equal(client.getQueryState(inactiveKey)?.isInvalidated, true);
+    assert.deepEqual(calls.filter(([method]) => method === "gte" || method === "lte"), [
+      ["gte", "challan_date", range.fromDate], ["lte", "challan_date", range.toDate],
+    ]);
+    assert.deepEqual(calls.filter(([method]) => method === "rpc"), [["rpc", "get_challan_payment_state", {
+      p_factory_id: "factory-a", p_challan_id: "inside-period",
+    }]]);
+    assert.deepEqual(calls.filter(([method]) => method === "eq"), [["eq", "factory_id", "factory-a"]]);
+  } finally { stop(); client.clear(); }
 });
 
 test("same-date duplicate and note-only Challans remain newest-created-first on repeated reads", async () => {
