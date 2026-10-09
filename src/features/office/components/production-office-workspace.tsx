@@ -613,7 +613,7 @@ function ChamberTransportWorkspace({
         message: `Transport entry saved for ${result.attendanceCount} ${result.attendanceCount === 1 ? "worker" : "workers"}.`,
       });
     } catch (error) {
-      await Promise.all([selectionQuery.refetch(), query.refetch()]);
+      // A rejected write must not reload the saved entry over the entered draft.
       setFeedback({ tone: "danger", message: transportDailyEntryErrorMessage(error) });
     } finally {
       saveInProgressRef.current = false;

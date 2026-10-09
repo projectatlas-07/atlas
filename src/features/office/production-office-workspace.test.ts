@@ -6,6 +6,8 @@ const workspace = readFileSync(
   new URL("./components/production-office-workspace.tsx", import.meta.url),
   "utf8",
 );
+const dailyScreen = readFileSync(new URL("../transport/components/transport-daily-entry-screen.tsx", import.meta.url), "utf8");
+const transportDrawer = readFileSync(new URL("./components/chamber-transport-management-drawer.tsx", import.meta.url), "utf8");
 const office = readFileSync(
   new URL("./components/office-dashboard.tsx", import.meta.url),
   "utf8",
@@ -158,6 +160,25 @@ test("Chamber Transport reuses authoritative group, attendance, paya, and save c
   assert.match(workspace, /payaInput/);
   assert.match(workspace, /Promise\.all\(\[selectionQuery\.refetch\(\), query\.refetch\(\)\]\)/);
   assert.doesNotMatch(workspace, /ratePerPaya|dailyGroupPool|workerDailyShare|calculateTransportWeeklyWages/);
+});
+
+test("Transport rejection wiring preserves drafts and history without retrying writes (source assertions)", () => {
+  const officeSave = workspace.slice(workspace.indexOf("async function saveTransport("), workspace.indexOf('aria-label="Chamber Transport"'));
+  const separateSave = dailyScreen.slice(dailyScreen.indexOf("async function save():"), dailyScreen.indexOf('if (factoryAccess.status === "loading")', dailyScreen.indexOf("async function save():")));
+  for (const handler of [officeSave, separateSave]) {
+    assert.equal((handler.match(/await saveTransportDailyEntry\(input\)/g) ?? []).length, 1);
+    assert.match(handler, /saveInProgressRef\.current/);
+    const rejection = handler.slice(handler.indexOf("} catch (error)"), handler.indexOf("} finally"));
+    assert.match(rejection, /transportDailyEntryErrorMessage\(error\)/);
+    assert.doesNotMatch(rejection, /refetch|setPayaInput|setSelectedWorkerIds|saveTransportDailyEntry|status: "saved"|tone: "success"/);
+  }
+  const rateSave = transportDrawer.slice(transportDrawer.indexOf("async function saveRate("), transportDrawer.indexOf("async function toggleLifecycle()", transportDrawer.indexOf("async function saveRate(")));
+  assert.equal((rateSave.match(/await createTransportGroupWageRate\(input\)/g) ?? []).length, 1);
+  const rateRejection = rateSave.slice(rateSave.indexOf("} catch (caught)"), rateSave.indexOf("} finally"));
+  assert.match(rateRejection, /transportRateOfficeErrorMessage\(caught/);
+  assert.doesNotMatch(rateRejection, /setRateInput|setEffectiveFrom|setShowRateEditor|setSuccess|createTransportGroupWageRate/);
+  assert.match(transportDrawer, /listTransportGroupWageRates\(/);
+  assert.match(transportDrawer, /listTransportWeeklyEarnings\(/);
 });
 
 test("Soil Trolley follows the focused V2 recording hierarchy", () => {

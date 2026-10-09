@@ -67,6 +67,7 @@ await mock.module("../../../lib/supabase/client.ts", {
   namedExports: { supabase: fakeSupabase },
 });
 const assignmentService = await import("./transport-crew-assignment-service.ts");
+const { transportDailyEntryErrorMessage } = await import("../transport-daily-entry-screen-model.ts");
 const {
   TransportDailyEntryServiceError,
   getTransportDailyEntry,
@@ -313,6 +314,40 @@ test("read request failures preserve Supabase metadata", async () => {
       && error.details === "active mapping missing",
   );
 });
+
+test("finalized daily save rejects once with the Atlas message and preserves its input", async () => {
+  reset();
+  const input = structuredClone(validSaveInput);
+  saveResponse = { data: null, error: {
+    code: "P2621", message: "ATLAS_TRANSPORT_WEEK_FINALIZED", details: null, hint: null,
+  } };
+  await assert.rejects(() => saveTransportDailyEntry(input), (error: unknown) => {
+    assert.ok(error instanceof TransportDailyEntryServiceError);
+    assert.equal(error.code, "P2621");
+    assert.equal(transportDailyEntryErrorMessage(error),
+      "Transport wages for this week are finalized. Quantity and attendance cannot be changed.");
+    return true;
+  });
+  assert.deepEqual(input, validSaveInput);
+  assert.equal(calls.filter(([method]) => method === "rpc").length, 1);
+  assert.equal(calls.filter(([method]) => method === "from").length, 0);
+});
+
+for (const failure of [
+  { code: "P2621", message: "A different rejection." },
+  { code: "P0001", message: "ATLAS_TRANSPORT_WEEK_FINALIZED" },
+]) {
+  test(`daily finalization mapping requires the exact contract: ${failure.code}/${failure.message}`, async () => {
+    reset();
+    saveResponse = { data: null, error: { ...failure, details: null, hint: null } };
+    await assert.rejects(() => saveTransportDailyEntry(validSaveInput), (error: unknown) => {
+      assert.ok(error instanceof TransportDailyEntryServiceError);
+      assert.equal(error.message, failure.message);
+      return true;
+    });
+    assert.equal(calls.filter(([method]) => method === "rpc").length, 1);
+  });
+}
 
 test("a successful save response must contain one result row", async () => {
   reset();

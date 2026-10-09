@@ -1,4 +1,5 @@
 import type { PostgrestError } from "@supabase/supabase-js";
+import { ATLAS_UI_STRINGS } from "../../../lib/strings.ts";
 import { supabase } from "../../../lib/supabase/client.ts";
 import type {
   SaveTransportDailyEntryInput,
@@ -36,7 +37,9 @@ export class TransportDailyEntryServiceError extends Error {
   readonly hint: string | null;
 
   constructor(error: PostgrestError) {
-    super(error.message);
+    super(error.code === "P2621" && error.message === "ATLAS_TRANSPORT_WEEK_FINALIZED"
+      ? ATLAS_UI_STRINGS.transport.weekFinalized
+      : error.message);
     this.name = "TransportDailyEntryServiceError";
     this.code = error.code;
     this.details = error.details;

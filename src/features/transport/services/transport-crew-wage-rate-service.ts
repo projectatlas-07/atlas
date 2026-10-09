@@ -1,4 +1,5 @@
 import type { PostgrestError } from "@supabase/supabase-js";
+import { ATLAS_UI_STRINGS } from "../../../lib/strings.ts";
 import { supabase } from "../../../lib/supabase/client.ts";
 import type { TransportGroupWageRate } from "../types.ts";
 
@@ -60,6 +61,11 @@ export class TransportGroupWageRateServiceError extends Error {
 }
 
 function readableRateErrorMessage(error: PostgrestError): string {
+  if (error.code === "P2622"
+    && error.message === "ATLAS_TRANSPORT_RATE_AFFECTS_FINALIZED_EARNINGS") {
+    return ATLAS_UI_STRINGS.transport.rateAffectsFinalizedEarnings;
+  }
+
   if (error.code === "23P01") {
     return "Transport Group wage-rate periods cannot overlap.";
   }

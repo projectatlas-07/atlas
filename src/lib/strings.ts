@@ -44,6 +44,10 @@ const ENGLISH_SHARED_STRINGS = {
     outdated: "Cash Book is outdated. Refresh to load current balances and movements.",
     loadError: "Could not load Cash Book. Refresh to try again.",
   },
+  transport: {
+    weekFinalized: "Transport wages for this week are finalized. Quantity and attendance cannot be changed.",
+    rateAffectsFinalizedEarnings: "This rate would change finalized Transport earnings. Choose a later effective date.",
+  },
   payment: {
     savedDetailsUnavailable: "Payment saved. Receipt details could not load.",
     saved: "Payment saved.",

@@ -64,6 +64,7 @@ const {
   createTransportGroupWageRate,
   listTransportGroupWageRates,
 } = await import("./transport-crew-wage-rate-service.ts");
+const { transportRateOfficeErrorMessage } = await import("../../office/transport-office-model.ts");
 
 function row(overrides: Partial<Row> = {}): Row {
   return {
@@ -195,3 +196,40 @@ test("rejects an RPC response without a created rate", async () => {
     /create_transport_crew_wage_rate returned no rate/,
   );
 });
+
+test("finalized rate save rejects once with the Atlas message and preserves its input", async () => {
+  calls.length = 0;
+  const input = { factoryId: "factory-a", transportGroupId: "crew-a", effectiveFrom: "2026-08-10", ratePerPaya: 850 };
+  const before = structuredClone(input);
+  rpcResponse = { data: null, error: {
+    code: "P2622", message: "ATLAS_TRANSPORT_RATE_AFFECTS_FINALIZED_EARNINGS", details: null, hint: null,
+  } };
+  await assert.rejects(() => createTransportGroupWageRate(input), (error: unknown) => {
+    assert.ok(error instanceof TransportGroupWageRateServiceError);
+    assert.equal(error.code, "P2622");
+    assert.equal(transportRateOfficeErrorMessage(error, "fallback"),
+      "This rate would change finalized Transport earnings. Choose a later effective date.");
+    return true;
+  });
+  assert.deepEqual(input, before);
+  assert.equal(calls.filter(([method]) => method === "rpc").length, 1);
+  assert.equal(calls.filter(([method]) => method === "from").length, 0);
+});
+
+for (const failure of [
+  { code: "P2622", message: "A different rejection." },
+  { code: "P0001", message: "ATLAS_TRANSPORT_RATE_AFFECTS_FINALIZED_EARNINGS" },
+]) {
+  test(`rate finalization mapping requires the exact contract: ${failure.code}/${failure.message}`, async () => {
+    calls.length = 0;
+    rpcResponse = { data: null, error: { ...failure, details: null, hint: null } };
+    await assert.rejects(() => createTransportGroupWageRate({
+      factoryId: "factory-a", transportGroupId: "crew-a", effectiveFrom: "2026-08-10", ratePerPaya: 850,
+    }), (error: unknown) => {
+      assert.ok(error instanceof TransportGroupWageRateServiceError);
+      assert.equal(error.message, failure.message);
+      return true;
+    });
+    assert.equal(calls.filter(([method]) => method === "rpc").length, 1);
+  });
+}
