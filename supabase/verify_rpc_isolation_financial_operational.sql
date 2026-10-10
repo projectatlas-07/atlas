@@ -26,10 +26,11 @@ insert into atlas_12b2c_manifest values
 ('MU18','transition_mud_accounting_mode','p_factory_id uuid, p_new_mode mud_accounting_mode','membership; factory-scoped accounting state and transition ledger'),
 ('TR2','create_transport_crew_wage_rate','p_factory_id uuid, p_transport_crew_id uuid, p_effective_from date, p_rate_per_paya numeric','membership; transport crew/rate plus factory');
 
-create temporary table atlas_12b2c_counts(s text,t text,c bigint,primary key(s,t)) on commit preserve rows;
-do $$declare r record;n bigint;begin
+create temporary table atlas_12b2c_counts(s text,t text,c bigint,h text,primary key(s,t)) on commit preserve rows;
+do $$declare r record;n bigint;h text;begin
  if (select count(*) from atlas_12b2c_manifest)<>24 then raise exception 'FAIL manifest';end if;
- for r in select 'public'::text s,c.relname::text t from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind in('r','p') union all select 'auth','users' loop execute format('select count(*) from %I.%I',r.s,r.t) into n;insert into atlas_12b2c_counts values(r.s,r.t,n);end loop;
+ for r in select 'public'::text s,c.relname::text t from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind in('r','p') union all select 'auth','users' loop execute format('select count(*),md5(coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]'')::text) from %I.%I q',r.s,r.t) into n,h;insert into atlas_12b2c_counts values(r.s,r.t,n,h);end loop;
+ if (select count(*) from atlas_12b2c_counts where s='public')<>64 or (select count(*) from atlas_12b2c_counts)<>65 then raise exception 'FAIL 64 public tables plus auth.users required';end if;
 end$$;
 commit;begin;
 create temporary table atlas_12b2c_ids(k text primary key,id uuid not null) on commit drop;grant all on atlas_12b2c_ids to authenticated;
@@ -128,6 +129,52 @@ set local role authenticated;select set_config('request.jwt.claim.sub',pg_temp.f
 update public.factory_users set is_active=false where user_id=pg_temp.fid('ua') and factory_id=pg_temp.fid('fa');
 select pg_temp.reject('inactive financial update',format('select public.update_expense_record(%L::uuid,%L::uuid,date %L,%L,%L::uuid,null,%L,100,null)',pg_temp.fid('fa'),pg_temp.fid('exp_inactive_a'),'2026-09-22','expense',pg_temp.fid('sa'),'Inactive same'),'42501','You do not have access');select pg_temp.reject('inactive Production config',format('select public.set_production_labourer_origin(%L::uuid,%L::uuid,%L)',pg_temp.fid('fa'),pg_temp.fid('la2'),'Inactive same'),'42501','You do not have access');select pg_temp.reject('inactive Mud config',format('select public.set_mud_supply_rate(%L::uuid,110,date %L)',pg_temp.fid('fa'),'2026-09-14'),'42501','You do not have access');
 reset role;select set_config('request.jwt.claim.sub','',true);rollback;
-do $$declare r record;n bigint;bad text[]:='{}';begin for r in select*from atlas_12b2c_counts loop execute format('select count(*) from %I.%I',r.s,r.t)into n;if n<>r.c then bad:=array_append(bad,format('%s.%s',r.s,r.t));end if;end loop;if cardinality(bad)>0 then raise exception'FAIL rollback %',bad;end if;end$$;
-select 24 scoped,24 passed,0 not_proven,0 not_exercised,0 failed,24 direct_b_attacks,21 mixed_attacks,3 inactive_checks,0 anon_execute,0 public_execute,17 real_writer_fixture_calls,0 authenticated_direct_rows,2 trigger_rows,27 privileged_setup_rows,(select count(*)from atlas_12b2c_counts)persistent_pairs,0 persistent_mismatches,'76 / 122' runtime_coverage,'46' remaining,'concurrent/double-submit financial integrity testing' future_item;
+-- E7A: validate the preserved baseline before any cleanup comparison.
+do $baseline_guard$
+begin
+  if pg_catalog.to_regclass('pg_temp.atlas_12b2c_counts') is null then
+    raise exception 'FAIL: preserved cleanup baseline is missing';
+  end if;
+  if exists (select 1 from pg_temp.atlas_12b2c_counts
+    where s is null or t is null or c is null or h is null) then
+    raise exception 'FAIL: cleanup baseline has NULL identity, count or fingerprint';
+  end if;
+  if exists (select 1 from pg_temp.atlas_12b2c_counts
+    group by s,t having count(*) > 1) then
+    raise exception 'FAIL: cleanup baseline has duplicate identities';
+  end if;
+  if (select count(*) from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+    where ns.nspname = 'public' and c.relkind in ('r','p')) <> 64 then
+    raise exception 'FAIL: cleanup catalog must contain exactly 64 public tables';
+  end if;
+  if (select count(*) from pg_temp.atlas_12b2c_counts) <> 65
+    or (select count(distinct t) from pg_temp.atlas_12b2c_counts
+      where s = 'public') <> 64
+    or (select count(*) from pg_temp.atlas_12b2c_counts
+      where s = 'auth' and t = 'users') <> 1 then
+    raise exception 'FAIL: cleanup baseline requires 64 public identities plus one auth.users identity';
+  end if;
+  if exists (
+    with expected as (
+      select ns.nspname::text as schema_name,c.relname::text as table_name
+      from pg_catalog.pg_class c
+      join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+      where ns.nspname = 'public' and c.relkind in ('r','p')
+      union all select 'auth','users'
+    ), actual as (
+      select s as schema_name,t as table_name
+      from pg_temp.atlas_12b2c_counts
+    )
+    (select * from expected except select * from actual)
+    union all
+    (select * from actual except select * from expected)
+  ) then
+    raise exception 'FAIL: cleanup baseline identities differ from the catalog plus auth.users';
+  end if;
+end;
+$baseline_guard$;
+
+do $$declare r record;n bigint;h text;bad text[]:='{}';begin for r in select*from atlas_12b2c_counts loop execute format('select count(*),md5(coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]'')::text) from %I.%I q',r.s,r.t)into n,h;if n<>r.c or h is distinct from r.h then bad:=array_append(bad,format('%s.%s',r.s,r.t));end if;end loop;if cardinality(bad)>0 then raise exception'FAIL rollback %',bad;end if;end$$;
+select 24 scoped,24 passed,0 not_proven,0 not_exercised,0 failed,24 direct_b_attacks,21 mixed_attacks,3 inactive_checks,0 anon_execute,0 public_execute,17 real_writer_fixture_calls,0 authenticated_direct_rows,2 trigger_rows,27 privileged_setup_rows,(select count(*)from atlas_12b2c_counts)persistent_pairs,0 persistent_mismatches,'77 / 123' runtime_coverage,'46' remaining,'concurrent/double-submit financial integrity testing' future_item;
 drop table atlas_12b2c_counts;drop table atlas_12b2c_manifest;

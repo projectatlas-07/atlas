@@ -55,30 +55,40 @@ where n.nspname = 'public'
 grant select on atlas_12b1_manifest to authenticated, anon;
 
 create temporary table atlas_12b1_persistent_counts (
-  table_name text primary key,
-  row_count bigint not null
+  schema_name text not null,
+  table_name text not null,
+  row_count bigint not null,
+  row_hash text not null,
+  primary key (schema_name,table_name)
 ) on commit preserve rows;
 
 do $$
 declare
   covered_table record;
   persistent_count bigint;
+  persistent_hash text;
 begin
-  if (select count(*) from atlas_12b1_manifest) <> 63 then
-    raise exception 'FAIL: expected 63 public tables, found %',
+  if (select count(*) from atlas_12b1_manifest) <> 64 then
+    raise exception 'FAIL: expected 64 public tables, found %',
       (select count(*) from atlas_12b1_manifest);
   end if;
   if exists (select 1 from atlas_12b1_manifest where not rls_enabled) then
     raise exception 'FAIL: coverage manifest includes a public table without RLS';
   end if;
 
-  for covered_table in select table_name from atlas_12b1_manifest order by table_name loop
-    execute pg_catalog.format('select count(*) from public.%I', covered_table.table_name)
-      into persistent_count;
-    insert into atlas_12b1_persistent_counts(table_name, row_count)
-    values (covered_table.table_name, persistent_count);
+  for covered_table in
+    select 'public'::text schema_name,table_name from atlas_12b1_manifest
+    union all select 'auth','users' order by 1,2
+  loop
+    execute pg_catalog.format('select count(*),md5(coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]'')::text) from %I.%I q',covered_table.schema_name,covered_table.table_name)
+      into persistent_count,persistent_hash;
+    insert into atlas_12b1_persistent_counts values
+      (covered_table.schema_name,covered_table.table_name,persistent_count,persistent_hash);
   end loop;
-  raise notice 'PASS [EXECUTED]: recorded pre-transaction persistent counts for 63/63 public tables';
+  if (select count(*) from atlas_12b1_persistent_counts)<>65 then
+    raise exception 'FAIL: expected 64 public tables plus auth.users';
+  end if;
+  raise notice 'PASS [EXECUTED]: recorded counts/full-row hashes for 64 public tables plus auth.users';
 end;
 $$;
 
@@ -620,6 +630,37 @@ values
   ('12b2003d-0000-4000-8000-000000000001', '12b10000-0000-4000-8000-000000000001', '12b2003c-0000-4000-8000-000000000001', '2026-01-07', '12B1 reversal A', '12b00000-0000-4000-8000-000000000001'),
   ('12b2003d-0000-4000-8000-000000000002', '12b10000-0000-4000-8000-000000000002', '12b2003c-0000-4000-8000-000000000002', '2026-01-07', '12B1 reversal B', '12b00000-0000-4000-8000-000000000002');
 
+-- Populated ledger controls come from the actual authenticated credit RPC.
+set local role authenticated;
+select pg_catalog.set_config('request.jwt.claim.sub','12b00000-0000-4000-8000-000000000001',true);
+select pg_temp.assert_identity('12b00000-0000-4000-8000-000000000001','credit fixture A');
+do $$declare r record;begin
+  select * into r from public.create_transport_wage_credit(
+    '12b10000-0000-4000-8000-000000000001','12b20040-0000-4000-8000-000000000001',
+    '12b20030-0000-4000-8000-000000000001','2026-01-05',12.34,'Table isolation A');
+  if r.credit_id is distinct from '12b20040-0000-4000-8000-000000000001'::uuid
+    or r.amount is distinct from 12.34::numeric or r.actor_id is distinct from auth.uid()
+    or r.was_replayed is distinct from false then raise exception 'FAIL: authenticated credit fixture A';end if;
+end$$;
+reset role;
+set local role authenticated;
+select pg_catalog.set_config('request.jwt.claim.sub','12b00000-0000-4000-8000-000000000002',true);
+select pg_temp.assert_identity('12b00000-0000-4000-8000-000000000002','credit fixture B');
+do $$declare r record;begin
+  select * into r from public.create_transport_wage_credit(
+    '12b10000-0000-4000-8000-000000000002','12b20040-0000-4000-8000-000000000002',
+    '12b20030-0000-4000-8000-000000000002','2026-01-05',56.78,'Table isolation B');
+  if r.credit_id is distinct from '12b20040-0000-4000-8000-000000000002'::uuid
+    or r.amount is distinct from 56.78::numeric or r.actor_id is distinct from auth.uid()
+    or r.was_replayed is distinct from false then raise exception 'FAIL: authenticated credit fixture B';end if;
+  if (select count(*) from public.transport_wage_credits where factory_id='12b10000-0000-4000-8000-000000000002')<>1
+    or exists(select 1 from public.transport_wage_credits where factory_id='12b10000-0000-4000-8000-000000000001') then
+    raise exception 'FAIL: credit reverse-tenant SELECT control';
+  end if;
+end$$;
+reset role;
+select pg_catalog.set_config('request.jwt.claim.sub','',true);
+
 -- For each table: run User A's positive control, reset to privileged authority
 -- to prove the B fixture is non-empty, then immediately switch back to User A
 -- for the paired cross-factory negative assertion.
@@ -716,12 +757,64 @@ begin
     perform pg_catalog.set_config('request.jwt.claim.sub', '', true);
   end loop;
 
-  if proven_count <> 63 then
-    raise exception 'FAIL: SELECT sweep proved % tables, expected 63', proven_count;
+  if proven_count <> 64 then
+    raise exception 'FAIL: SELECT sweep proved % tables, expected 64', proven_count;
   end if;
-  raise notice 'PASS [EXECUTED]: paired User A positive, non-empty B, and cross-factory negative controls passed for 63/63 tables';
+  raise notice 'PASS [EXECUTED]: paired User A positive, non-empty B, and cross-factory negative controls passed for 64/64 tables';
 end;
 $$;
+
+-- Separate ACL denial from immutable-trigger rejection. Both must be atomic.
+create function pg_temp.credit_probe_snapshot() returns text language plpgsql
+set search_path=pg_catalog,public as $$
+declare t record; payload jsonb:='{}'; rows_json jsonb;
+begin
+  for t in select table_name from atlas_12b1_manifest where has_factory_id order by table_name loop
+    execute format('select coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]''::jsonb) from public.%I q where factory_id in ($1,$2)',t.table_name)
+      into rows_json using '12b10000-0000-4000-8000-000000000001'::uuid,'12b10000-0000-4000-8000-000000000002'::uuid;
+    payload:=payload||jsonb_build_object(t.table_name,rows_json);
+  end loop;
+  return md5(payload::text);
+end$$;
+do $$
+declare q text; before_hash text; got_state text; got_message text; blocked boolean;
+begin
+  foreach q in array array[
+    $q$insert into public.transport_wage_credits(id,factory_id,transport_worker_id,original_work_date,posting_date,amount,reason,actor_id,created_at)
+      values('12b20040-0000-4000-8000-000000000003','12b10000-0000-4000-8000-000000000001','12b20030-0000-4000-8000-000000000001',date '2026-01-05',(now() at time zone 'Asia/Kolkata')::date,1,'Forbidden','12b00000-0000-4000-8000-000000000001',now())$q$,
+    $q$update public.transport_wage_credits set reason='Forbidden' where id='12b20040-0000-4000-8000-000000000001'$q$,
+    $q$delete from public.transport_wage_credits where id='12b20040-0000-4000-8000-000000000001'$q$,
+    $q$truncate public.transport_wage_credits$q$
+  ] loop
+    before_hash:=pg_temp.credit_probe_snapshot(); blocked:=false;
+    execute 'set local role authenticated';
+    perform set_config('request.jwt.claim.sub','12b00000-0000-4000-8000-000000000001',true);
+    perform pg_temp.assert_identity('12b00000-0000-4000-8000-000000000001','credit direct mutation ACL');
+    begin execute q; exception when others then blocked:=true;got_state:=sqlstate;got_message:=sqlerrm;end;
+    execute 'reset role';perform set_config('request.jwt.claim.sub','',true);
+    if not blocked or got_state is distinct from '42501'
+      or got_message is distinct from 'permission denied for table transport_wage_credits'
+      or before_hash is distinct from pg_temp.credit_probe_snapshot() then
+      raise exception 'FAIL: wage credit direct mutation ACL/atomicity (state=%)',got_state;
+    end if;
+    raise notice 'PASS [EXECUTED] [BLOCKED-BY-ACL]: wage credit direct mutation 42501; both factories unchanged';
+  end loop;
+  -- Privileged probes isolate the trigger from authenticated table ACL denial.
+  foreach q in array array[
+    $q$update public.transport_wage_credits set reason='Forbidden' where id='12b20040-0000-4000-8000-000000000001'$q$,
+    $q$delete from public.transport_wage_credits where id='12b20040-0000-4000-8000-000000000001'$q$,
+    $q$truncate public.transport_wage_credits$q$
+  ] loop
+    before_hash:=pg_temp.credit_probe_snapshot();blocked:=false;
+    begin execute q;exception when others then blocked:=true;got_state:=sqlstate;got_message:=sqlerrm;end;
+    if not blocked or got_state is distinct from 'P2633'
+      or got_message is distinct from 'ATLAS_TRANSPORT_WAGE_CREDIT_IMMUTABLE'
+      or before_hash is distinct from pg_temp.credit_probe_snapshot() then
+      raise exception 'FAIL: immutable wage credit trigger/atomicity (state=%)',got_state;
+    end if;
+    raise notice 'PASS [EXECUTED] [BLOCKED-BY-TRIGGER]: wage credit mutation P2633; both factories unchanged';
+  end loop;
+end$$;
 
 set local role authenticated;
 select pg_catalog.set_config('request.jwt.claim.sub', '12b00000-0000-4000-8000-000000000001', true);
@@ -990,6 +1083,9 @@ begin
   select count(*) into visible_count from public.customers
   where factory_id = '12b10000-0000-4000-8000-000000000001';
   if visible_count <> 0 then raise exception 'FAIL: inactive user can read direct-read tenant data'; end if;
+  select count(*) into visible_count from public.transport_wage_credits
+  where factory_id='12b10000-0000-4000-8000-000000000001';
+  if visible_count<>0 then raise exception 'FAIL: inactive user can read wage credits';end if;
 
   update public.labour_groups set name = '12B1 Inactive Forbidden Update'
   where id = '12b20014-0000-4000-8000-000000000001';
@@ -1054,10 +1150,10 @@ begin
     end;
   end loop;
 
-  if acl_blocks + rls_zeroes <> 63 then
-    raise exception 'FAIL: anon sweep covered % tables, expected 63', acl_blocks + rls_zeroes;
+  if acl_blocks + rls_zeroes <> 64 then
+    raise exception 'FAIL: anon sweep covered % tables, expected 64', acl_blocks + rls_zeroes;
   end if;
-  raise notice 'PASS [EXECUTED]: anon 63-table sweep: % BLOCKED-BY-ACL, % zero rows through RLS',
+  raise notice 'PASS [EXECUTED]: anon 64-table sweep: % BLOCKED-BY-ACL, % zero rows through RLS',
     acl_blocks, rls_zeroes;
 end;
 $$;
@@ -1067,25 +1163,68 @@ select pg_catalog.set_config('request.jwt.claim.sub', '', true);
 rollback;
 
 -- Persistent post-ROLLBACK proof. Any mismatch exits non-zero.
+-- E7A: validate the preserved baseline before any cleanup comparison.
+do $baseline_guard$
+begin
+  if pg_catalog.to_regclass('pg_temp.atlas_12b1_persistent_counts') is null then
+    raise exception 'FAIL: preserved cleanup baseline is missing';
+  end if;
+  if exists (select 1 from pg_temp.atlas_12b1_persistent_counts
+    where schema_name is null or table_name is null or row_count is null or row_hash is null) then
+    raise exception 'FAIL: cleanup baseline has NULL identity, count or fingerprint';
+  end if;
+  if exists (select 1 from pg_temp.atlas_12b1_persistent_counts
+    group by schema_name,table_name having count(*) > 1) then
+    raise exception 'FAIL: cleanup baseline has duplicate identities';
+  end if;
+  if (select count(*) from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+    where ns.nspname = 'public' and c.relkind in ('r','p')) <> 64 then
+    raise exception 'FAIL: cleanup catalog must contain exactly 64 public tables';
+  end if;
+  if (select count(*) from pg_temp.atlas_12b1_persistent_counts) <> 65
+    or (select count(distinct table_name) from pg_temp.atlas_12b1_persistent_counts
+      where schema_name = 'public') <> 64
+    or (select count(*) from pg_temp.atlas_12b1_persistent_counts
+      where schema_name = 'auth' and table_name = 'users') <> 1 then
+    raise exception 'FAIL: cleanup baseline requires 64 public identities plus one auth.users identity';
+  end if;
+  if exists (
+    with expected as (
+      select ns.nspname::text as schema_name,c.relname::text as table_name
+      from pg_catalog.pg_class c
+      join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+      where ns.nspname = 'public' and c.relkind in ('r','p')
+      union all select 'auth','users'
+    ), actual as (
+      select schema_name as schema_name,table_name as table_name
+      from pg_temp.atlas_12b1_persistent_counts
+    )
+    (select * from expected except select * from actual)
+    union all
+    (select * from actual except select * from expected)
+  ) then
+    raise exception 'FAIL: cleanup baseline identities differ from the catalog plus auth.users';
+  end if;
+end;
+$baseline_guard$;
+
 do $$
 declare
   covered_table record;
   ending_count bigint;
+  ending_hash text;
   mismatches text[] := array[]::text[];
 begin
   for covered_table in
-    select manifest.table_name, baseline.row_count
-    from atlas_12b1_manifest as manifest
-    join atlas_12b1_persistent_counts as baseline using (table_name)
-    order by manifest.table_name
+    select * from atlas_12b1_persistent_counts order by schema_name,table_name
   loop
-    execute pg_catalog.format('select count(*) from public.%I', covered_table.table_name)
-      into ending_count;
-    if ending_count <> covered_table.row_count then
+    execute pg_catalog.format('select count(*),md5(coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]'')::text) from %I.%I q',covered_table.schema_name,covered_table.table_name)
+      into ending_count,ending_hash;
+    if ending_count <> covered_table.row_count or ending_hash is distinct from covered_table.row_hash then
       mismatches := array_append(
         mismatches,
-        pg_catalog.format('%s before=%s after=%s',
-          covered_table.table_name, covered_table.row_count, ending_count)
+        pg_catalog.format('%s.%s count/hash mismatch',covered_table.schema_name,covered_table.table_name)
       );
     end if;
   end loop;
@@ -1093,17 +1232,22 @@ begin
   if cardinality(mismatches) > 0 then
     raise exception 'FAIL: rollback changed persistent table counts: %', mismatches;
   end if;
-  raise notice 'PASS [EXECUTED]: post-ROLLBACK counts match for 63/63 public tables';
+  if exists(select 1 from public.transport_wage_credits where id in (
+    '12b20040-0000-4000-8000-000000000001','12b20040-0000-4000-8000-000000000002',
+    '12b20040-0000-4000-8000-000000000003')) then
+    raise exception 'FAIL: synthetic wage credit residue after outer ROLLBACK';
+  end if;
+  raise notice 'PASS [EXECUTED]: post-ROLLBACK counts/full-row hashes match for 64 public tables plus auth.users';
 end;
 $$;
 
 select
-  63 as inventoried_tables,
-  63 as executed_and_passed,
+  64 as inventoried_tables,
+  64 as executed_and_passed,
   0 as not_exercised,
-  63 as authenticated_positive_selects,
-  63 as cross_factory_negative_selects,
-  63 as anon_tables_checked,
+  64 as authenticated_positive_selects,
+  64 as cross_factory_negative_selects,
+  64 as anon_tables_checked,
   (select count(*) from atlas_12b1_manifest where not anon_select_acl) as anon_blocked_by_acl,
   (select count(*) from atlas_12b1_manifest where anon_select_acl) as anon_zero_rows_through_rls,
   13 as intended_direct_write_operations,
@@ -1112,7 +1256,9 @@ select
   6 as direct_write_negatives_zero_rows,
   2 as identifier_mixing_checks,
   true as inactive_member_failed_closed,
-  63 as persistent_count_pairs_compared,
+  4 as credit_direct_mutations_blocked_by_acl,
+  3 as credit_mutations_blocked_by_immutable_trigger,
+  65 as persistent_count_pairs_compared,
   0 as persistent_count_mismatches,
   true as persistent_counts_match;
 

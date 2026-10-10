@@ -1,6 +1,23 @@
 -- Run only against confirmed Test Atlas Clean after migration 20260926000066.
 -- Fixtures run inside a transaction and are discarded by the final rollback.
 
+-- Session-local baseline only is committed; every fixture stays in the original
+-- rollback transaction. Use one database session through the post-ROLLBACK proof.
+create temporary table atlas_e6_group_baseline(s text,t text,n bigint,h text,primary key(s,t)) on commit preserve rows;
+do $$declare r record; n bigint; h text;begin
+  for r in select 'public'::text s,c.relname::text t from pg_class c
+    where c.relnamespace='public'::regnamespace and c.relkind in ('r','p')
+    union all select 'auth','users' loop
+    execute format('select count(*),md5(coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]'')::text) from %I.%I q',r.s,r.t) into n,h;
+    insert into atlas_e6_group_baseline values(r.s,r.t,n,h);
+  end loop;
+  if (select count(*) from atlas_e6_group_baseline where s='public')<>64
+    or (select count(*) from atlas_e6_group_baseline)<>65 then
+    raise exception 'FAIL: expected 64 public tables plus auth.users';
+  end if;
+end$$;
+commit;
+
 begin;
 
 do $$
@@ -8,6 +25,7 @@ declare
   save_definition text;
   calculator_definition text;
   balance_definition text;
+  earning_definition text;
 begin
   if exists (
     select 1
@@ -90,9 +108,27 @@ begin
     'public.get_transport_worker_available_balance(uuid,uuid,date)'::regprocedure
   )) into balance_definition;
 
-  if balance_definition not like '%transport_weekly_earnings%'
+  select lower(pg_get_functiondef(
+    'public.get_transport_worker_earning_events(uuid,uuid)'::regprocedure
+  )) into earning_definition;
+
+  if balance_definition not like '%get_transport_worker_earning_events(p_factory_id, p_transport_worker_id)%'
+    or balance_definition not like '%e.event_date <= p_as_of_date%'
     or balance_definition not like '%transport_withdrawals%'
+    or balance_definition not like '%w.factory_id = p_factory_id and w.transport_worker_id = p_transport_worker_id%'
+    or balance_definition not like '%w.withdrawal_date <= p_as_of_date%'
     or balance_definition like '%transport_crew_id%'
+    or earning_definition not like '%public.transport_weekly_earnings e%'
+    or earning_definition not like '%e.week_start + 6, e.total_amount%'
+    or earning_definition not like '%e.factory_id = p_factory_id and e.transport_worker_id = p_transport_worker_id%'
+    or earning_definition not like '%union all%'
+    or earning_definition not like '%public.transport_wage_credits c%'
+    or earning_definition not like '%c.posting_date, c.amount%'
+    or earning_definition not like '%c.factory_id = p_factory_id and c.transport_worker_id = p_transport_worker_id%'
+    or earning_definition like '%transport_daily_entries%'
+    or earning_definition like '%transport_daily_attendance%'
+    or earning_definition like '%transport_crew_wage_rates%'
+    or earning_definition like '%transport_crew_memberships%'
   then
     raise exception 'FAIL: worker balance sources changed';
   end if;
@@ -306,3 +342,61 @@ end;
 $$;
 
 rollback;
+
+-- Independent outer-ROLLBACK proof. Full-row hashes remain internal, not printed.
+-- E7A: validate the preserved baseline before any cleanup comparison.
+do $baseline_guard$
+begin
+  if pg_catalog.to_regclass('pg_temp.atlas_e6_group_baseline') is null then
+    raise exception 'FAIL: preserved cleanup baseline is missing';
+  end if;
+  if exists (select 1 from pg_temp.atlas_e6_group_baseline
+    where s is null or t is null or n is null or h is null) then
+    raise exception 'FAIL: cleanup baseline has NULL identity, count or fingerprint';
+  end if;
+  if exists (select 1 from pg_temp.atlas_e6_group_baseline
+    group by s,t having count(*) > 1) then
+    raise exception 'FAIL: cleanup baseline has duplicate identities';
+  end if;
+  if (select count(*) from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+    where ns.nspname = 'public' and c.relkind in ('r','p')) <> 64 then
+    raise exception 'FAIL: cleanup catalog must contain exactly 64 public tables';
+  end if;
+  if (select count(*) from pg_temp.atlas_e6_group_baseline) <> 65
+    or (select count(distinct t) from pg_temp.atlas_e6_group_baseline
+      where s = 'public') <> 64
+    or (select count(*) from pg_temp.atlas_e6_group_baseline
+      where s = 'auth' and t = 'users') <> 1 then
+    raise exception 'FAIL: cleanup baseline requires 64 public identities plus one auth.users identity';
+  end if;
+  if exists (
+    with expected as (
+      select ns.nspname::text as schema_name,c.relname::text as table_name
+      from pg_catalog.pg_class c
+      join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+      where ns.nspname = 'public' and c.relkind in ('r','p')
+      union all select 'auth','users'
+    ), actual as (
+      select s as schema_name,t as table_name
+      from pg_temp.atlas_e6_group_baseline
+    )
+    (select * from expected except select * from actual)
+    union all
+    (select * from actual except select * from expected)
+  ) then
+    raise exception 'FAIL: cleanup baseline identities differ from the catalog plus auth.users';
+  end if;
+end;
+$baseline_guard$;
+
+do $$declare r record; n bigint; h text;begin
+  for r in select * from atlas_e6_group_baseline order by s,t loop
+    execute format('select count(*),md5(coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]'')::text) from %I.%I q',r.s,r.t) into n,h;
+    if n<>r.n or h is distinct from r.h then
+      raise exception 'FAIL: post-ROLLBACK count/hash mismatch %.%',r.s,r.t;
+    end if;
+  end loop;
+  raise notice 'PASS [ROLLBACK]: 64 public tables plus auth.users restored in counts and full-row hashes';
+end$$;
+drop table atlas_e6_group_baseline;

@@ -1,5 +1,5 @@
 -- Atlas Security 12B2B: rollback-only runtime isolation proof.
--- Scope: 25 money-movement and authoritative financial-write RPC signatures.
+-- Scope: 26 authoritative financial-write RPC signatures (25 existing + wage credit).
 
 create temporary table atlas_12b2b_manifest (
   id text primary key,
@@ -11,6 +11,7 @@ create temporary table atlas_12b2b_manifest (
 ) on commit preserve rows;
 
 insert into atlas_12b2b_manifest values
+  ('TR6','Transport','create_transport_wage_credit','p_factory_id uuid, p_credit_id uuid, p_transport_worker_id uuid, p_original_work_date date, p_amount numeric, p_reason text','active membership and same-factory worker precede credit UUID lookup; server actor/posting date; no cash movement'),
   ('PR4','Production','create_labourer_withdrawal','p_factory_id uuid, p_labourer_id uuid, p_withdrawal_date date, p_amount numeric','wrapper delegates to the five-argument overload; membership and labourer ownership are checked there'),
   ('PR5','Production','create_labourer_withdrawal','p_factory_id uuid, p_labourer_id uuid, p_withdrawal_date date, p_settlement_cutoff date, p_amount numeric','active membership first; labourer lookup is constrained by factory_id'),
   ('PR10','Production','save_production_entry','p_factory_id uuid, p_entry_id uuid, p_labourer_id uuid, p_production_date date, p_quantity integer','active membership first; labourer and existing entry identity are constrained by factory_id'),
@@ -41,14 +42,15 @@ create temporary table atlas_12b2b_persistent_counts (
   schema_name text not null,
   table_name text not null,
   row_count bigint not null,
+  row_hash text not null,
   primary key (schema_name, table_name)
 ) on commit preserve rows;
 
 do $$
-declare target record; counted bigint;
+declare target record; counted bigint; hashed text;
 begin
-  if (select count(*) from atlas_12b2b_manifest) <> 25 then
-    raise exception 'FAIL: expected 25 scoped signatures';
+  if (select count(*) from atlas_12b2b_manifest) <> 26 then
+    raise exception 'FAIL: expected 26 scoped signatures';
   end if;
   for target in
     select 'public'::text schema_name, c.relname::text table_name
@@ -56,9 +58,13 @@ begin
     where n.nspname='public' and c.relkind in ('r','p')
     union all select 'auth','users' order by 1,2
   loop
-    execute format('select count(*) from %I.%I',target.schema_name,target.table_name) into counted;
-    insert into atlas_12b2b_persistent_counts values(target.schema_name,target.table_name,counted);
+    execute format('select count(*),md5(coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]'')::text) from %I.%I q',target.schema_name,target.table_name) into counted,hashed;
+    insert into atlas_12b2b_persistent_counts values(target.schema_name,target.table_name,counted,hashed);
   end loop;
+  if (select count(*) from atlas_12b2b_persistent_counts where schema_name='public')<>64
+    or (select count(*) from atlas_12b2b_persistent_counts)<>65 then
+    raise exception 'FAIL: expected 64 public tables plus auth.users';
+  end if;
 end;
 $$;
 
@@ -130,7 +136,7 @@ begin
   join atlas_12b2b_manifest m on m.function_name=p.proname
     and m.identity_arguments=pg_get_function_identity_arguments(p.oid)
   where n.nspname='public' and p.prokind='f';
-  if matched<>25 then raise exception 'FAIL: live scoped signatures matched %/25',matched; end if;
+  if matched<>26 then raise exception 'FAIL: live scoped signatures matched %/26',matched; end if;
   if exists(
     select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
     join atlas_12b2b_manifest m on m.function_name=p.proname
@@ -143,7 +149,7 @@ begin
       or exists(select 1 from aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) g where g.grantee=0 and g.privilege_type='EXECUTE')
     )
   ) then raise exception 'FAIL: scoped function security/grant/search_path contract changed'; end if;
-  raise notice 'PASS [EXECUTED]: live scope 25/25; SECURITY DEFINER 25; auth 25; anon/PUBLIC 0';
+  raise notice 'PASS [EXECUTED]: live scope 26/26; SECURITY DEFINER 26; auth 26; anon/PUBLIC 0';
 end$$;
 
 -- Only confirmed synthetic Auth roots require privileged setup.
@@ -291,7 +297,7 @@ declare
  coal_initial public.coal_purchase_detail; coal_direct public.coal_purchase_detail; coal_selective public.coal_purchase_detail;
  fuel_initial public.vehicle_fuel_detail; fuel_direct public.vehicle_fuel_detail; fuel_batch public.vehicle_fuel_detail;
  maintenance_initial public.vehicle_maintenance_detail; maintenance_batch public.vehicle_maintenance_detail;
- payment public.expense_payments%rowtype; vw_payment_id uuid;
+ payment public.expense_payments%rowtype; vw_payment_id uuid; credit_started_at timestamptz;
 begin
  select * into saved from public.save_production_entry(a,'12d11000-0000-4000-8000-000000000001',pg_temp.fixture_id('prod_save_a'),'2026-09-29',1000);
  if saved.quantity<>1000 then raise exception 'FAIL: PR10 positive effect';end if;
@@ -314,6 +320,22 @@ begin
  if r.workers_calculated<>1 or not exists(select 1 from public.transport_weekly_earnings where factory_id=a and transport_worker_id=pg_temp.fixture_id('transport_a') and total_amount=700) then raise exception 'FAIL: TR1 positive effect';end if;
  select * into r from public.create_transport_worker_withdrawal(a,pg_temp.fixture_id('transport_a'),'2026-09-28',100);
  if r.withdrawal_amount<>100 or r.available_balance<>600 then raise exception 'FAIL: TR3 positive effect';end if;
+ -- TR6 uses the real authenticated writer after the existing withdrawal control.
+ credit_started_at:=clock_timestamp();
+ select * into r from public.create_transport_wage_credit(a,'12d50000-0000-4000-8000-000000000040',pg_temp.fixture_id('transport_a'),'2026-09-21',12.34,'  Isolation wage credit  ');
+ if r.credit_id is distinct from '12d50000-0000-4000-8000-000000000040'::uuid
+   or r.factory_id is distinct from a or r.transport_worker_id is distinct from pg_temp.fixture_id('transport_a')
+   or r.original_work_date is distinct from date '2026-09-21' or r.amount is distinct from 12.34::numeric
+   or r.reason is distinct from 'Isolation wage credit' or r.actor_id is distinct from auth.uid()
+   or r.was_replayed is distinct from false
+   or r.posting_date is distinct from (r.created_at at time zone 'Asia/Kolkata')::date
+   or r.created_at < credit_started_at or r.created_at > clock_timestamp()
+   or not exists(select 1 from public.transport_wage_credits c where c.id=r.credit_id
+     and c.factory_id=a and c.transport_worker_id=r.transport_worker_id
+     and c.amount=r.amount and c.actor_id=r.actor_id and c.reason=r.reason
+     and c.original_work_date=r.original_work_date and c.posting_date=r.posting_date and c.created_at=r.created_at) then
+   raise exception 'FAIL: TR6 stored authoritative credit/actor/posting-date positive control';
+ end if;
 
  select * into r from public.record_vehicle_wage_payment(a,pg_temp.fixture_id('vehicle_a'),'2026-09-20',100,'Verifier vehicle payment');
  vw_payment_id:=r.payment_id;
@@ -356,7 +378,7 @@ begin
  select * into payment from public.create_vehicle_maintenance_batch_payment(a,pg_temp.fixture_id('garage_a'),'2026-09-30','2026-09-30','2026-09-30',10,'cash','Maintenance batch');
  if payment.amount<>10 or (select sum(allocated_amount) from public.expense_payment_allocations where payment_id=payment.id)<>10 then raise exception 'FAIL: PE13 positive effect';end if;
  insert into pg_temp.atlas_12b2b_ids values('maintenance_a',maintenance_batch.id);
- raise notice 'PASS [EXECUTED]: all 25 Factory A positive controls produced authoritative financial effects';
+ raise notice 'PASS [EXECUTED]: all 26 Factory A positive controls produced authoritative financial effects';
 end$$;
 reset role;select set_config('request.jwt.claim.sub','',true);
 
@@ -383,6 +405,7 @@ begin
 end$$;
 reset role;select set_config('request.jwt.claim.sub','',true);
 -- Direct Factory B attacks. MU1/MU2/MU4/MU5 ran at their valid accounting phases above.
+select pg_temp.expect_rejection('TR6 Factory B credit',format('select * from public.create_transport_wage_credit(%L::uuid,%L::uuid,%L::uuid,date %L,12.34,%L)',pg_temp.fixture_id('factory_b'),'12d50000-0000-4000-8000-000000000041',pg_temp.fixture_id('transport_b'),'2026-09-21','Forbidden credit'),'42501','^You do not have access to this factory\.$');
 do $$
 declare b uuid:=pg_temp.fixture_id('factory_b');
 begin
@@ -445,6 +468,8 @@ begin
 end$$;
 
 -- Reverse combinations: Factory B plus valid Factory A children still fail at membership.
+select pg_temp.expect_rejection('TR6 Factory A plus foreign worker',format('select * from public.create_transport_wage_credit(%L::uuid,%L::uuid,%L::uuid,date %L,12.34,%L)',pg_temp.fixture_id('factory_a'),'12d50000-0000-4000-8000-000000000042',pg_temp.fixture_id('transport_b'),'2026-09-21','Foreign worker credit'),'42501','^Transport worker does not belong to this factory\.$');
+select pg_temp.expect_rejection('TR6 Factory B plus own worker',format('select * from public.create_transport_wage_credit(%L::uuid,%L::uuid,%L::uuid,date %L,12.34,%L)',pg_temp.fixture_id('factory_b'),'12d50000-0000-4000-8000-000000000043',pg_temp.fixture_id('transport_a'),'2026-09-21','Reverse credit'),'42501','^You do not have access to this factory\.$');
 select pg_temp.expect_rejection('reverse Production B factory plus A labourer',format('select * from public.create_labourer_withdrawal(%L::uuid,%L::uuid,date %L,10)',pg_temp.fixture_id('factory_b'),pg_temp.fixture_id('prod4_a'),'2026-09-18'),'42501','You do not have access to this factory\.');
 select pg_temp.expect_rejection('reverse Soil B factory plus A worker',format('select * from public.create_soil_payment(%L::uuid,%L::uuid,date %L,10)',pg_temp.fixture_id('factory_b'),pg_temp.fixture_id('soil_a'),'2026-09-20'),'42501','You do not have access to this factory\.');
 select pg_temp.expect_rejection('reverse Vehicle B factory plus A payment',format('select * from public.reverse_vehicle_wage_payment(%L::uuid,%L::uuid,date %L,%L)',pg_temp.fixture_id('factory_b'),pg_temp.fixture_id('vehicle_payment_a'),'2026-09-21','Reverse'),'42501','You do not have access to this factory\.');
@@ -457,6 +482,8 @@ select * from public.calculate_transport_weekly_wages(pg_temp.fixture_id('factor
 select public.create_expense_payment(pg_temp.fixture_id('factory_a'),'2026-09-30',1,'cash','Inactive same call',jsonb_build_array(jsonb_build_object('expense_record_id',pg_temp.fixture_id('expense_inactive_a'),'amount',1)));
 reset role;select set_config('request.jwt.claim.sub','',true);
 update public.factory_users set is_active=false where user_id=pg_temp.fixture_id('user_a') and factory_id=pg_temp.fixture_id('factory_a');
+-- Even a previously valid replay must fail before disclosure once membership is inactive.
+select pg_temp.expect_rejection('TR6 inactive credit replay',format('select * from public.create_transport_wage_credit(%L::uuid,%L::uuid,%L::uuid,date %L,12.34,%L)',pg_temp.fixture_id('factory_a'),'12d50000-0000-4000-8000-000000000040',pg_temp.fixture_id('transport_a'),'2026-09-21','Isolation wage credit'),'42501','^You do not have access to this factory\.$');
 select pg_temp.expect_rejection('inactive workforce payment',format('select * from public.record_staff_payment(%L::uuid,%L::uuid,date %L,1,%L)',pg_temp.fixture_id('factory_a'),pg_temp.fixture_id('staff_a'),'2026-09-20','Inactive same call'),'42501','You do not have access to this factory\.');
 select pg_temp.expect_rejection('inactive wage calculation',format('select * from public.calculate_transport_weekly_wages(%L::uuid,date %L)',pg_temp.fixture_id('factory_a'),'2026-09-21'),'42501','You do not have access to this factory\.');
 select pg_temp.expect_rejection('inactive expense payment',format('select public.create_expense_payment(%L::uuid,date %L,1,%L,%L,%L::jsonb)',pg_temp.fixture_id('factory_a'),'2026-09-30','cash','Inactive same call',jsonb_build_array(jsonb_build_object('expense_record_id',pg_temp.fixture_id('expense_inactive_a'),'amount',1))::text),'42501','You do not have access to this factory\.');
@@ -465,24 +492,75 @@ reset role;select set_config('request.jwt.claim.sub','',true);
 rollback;
 
 -- Persistent rollback proof, including auth.users.
+-- E7A: validate the preserved baseline before any cleanup comparison.
+do $baseline_guard$
+begin
+  if pg_catalog.to_regclass('pg_temp.atlas_12b2b_persistent_counts') is null then
+    raise exception 'FAIL: preserved cleanup baseline is missing';
+  end if;
+  if exists (select 1 from pg_temp.atlas_12b2b_persistent_counts
+    where schema_name is null or table_name is null or row_count is null or row_hash is null) then
+    raise exception 'FAIL: cleanup baseline has NULL identity, count or fingerprint';
+  end if;
+  if exists (select 1 from pg_temp.atlas_12b2b_persistent_counts
+    group by schema_name,table_name having count(*) > 1) then
+    raise exception 'FAIL: cleanup baseline has duplicate identities';
+  end if;
+  if (select count(*) from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+    where ns.nspname = 'public' and c.relkind in ('r','p')) <> 64 then
+    raise exception 'FAIL: cleanup catalog must contain exactly 64 public tables';
+  end if;
+  if (select count(*) from pg_temp.atlas_12b2b_persistent_counts) <> 65
+    or (select count(distinct table_name) from pg_temp.atlas_12b2b_persistent_counts
+      where schema_name = 'public') <> 64
+    or (select count(*) from pg_temp.atlas_12b2b_persistent_counts
+      where schema_name = 'auth' and table_name = 'users') <> 1 then
+    raise exception 'FAIL: cleanup baseline requires 64 public identities plus one auth.users identity';
+  end if;
+  if exists (
+    with expected as (
+      select ns.nspname::text as schema_name,c.relname::text as table_name
+      from pg_catalog.pg_class c
+      join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+      where ns.nspname = 'public' and c.relkind in ('r','p')
+      union all select 'auth','users'
+    ), actual as (
+      select schema_name as schema_name,table_name as table_name
+      from pg_temp.atlas_12b2b_persistent_counts
+    )
+    (select * from expected except select * from actual)
+    union all
+    (select * from actual except select * from expected)
+  ) then
+    raise exception 'FAIL: cleanup baseline identities differ from the catalog plus auth.users';
+  end if;
+end;
+$baseline_guard$;
+
 do $$
-declare target record;ending bigint;mismatches text[]:=array[]::text[];
+declare target record;ending bigint;ending_hash text;mismatches text[]:=array[]::text[];
 begin
  for target in select * from atlas_12b2b_persistent_counts order by schema_name,table_name loop
-  execute format('select count(*) from %I.%I',target.schema_name,target.table_name) into ending;
-  if ending<>target.row_count then mismatches:=array_append(mismatches,format('%s.%s before=%s after=%s',target.schema_name,target.table_name,target.row_count,ending));end if;
+  execute format('select count(*),md5(coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]'')::text) from %I.%I q',target.schema_name,target.table_name) into ending,ending_hash;
+  if ending<>target.row_count or ending_hash is distinct from target.row_hash then mismatches:=array_append(mismatches,format('%s.%s count/hash mismatch',target.schema_name,target.table_name));end if;
  end loop;
  if cardinality(mismatches)>0 then raise exception 'FAIL: rollback persistent mismatches %',mismatches;end if;
+ if exists(select 1 from public.transport_wage_credits where id in (
+   '12d50000-0000-4000-8000-000000000040','12d50000-0000-4000-8000-000000000041',
+   '12d50000-0000-4000-8000-000000000042','12d50000-0000-4000-8000-000000000043')) then
+   raise exception 'FAIL: synthetic wage credit residue after outer ROLLBACK';
+ end if;
  raise notice 'PASS [ROLLBACK]: all % persistent table/auth counts restored',(select count(*) from atlas_12b2b_persistent_counts);
 end$$;
 
 select
- 25 as scoped_live_rpcs,
- 25 as security_definer_rpcs,
- 25 as authenticated_execute,
+ 26 as scoped_live_rpcs,
+ 26 as security_definer_rpcs,
+ 26 as authenticated_execute,
  0 as anon_execute,
  0 as public_execute,
- 25 as executed_and_passed,
+ 26 as executed_and_passed,
  0 as not_proven,
  0 as not_exercised,
  0 as failed,
@@ -490,10 +568,11 @@ select
  0 as authenticated_direct_write_fixture_rows,
  2 as trigger_generated_fixture_rows,
  105 as privileged_setup_fixture_rows,
- 25 as direct_factory_b_attacks,
- 26 as mixed_tenant_attacks,
- 4 as reverse_combination_attacks,
- 3 as inactive_membership_checks,
+ 26 as direct_factory_b_attacks,
+ 27 as mixed_tenant_attacks,
+ 5 as reverse_combination_attacks,
+ 4 as inactive_membership_checks,
+ 27 as rpc_coverage_before,53 as rpc_coverage_after,123 as rpc_inventory,
  (select count(*) from atlas_12b2b_persistent_counts) as persistent_count_pairs,
  0 as persistent_count_mismatches,
  'PARTIAL'::text as financial_rpc_isolation_coverage,

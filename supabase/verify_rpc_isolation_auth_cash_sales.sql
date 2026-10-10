@@ -52,6 +52,7 @@ create temporary table atlas_12b2a_persistent_counts (
   schema_name text not null,
   table_name text not null,
   row_count bigint not null,
+  row_hash text not null,
   primary key (schema_name, table_name)
 ) on commit preserve rows;
 
@@ -59,6 +60,7 @@ do $$
 declare
   target record;
   persistent_count bigint;
+  persistent_hash text;
 begin
   if (select count(*) from atlas_12b2a_rpc_manifest) <> 27 then
     raise exception 'FAIL: expected 27 scoped RPC signatures in manifest';
@@ -79,16 +81,16 @@ begin
     order by 1, 2
   loop
     execute pg_catalog.format(
-      'select count(*) from %I.%I', target.schema_name, target.table_name
-    ) into persistent_count;
+      'select count(*),md5(coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]'')::text) from %I.%I q', target.schema_name, target.table_name
+    ) into persistent_count,persistent_hash;
     insert into atlas_12b2a_persistent_counts values (
-      target.schema_name, target.table_name, persistent_count
+      target.schema_name, target.table_name, persistent_count,persistent_hash
     );
   end loop;
 
-  if (select count(*) from atlas_12b2a_persistent_counts where schema_name = 'public') <> 63
-    or (select count(*) from atlas_12b2a_persistent_counts) <> 64 then
-    raise exception 'FAIL: expected 63 public table counts plus auth.users';
+  if (select count(*) from atlas_12b2a_persistent_counts where schema_name = 'public') <> 64
+    or (select count(*) from atlas_12b2a_persistent_counts) <> 65 then
+    raise exception 'FAIL: expected 64 public table counts plus auth.users';
   end if;
 end;
 $$;
@@ -1113,17 +1115,64 @@ rollback;
 
 -- Compare every public table plus auth.users after rollback. Any mismatch exits
 -- non-zero, so setup/runtime failures are never converted to PASS.
+-- E7A: validate the preserved baseline before any cleanup comparison.
+do $baseline_guard$
+begin
+  if pg_catalog.to_regclass('pg_temp.atlas_12b2a_persistent_counts') is null then
+    raise exception 'FAIL: preserved cleanup baseline is missing';
+  end if;
+  if exists (select 1 from pg_temp.atlas_12b2a_persistent_counts
+    where schema_name is null or table_name is null or row_count is null or row_hash is null) then
+    raise exception 'FAIL: cleanup baseline has NULL identity, count or fingerprint';
+  end if;
+  if exists (select 1 from pg_temp.atlas_12b2a_persistent_counts
+    group by schema_name,table_name having count(*) > 1) then
+    raise exception 'FAIL: cleanup baseline has duplicate identities';
+  end if;
+  if (select count(*) from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+    where ns.nspname = 'public' and c.relkind in ('r','p')) <> 64 then
+    raise exception 'FAIL: cleanup catalog must contain exactly 64 public tables';
+  end if;
+  if (select count(*) from pg_temp.atlas_12b2a_persistent_counts) <> 65
+    or (select count(distinct table_name) from pg_temp.atlas_12b2a_persistent_counts
+      where schema_name = 'public') <> 64
+    or (select count(*) from pg_temp.atlas_12b2a_persistent_counts
+      where schema_name = 'auth' and table_name = 'users') <> 1 then
+    raise exception 'FAIL: cleanup baseline requires 64 public identities plus one auth.users identity';
+  end if;
+  if exists (
+    with expected as (
+      select ns.nspname::text as schema_name,c.relname::text as table_name
+      from pg_catalog.pg_class c
+      join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+      where ns.nspname = 'public' and c.relkind in ('r','p')
+      union all select 'auth','users'
+    ), actual as (
+      select schema_name as schema_name,table_name as table_name
+      from pg_temp.atlas_12b2a_persistent_counts
+    )
+    (select * from expected except select * from actual)
+    union all
+    (select * from actual except select * from expected)
+  ) then
+    raise exception 'FAIL: cleanup baseline identities differ from the catalog plus auth.users';
+  end if;
+end;
+$baseline_guard$;
+
 do $$
 declare
   target record;
   ending_count bigint;
+  ending_hash text;
   mismatches text[] := array[]::text[];
 begin
   for target in select * from atlas_12b2a_persistent_counts order by schema_name, table_name loop
     execute pg_catalog.format(
-      'select count(*) from %I.%I', target.schema_name, target.table_name
-    ) into ending_count;
-    if ending_count <> target.row_count then
+      'select count(*),md5(coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]'')::text) from %I.%I q', target.schema_name, target.table_name
+    ) into ending_count,ending_hash;
+    if ending_count <> target.row_count or ending_hash is distinct from target.row_hash then
       mismatches := array_append(
         mismatches,
         pg_catalog.format('%s.%s before=%s after=%s',
@@ -1139,6 +1188,7 @@ $$;
 
 select
   27 as scoped_live_rpcs,
+  0 as rpc_coverage_before,27 as rpc_coverage_after,123 as rpc_inventory,
   27 as security_definer_rpcs,
   0 as invoker_rpcs,
   5 as read_rpcs,
@@ -1159,7 +1209,7 @@ select
   0 as authenticated_direct_write_fixture_rows,
   2 as trigger_generated_fixture_rows,
   2 as privileged_setup_fixture_rows,
-  64 as persistent_count_pairs_compared,
+  65 as persistent_count_pairs_compared,
   0 as persistent_count_mismatches;
 
 drop table atlas_12b2a_persistent_counts;

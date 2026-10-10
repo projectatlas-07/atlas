@@ -4,7 +4,7 @@
 -- No settings changes, existing-row cleanup, or persistent verifier helpers.
 -- Pre-migration snapshots were read from Test Atlas Clean before migration 73.
 create temporary table atlas_12c2_counts (
-  schema_name text, table_name text, row_count bigint,
+  schema_name text, table_name text, row_count bigint, row_hash text not null,
   primary key (schema_name, table_name)
 ) on commit preserve rows;
 create temporary table atlas_12c2_rpc_manifest (
@@ -46,6 +46,7 @@ insert into atlas_12c2_rpc_manifest values
   ('create_staff_worker_with_reference_salary', 'p_factory_id uuid, p_name text, p_staff_category_id uuid, p_reference_salary numeric'),
   ('create_supplier', 'p_factory_id uuid, p_name text, p_address text, p_mobile text'),
   ('create_transport_crew_wage_rate', 'p_factory_id uuid, p_transport_crew_id uuid, p_effective_from date, p_rate_per_paya numeric'),
+  ('create_transport_wage_credit', 'p_factory_id uuid, p_credit_id uuid, p_transport_worker_id uuid, p_original_work_date date, p_amount numeric, p_reason text'),
   ('create_transport_worker_withdrawal', 'p_factory_id uuid, p_transport_worker_id uuid, p_withdrawal_date date, p_amount numeric'),
   ('create_vehicle_fuel', 'p_factory_id uuid, p_fuel_date date, p_fuel_time time without time zone, p_vehicle_id uuid, p_pump_id uuid, p_fuel_type text, p_litres numeric, p_rate_per_litre numeric, p_fuel_amount numeric, p_initial_paid_amount numeric, p_initial_payment_mode text'),
   ('create_vehicle_fuel_batch_payment', 'p_factory_id uuid, p_pump_id uuid, p_from_date date, p_to_date date, p_payment_date date, p_amount numeric, p_payment_mode text, p_note text'),
@@ -146,15 +147,15 @@ begin
     raise exception 'FAIL: verifier creator must be postgres';
   end if;
   if (select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
-      where n.nspname='public' and c.relkind in ('r','p')) <> 63
+      where n.nspname='public' and c.relkind in ('r','p')) <> 64
     or exists (select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
       where n.nspname='public' and c.relkind in ('r','p') and not c.relrowsecurity) then
-    raise exception 'FAIL: original 63/63 public tables must retain RLS';
+    raise exception 'FAIL: reviewed 64/64 public tables must retain RLS';
   end if;
-  if (select count(*) from pg_policies where schemaname='public') <> 86
+  if (select count(*) from pg_policies where schemaname='public') <> 87
     or (select md5(coalesce(jsonb_agg(to_jsonb(x) order by x.tablename,x.policyname),'[]')::text)
-        from pg_policies x where schemaname='public') <> '53da03e82690f886888bfb6fac4608f6' then
-    raise exception 'FAIL: original 86 policies must be exactly unchanged';
+        from pg_policies x where schemaname='public') <> '14896d5e31fb71f2516ff071500d6b65' then
+    raise exception 'FAIL: reviewed 87 policies must match exactly';
   end if;
   if exists (
     select 1 from pg_default_acl d join pg_namespace n on n.oid=d.defaclnamespace
@@ -168,10 +169,10 @@ begin
   if (SELECT md5(coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.owner,x.schema,x.type,x.grantee,x.privilege),'[]')::text) hash FROM (SELECT pg_get_userbyid(d.defaclrole) owner,coalesce(n.nspname,'GLOBAL') schema,d.defaclobjtype type,coalesce(r.rolname,'PUBLIC') grantee,a.privilege_type privilege,a.is_grantable grantable FROM pg_default_acl d LEFT JOIN pg_namespace n ON n.oid=d.defaclnamespace CROSS JOIN LATERAL aclexplode(d.defaclacl) a LEFT JOIN pg_roles r ON r.oid=a.grantee WHERE NOT(d.defaclrole='postgres'::regrole AND n.nspname='public' AND d.defaclobjtype IN ('r','S','f') AND a.grantee IN ('anon'::regrole,'authenticated'::regrole))) x) <> '85815d76c23b5f0f8eddab323397d5d8' then
     raise exception 'FAIL: defaults fingerprint differs outside approved ACL changes';
   end if;
-  if (SELECT md5(coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.name,x.grantee,x.privilege),'[]')::text) hash FROM (SELECT c.relname name,pg_get_userbyid(c.relowner) owner,coalesce(r.rolname,'PUBLIC') grantee,a.privilege_type privilege,a.is_grantable grantable FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a LEFT JOIN pg_roles r ON r.oid=a.grantee WHERE n.nspname='public' AND c.relkind IN ('r','p') AND NOT(c.relname IN ('factory_users','labourers','production_entries') AND a.grantee='anon'::regrole)) x) <> 'ad960794a5da338b38958f2f46729e30' then
+  if (SELECT md5(coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.name,x.grantee,x.privilege),'[]')::text) hash FROM (SELECT c.relname name,pg_get_userbyid(c.relowner) owner,coalesce(r.rolname,'PUBLIC') grantee,a.privilege_type privilege,a.is_grantable grantable FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a LEFT JOIN pg_roles r ON r.oid=a.grantee WHERE n.nspname='public' AND c.relkind IN ('r','p') AND NOT(c.relname IN ('factory_users','labourers','production_entries') AND a.grantee='anon'::regrole)) x) <> 'bbc4a2fcb2adb9375387b6af8913b40b' then
     raise exception 'FAIL: tables fingerprint differs outside approved ACL changes';
   end if;
-  if (SELECT md5(coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.name,x.args,x.grantee,x.privilege),'[]')::text) hash FROM (SELECT p.proname name,pg_get_function_identity_arguments(p.oid) args,coalesce(r.rolname,'PUBLIC') grantee,a.privilege_type privilege,a.is_grantable grantable FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace CROSS JOIN LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a LEFT JOIN pg_roles r ON r.oid=a.grantee WHERE n.nspname='public' AND NOT(p.proname IN ('audit_mud_accounting_state_transition','initialize_mud_accounting_state','prevent_staff_payment_mutation','prevent_staff_worker_reassignment','protect_mud_accounting_state_transition','reject_mud_settlement_mutation','reject_production_settlement_mutation','set_updated_at') AND p.pronargs=0 AND a.grantee IN (0,'anon'::regrole::oid))) x) <> 'e9bb91d9035965019fdb708e94b0ee0e' then
+  if (SELECT md5(coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.name,x.args,x.grantee,x.privilege),'[]')::text) hash FROM (SELECT p.proname name,pg_get_function_identity_arguments(p.oid) args,coalesce(r.rolname,'PUBLIC') grantee,a.privilege_type privilege,a.is_grantable grantable FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace CROSS JOIN LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a LEFT JOIN pg_roles r ON r.oid=a.grantee WHERE n.nspname='public' AND NOT(p.proname IN ('audit_mud_accounting_state_transition','initialize_mud_accounting_state','prevent_staff_payment_mutation','prevent_staff_worker_reassignment','protect_mud_accounting_state_transition','reject_mud_settlement_mutation','reject_production_settlement_mutation','set_updated_at') AND p.pronargs=0 AND a.grantee IN (0,'anon'::regrole::oid))) x) <> 'e671fef3266580d354ef7025d4d40336' then
     raise exception 'FAIL: functions fingerprint differs outside approved ACL changes';
   end if;
   -- Original function-definition baseline was captured after migration 73.
@@ -180,13 +181,69 @@ begin
   -- calculate_transport_weekly_wages(uuid,date),
   -- save_transport_daily_entry(uuid,uuid,date,numeric,uuid[]),
   -- create_transport_crew_wage_rate(uuid,uuid,date,numeric).
+  -- Migration 76 adds create_transport_wage_credit(uuid,uuid,uuid,date,numeric,text),
+  -- get_transport_worker_earning_events(uuid,uuid), prevent_transport_wage_credit_mutation();
+  -- and replaces get_transport_worker_available_balance(uuid,uuid,date)
+  -- and create_transport_worker_withdrawal(uuid,uuid,date,numeric).
   -- This fingerprint incorporates those authorized definitions.
-  if (SELECT md5(coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.name,x.args),'[]')::text) hash FROM (SELECT p.proname name,pg_get_function_identity_arguments(p.oid) args,pg_get_userbyid(p.proowner) owner,p.prosecdef,p.proconfig,pg_get_functiondef(p.oid) definition FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.prokind IN ('f','p')) x) <> '64756e2508e31262f129014ce6103766' then
+  if (SELECT md5(coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.name,x.args),'[]')::text) hash FROM (SELECT p.proname name,pg_get_function_identity_arguments(p.oid) args,pg_get_userbyid(p.proowner) owner,p.prosecdef,p.proconfig,pg_get_functiondef(p.oid) definition FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.prokind IN ('f','p')) x) <> '65e05be07e09ef31557942509a227f44' then
     raise exception 'FAIL: definitions fingerprint differs outside approved ACL changes';
   end if;
-  if (SELECT md5(coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.table_name,x.name),'[]')::text) hash FROM (SELECT c.relname table_name,t.tgname name,t.tgenabled,pg_get_triggerdef(t.oid) definition FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND NOT t.tgisinternal) x) <> '20edd673f7590f3f64a2489df7a89d12' then
+  if (SELECT md5(coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.table_name,x.name),'[]')::text) hash FROM (SELECT c.relname table_name,t.tgname name,t.tgenabled,pg_get_triggerdef(t.oid) definition FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND NOT t.tgisinternal) x) <> 'bcf2bb23de95a916e36f61e19e0da3ad' then
     raise exception 'FAIL: triggers fingerprint differs outside approved ACL changes';
   end if;
+
+  -- Migration 76 ledger: SELECT only for active members; no direct financial writes.
+  if not has_table_privilege('authenticated','public.transport_wage_credits','SELECT')
+    or exists (select 1 from unnest(array['INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER','MAINTAIN']) v
+      where has_table_privilege('authenticated','public.transport_wage_credits',v))
+    or exists (select 1 from unnest(array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER','MAINTAIN']) v
+      where has_table_privilege('anon','public.transport_wage_credits',v))
+    or exists (select 1 from pg_class c cross join lateral aclexplode(c.relacl) a
+      where c.oid='public.transport_wage_credits'::regclass and a.grantee=0)
+    or exists (select 1 from pg_attribute a where a.attrelid='public.transport_wage_credits'::regclass
+      and a.attnum>0 and not a.attisdropped and a.attacl is not null) then
+    raise exception 'FAIL: wage credit ledger ACL must be authenticated SELECT only, anon/PUBLIC none';
+  end if;
+  if (select count(*) from pg_policies where schemaname='public' and tablename='transport_wage_credits')<>1
+    or not exists (select 1 from pg_policies where schemaname='public' and tablename='transport_wage_credits'
+      and policyname='Active members can read their factory Transport wage credits'
+      and cmd='SELECT' and roles=array['authenticated']::name[]
+      and qual like '%auth.uid()%'
+      and qual like '%m.factory_id = transport_wage_credits.factory_id%'
+      and qual like '%m.is_active = true%') then
+    raise exception 'FAIL: wage credit active-member same-factory SELECT policy';
+  end if;
+  if (select count(*) from pg_trigger t join pg_class c on c.oid=t.tgrelid
+      where c.relnamespace='public'::regnamespace and not t.tgisinternal)<>71
+    or not exists (select 1 from pg_trigger where tgrelid='public.transport_wage_credits'::regclass
+      and tgname='transport_wage_credits_prevent_mutation' and not tgisinternal
+      and tgenabled='O' and tgtype=58
+      and tgfoid='public.prevent_transport_wage_credit_mutation()'::regprocedure) then
+    raise exception 'FAIL: 71 public triggers and statement-level immutable wage credit trigger required';
+  end if;
+  for target in select p.* from pg_proc p where p.oid in (
+    'public.get_transport_worker_earning_events(uuid,uuid)'::regprocedure,
+    'public.prevent_transport_wage_credit_mutation()'::regprocedure) loop
+    if target.prosecdef or target.proowner<>'postgres'::regrole
+      or not coalesce(target.proconfig @> array['search_path=pg_catalog, public'],false)
+      or has_function_privilege('authenticated',target.oid,'EXECUTE')
+      or has_function_privilege('anon',target.oid,'EXECUTE')
+      or not has_function_privilege('service_role',target.oid,'EXECUTE')
+      or exists (select 1 from aclexplode(coalesce(target.proacl,acldefault('f',target.proowner))) a
+        where a.grantee=0 and a.privilege_type='EXECUTE') then
+      raise exception 'FAIL: private wage credit helper/trigger permissions %',target.proname;
+    end if;
+  end loop;
+  if not exists (select 1 from pg_proc p where p.oid=
+      'public.create_transport_wage_credit(uuid,uuid,uuid,date,numeric,text)'::regprocedure
+      and p.prosecdef and p.proowner='postgres'::regrole
+      and p.proconfig @> array['search_path=pg_catalog, public']
+      and has_function_privilege('authenticated',p.oid,'EXECUTE')
+      and has_function_privilege('service_role',p.oid,'EXECUTE')) then
+    raise exception 'FAIL: wage credit RPC ownership/definer/search_path/grants';
+  end if;
+  raise notice 'PASS [EXECUTED]: credit ledger RLS/SELECT-only ACL, private helpers, immutable trigger and 71-trigger inventory';
 
   for target in select unnest(array['factory_users','labourers','production_entries']) name loop
     if exists (
@@ -232,46 +289,46 @@ begin
     raise exception 'FAIL: expected all eight exact trigger signatures';
   end if;
 
-  if (select count(*) from atlas_12c2_rpc_manifest) <> 122
+  if (select count(*) from atlas_12c2_rpc_manifest) <> 123
     or (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
       join atlas_12c2_rpc_manifest m on m.name=p.proname and m.args=pg_get_function_identity_arguments(p.oid)
-      where n.nspname='public' and has_function_privilege('authenticated',p.oid,'EXECUTE')) <> 122
+      where n.nspname='public' and has_function_privilege('authenticated',p.oid,'EXECUTE')) <> 123
     or exists (select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
       join atlas_12c2_rpc_manifest m on m.name=p.proname and m.args=pg_get_function_identity_arguments(p.oid)
       where n.nspname='public' and (has_function_privilege('anon',p.oid,'EXECUTE')
         or exists(select 1 from aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a
           where a.grantee=0 and a.privilege_type='EXECUTE'))) then
-    raise exception 'FAIL: 122 exact authenticated RPC grants must remain secure';
+    raise exception 'FAIL: 123 exact authenticated RPC grants must remain secure';
   end if;
   if (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
       where n.nspname='public' and p.prorettype<>'trigger'::regtype
       and has_function_privilege('authenticated',p.oid,'EXECUTE')
       and not exists(select 1 from pg_depend d where d.classid='pg_proc'::regclass
-        and d.objid=p.oid and d.deptype='e')) <> 122 then
+        and d.objid=p.oid and d.deptype='e')) <> 123 then
     raise exception 'FAIL: authenticated Atlas RPC inventory drift';
   end if;
-  raise notice 'PASS [EXECUTED]: 63/63 RLS, 86 identical policies, 122/122 RPC grants, exact scope fingerprints';
+  raise notice 'PASS [EXECUTED]: 64/64 RLS, 87 identical policies, 123/123 RPC grants, exact scope fingerprints';
 end;
 $$;
 
 do $$
-declare r record; n bigint;
+declare r record; n bigint; h text;
 begin
   for r in select 'public'::text s,c.relname::text t from pg_class c
       join pg_namespace ns on ns.oid=c.relnamespace
       where ns.nspname='public' and c.relkind in ('r','p')
       union all select 'auth','users' loop
-    execute format('select count(*) from %I.%I',r.s,r.t) into n;
-    insert into atlas_12c2_counts values(r.s,r.t,n);
+    execute format('select count(*),md5(coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]'')::text) from %I.%I q',r.s,r.t) into n,h;
+    insert into atlas_12c2_counts values(r.s,r.t,n,h);
   end loop;
-  if (select count(*) from atlas_12c2_counts)<>64 then raise exception 'FAIL: baseline counts';end if;
+  if (select count(*) from atlas_12c2_counts)<>65 then raise exception 'FAIL: baseline counts';end if;
 end;
 $$;
 commit;
 begin;
 
 -- Reusable exposure guard: catalog extension dependencies, not object owners.
--- All 191 existing non-extension public functions trace to tracked Atlas migrations.
+-- All 194 existing non-extension public functions trace to tracked Atlas migrations.
 -- New/unclassified non-extension functions are included, not silently exempted.
 -- btree_gist members are excluded by pg_depend deptype=e. Allowlist is EMPTY:
 -- no existing Atlas function has a legitimate unauthenticated execution need.
@@ -418,6 +475,12 @@ values(pg_temp.fixture_id('user'),'authenticated','authenticated','atlas-12c2@ex
 set local role authenticated;
 select set_config('request.jwt.claim.sub',pg_temp.fixture_id('user')::text,true);
 select pg_temp.assert_user();
+select pg_temp.expect_error('private earning helper ACL',
+  $$select * from public.get_transport_worker_earning_events(null::uuid,null::uuid)$$,
+  '42501','permission denied for function get_transport_worker_earning_events');
+select pg_temp.expect_error('private immutable trigger ACL',
+  $$select public.prevent_transport_wage_credit_mutation()$$,
+  '42501','permission denied for function prevent_transport_wage_credit_mutation');
 do $$declare r record;
 begin
   select * into r from public.provision_first_factory('Atlas 12C2 Synthetic');
@@ -533,11 +596,57 @@ do $$begin
 end;$$;
 rollback;
 
-do $$declare r record;n bigint;
+-- E7A: validate the preserved baseline before any cleanup comparison.
+do $baseline_guard$
+begin
+  if pg_catalog.to_regclass('pg_temp.atlas_12c2_counts') is null then
+    raise exception 'FAIL: preserved cleanup baseline is missing';
+  end if;
+  if exists (select 1 from pg_temp.atlas_12c2_counts
+    where schema_name is null or table_name is null or row_count is null or row_hash is null) then
+    raise exception 'FAIL: cleanup baseline has NULL identity, count or fingerprint';
+  end if;
+  if exists (select 1 from pg_temp.atlas_12c2_counts
+    group by schema_name,table_name having count(*) > 1) then
+    raise exception 'FAIL: cleanup baseline has duplicate identities';
+  end if;
+  if (select count(*) from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+    where ns.nspname = 'public' and c.relkind in ('r','p')) <> 64 then
+    raise exception 'FAIL: cleanup catalog must contain exactly 64 public tables';
+  end if;
+  if (select count(*) from pg_temp.atlas_12c2_counts) <> 65
+    or (select count(distinct table_name) from pg_temp.atlas_12c2_counts
+      where schema_name = 'public') <> 64
+    or (select count(*) from pg_temp.atlas_12c2_counts
+      where schema_name = 'auth' and table_name = 'users') <> 1 then
+    raise exception 'FAIL: cleanup baseline requires 64 public identities plus one auth.users identity';
+  end if;
+  if exists (
+    with expected as (
+      select ns.nspname::text as schema_name,c.relname::text as table_name
+      from pg_catalog.pg_class c
+      join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+      where ns.nspname = 'public' and c.relkind in ('r','p')
+      union all select 'auth','users'
+    ), actual as (
+      select schema_name as schema_name,table_name as table_name
+      from pg_temp.atlas_12c2_counts
+    )
+    (select * from expected except select * from actual)
+    union all
+    (select * from actual except select * from expected)
+  ) then
+    raise exception 'FAIL: cleanup baseline identities differ from the catalog plus auth.users';
+  end if;
+end;
+$baseline_guard$;
+
+do $$declare r record;n bigint;h text;
 begin
   for r in select * from atlas_12c2_counts loop
-    execute format('select count(*) from %I.%I',r.schema_name,r.table_name) into n;
-    if n<>r.row_count then raise exception 'FAIL: post-ROLLBACK count mismatch %.%',r.schema_name,r.table_name;end if;
+    execute format('select count(*),md5(coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]'')::text) from %I.%I q',r.schema_name,r.table_name) into n,h;
+    if n<>r.row_count or h is distinct from r.row_hash then raise exception 'FAIL: post-ROLLBACK count/hash mismatch %.%',r.schema_name,r.table_name;end if;
   end loop;
   if to_regclass('public.atlas_12c2_probe_table') is not null
     or to_regclass('public.atlas_12c2_probe_sequence') is not null
@@ -545,10 +654,10 @@ begin
     or exists(select 1 from auth.users where id='12c20000-0000-4000-8000-000000000001') then
     raise exception 'FAIL: persistent verifier fixture remains';
   end if;
-  raise notice 'PASS [EXECUTED]: rollback removes probes/fixtures; 64 persistent table counts unchanged';
+  raise notice 'PASS [EXECUTED]: rollback removes probes/fixtures; 65 persistent table counts/full-row hashes unchanged';
 end;$$;
 select pg_temp.assert_hardening_catalog();
-select 63 as rls_tables,86 as unchanged_policies,122 as authenticated_rpc_grants,
+select 64 as rls_tables,87 as unchanged_policies,123 as authenticated_rpc_grants,
   8 as trigger_paths_exercised,0 as unexpected_function_exposures,
   '[]'::jsonb as explicit_function_exposure_allowlist,
   0 as persistent_count_mismatches,'PARTIAL; built-in PUBLIC EXECUTE remains' as future_function_defaults;

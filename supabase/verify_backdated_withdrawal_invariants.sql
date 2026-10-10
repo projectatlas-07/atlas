@@ -4,7 +4,25 @@
 -- Main promotion requires a separate READ-ONLY negative-account scan for M1/M2/T1.
 -- Run only against Test Atlas Clean via npx supabase db query --linked --file.
 -- No persistent helper, migration, real-user fixture, or committed test data.
--- All setup/execution occurs in this one transaction; final statement ROLLBACK.
+-- All financial setup/execution stays in one rollback transaction; a session-only
+-- baseline survives to verify persistent state after the outer ROLLBACK.
+-- Session-local baseline only is committed; every fixture stays in the original
+-- rollback transaction. Use one database session through the post-ROLLBACK proof.
+create temporary table atlas_e6_backdated_baseline(s text,t text,n bigint,h text,primary key(s,t)) on commit preserve rows;
+do $$declare r record; n bigint; h text;begin
+  for r in select 'public'::text s,c.relname::text t from pg_class c
+    where c.relnamespace='public'::regnamespace and c.relkind in ('r','p')
+    union all select 'auth','users' loop
+    execute format('select count(*),md5(coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]'')::text) from %I.%I q',r.s,r.t) into n,h;
+    insert into atlas_e6_backdated_baseline values(r.s,r.t,n,h);
+  end loop;
+  if (select count(*) from atlas_e6_backdated_baseline where s='public')<>64
+    or (select count(*) from atlas_e6_backdated_baseline)<>65 then
+    raise exception 'FAIL: expected 64 public tables plus auth.users';
+  end if;
+end$$;
+commit;
+
 begin isolation level repeatable read;
 
 -- Counts AND row fingerprints: only aggregates are reported, never real rows.
@@ -325,8 +343,8 @@ declare
   new_credit numeric; new_pool numeric; amount numeric; all_w numeric;
   event_balances jsonb; pool_ok boolean; dates_ok boolean; old_cutoff date;
 begin
-  perform pg_temp.require((select count(*) from pg_catalog.pg_tables where schemaname = 'public') = 63
-    and (select count(*) from jsonb_each(baseline)) = 64, '63 public tables plus auth.users');
+  perform pg_temp.require((select count(*) from pg_catalog.pg_tables where schemaname = 'public') = 64
+    and (select count(*) from jsonb_each(baseline)) = 65, '64 public tables plus auth.users');
   d1 := cutoff + 1; d2 := cutoff + 2;
   begin
     foreach module in array array['M1', 'M2', 'T1'] loop
@@ -547,7 +565,7 @@ begin
   end;
 
   after_rollback := pg_temp.persistent_snapshot('{}'::uuid[], '{}'::uuid[]);
-  perform pg_temp.require(after_rollback = baseline, 'all 63 public tables and auth.users unchanged');
+  perform pg_temp.require(after_rollback = baseline, 'all 64 public tables and auth.users unchanged');
   perform pg_temp.require(not exists(select 1 from auth.users where id = any(users))
     and not exists(select 1 from public.factories where id = any(factories)),
     'no synthetic fixtures survive fixture rollback');
@@ -555,7 +573,7 @@ begin
     'case_count', jsonb_array_length(reports), 'cases', reports,
     'synthetic_fixture_manifest', manifest, 'persistent_baseline', baseline,
     'persistent_after_fixture_rollback', after_rollback,
-    'all_63_public_tables_and_auth_users_unchanged', true,
+    'all_64_public_tables_and_auth_users_unchanged', true,
     'real_rows_unchanged_before_rollback', real_rows = baseline,
     'no_synthetic_fixtures_remain', true,
     'scope', 'sequential event-date invariants; NOT a concurrency or source/rate-race proof')::text, true);
@@ -564,3 +582,61 @@ $proof$;
 
 select current_setting('atlas12d13a.report')::jsonb as execution_report;
 rollback;
+
+-- Independent outer-ROLLBACK proof. Full-row hashes remain internal, not printed.
+-- E7A: validate the preserved baseline before any cleanup comparison.
+do $baseline_guard$
+begin
+  if pg_catalog.to_regclass('pg_temp.atlas_e6_backdated_baseline') is null then
+    raise exception 'FAIL: preserved cleanup baseline is missing';
+  end if;
+  if exists (select 1 from pg_temp.atlas_e6_backdated_baseline
+    where s is null or t is null or n is null or h is null) then
+    raise exception 'FAIL: cleanup baseline has NULL identity, count or fingerprint';
+  end if;
+  if exists (select 1 from pg_temp.atlas_e6_backdated_baseline
+    group by s,t having count(*) > 1) then
+    raise exception 'FAIL: cleanup baseline has duplicate identities';
+  end if;
+  if (select count(*) from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+    where ns.nspname = 'public' and c.relkind in ('r','p')) <> 64 then
+    raise exception 'FAIL: cleanup catalog must contain exactly 64 public tables';
+  end if;
+  if (select count(*) from pg_temp.atlas_e6_backdated_baseline) <> 65
+    or (select count(distinct t) from pg_temp.atlas_e6_backdated_baseline
+      where s = 'public') <> 64
+    or (select count(*) from pg_temp.atlas_e6_backdated_baseline
+      where s = 'auth' and t = 'users') <> 1 then
+    raise exception 'FAIL: cleanup baseline requires 64 public identities plus one auth.users identity';
+  end if;
+  if exists (
+    with expected as (
+      select ns.nspname::text as schema_name,c.relname::text as table_name
+      from pg_catalog.pg_class c
+      join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+      where ns.nspname = 'public' and c.relkind in ('r','p')
+      union all select 'auth','users'
+    ), actual as (
+      select s as schema_name,t as table_name
+      from pg_temp.atlas_e6_backdated_baseline
+    )
+    (select * from expected except select * from actual)
+    union all
+    (select * from actual except select * from expected)
+  ) then
+    raise exception 'FAIL: cleanup baseline identities differ from the catalog plus auth.users';
+  end if;
+end;
+$baseline_guard$;
+
+do $$declare r record; n bigint; h text;begin
+  for r in select * from atlas_e6_backdated_baseline order by s,t loop
+    execute format('select count(*),md5(coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]'')::text) from %I.%I q',r.s,r.t) into n,h;
+    if n<>r.n or h is distinct from r.h then
+      raise exception 'FAIL: post-ROLLBACK count/hash mismatch %.%',r.s,r.t;
+    end if;
+  end loop;
+  raise notice 'PASS [ROLLBACK]: 64 public tables plus auth.users restored in counts and full-row hashes';
+end$$;
+drop table atlas_e6_backdated_baseline;

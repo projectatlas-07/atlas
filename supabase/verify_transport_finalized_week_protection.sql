@@ -4,11 +4,28 @@
 -- Separate from the immutable PRE-POLICY verifier and read-only drift diagnostic.
 -- Synthetic fixtures only, one outer ROLLBACK, no disabled triggers/history deletes.
 -- A private fixture subtransaction is deliberately rolled back before asserting
--- all 63 public tables/auth.users counts AND fingerprints match the baseline.
+-- all 64 public tables/auth.users counts AND fingerprints match the baseline.
 -- Also compare independent read-only snapshots after the outer ROLLBACK when run.
 -- Sequential results do NOT prove simultaneous-session locking/deadlock freedom.
 -- 12D1.5D and correction credits in 12D1.5E are ONE RELEASE UNIT:
 -- never promote the freeze alone to Main. Main is not authorized here.
+-- Session-local baseline only is committed; every fixture stays in the original
+-- rollback transaction. Use one database session through the post-ROLLBACK proof.
+create temporary table atlas_e6_finalized_baseline(s text,t text,n bigint,h text,primary key(s,t)) on commit preserve rows;
+do $$declare r record; n bigint; h text;begin
+  for r in select 'public'::text s,c.relname::text t from pg_class c
+    where c.relnamespace='public'::regnamespace and c.relkind in ('r','p')
+    union all select 'auth','users' loop
+    execute format('select count(*),md5(coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]'')::text) from %I.%I q',r.s,r.t) into n,h;
+    insert into atlas_e6_finalized_baseline values(r.s,r.t,n,h);
+  end loop;
+  if (select count(*) from atlas_e6_finalized_baseline where s='public')<>64
+    or (select count(*) from atlas_e6_finalized_baseline)<>65 then
+    raise exception 'FAIL: expected 64 public tables plus auth.users';
+  end if;
+end$$;
+commit;
+
 begin;
 
 create function pg_temp.require(ok boolean, label text) returns void
@@ -35,7 +52,7 @@ create function pg_temp.persistent_snapshot(excluded_factory uuid default null,
 declare t record; n bigint; digest text; result jsonb := '{}';
 begin
   perform pg_temp.require((select count(*) from pg_catalog.pg_tables
-    where schemaname = 'public') = 63, 'exactly 63 public tables');
+    where schemaname = 'public') = 64, 'exactly 64 public tables');
   for t in select schemaname, tablename from pg_catalog.pg_tables
     where schemaname = 'public' or (schemaname = 'auth' and tablename = 'users')
     order by schemaname, tablename
@@ -494,7 +511,7 @@ begin
 
   perform pg_temp.require(current_user = caller and auth.uid() is null, 'fixture rollback restores original role/JWT');
   clean := pg_temp.persistent_snapshot();
-  perform pg_temp.require(clean = baseline, 'all 63 public tables/auth.users counts AND fingerprints unchanged');
+  perform pg_temp.require(clean = baseline, 'all 64 public tables/auth.users counts AND fingerprints unchanged');
   perform pg_temp.require(pg_temp.fixture_residue(ids) = '{}'::jsonb, 'no synthetic fixture identifiers remain');
   perform set_config('atlas12d15d2.report', jsonb_build_object(
     'result', 'PASS', 'cases_passed', 12, 'cases_failed', 0, 'cases', cases,
@@ -502,10 +519,68 @@ begin
     'persistent_before', baseline, 'persistent_after_fixture_rollback', clean,
     'non_synthetic_fingerprints_unchanged', true, 'synthetic_residue', pg_temp.fixture_residue(ids),
     'concurrent_sessions', 'NOT TESTED', 'deadlock_freedom', 'NOT PROVEN',
-    'cleanup', 'same-session fixture rollback checked; external post-outer-ROLLBACK comparison required'
+    'cleanup', 'same-session fixture rollback checked; independent post-outer-ROLLBACK comparison follows below'
   )::text, true);
 end;
 $proof$;
 
 select current_setting('atlas12d15d2.report')::jsonb as execution_report;
 rollback;
+
+-- Independent outer-ROLLBACK proof. Full-row hashes remain internal, not printed.
+-- E7A: validate the preserved baseline before any cleanup comparison.
+do $baseline_guard$
+begin
+  if pg_catalog.to_regclass('pg_temp.atlas_e6_finalized_baseline') is null then
+    raise exception 'FAIL: preserved cleanup baseline is missing';
+  end if;
+  if exists (select 1 from pg_temp.atlas_e6_finalized_baseline
+    where s is null or t is null or n is null or h is null) then
+    raise exception 'FAIL: cleanup baseline has NULL identity, count or fingerprint';
+  end if;
+  if exists (select 1 from pg_temp.atlas_e6_finalized_baseline
+    group by s,t having count(*) > 1) then
+    raise exception 'FAIL: cleanup baseline has duplicate identities';
+  end if;
+  if (select count(*) from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+    where ns.nspname = 'public' and c.relkind in ('r','p')) <> 64 then
+    raise exception 'FAIL: cleanup catalog must contain exactly 64 public tables';
+  end if;
+  if (select count(*) from pg_temp.atlas_e6_finalized_baseline) <> 65
+    or (select count(distinct t) from pg_temp.atlas_e6_finalized_baseline
+      where s = 'public') <> 64
+    or (select count(*) from pg_temp.atlas_e6_finalized_baseline
+      where s = 'auth' and t = 'users') <> 1 then
+    raise exception 'FAIL: cleanup baseline requires 64 public identities plus one auth.users identity';
+  end if;
+  if exists (
+    with expected as (
+      select ns.nspname::text as schema_name,c.relname::text as table_name
+      from pg_catalog.pg_class c
+      join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+      where ns.nspname = 'public' and c.relkind in ('r','p')
+      union all select 'auth','users'
+    ), actual as (
+      select s as schema_name,t as table_name
+      from pg_temp.atlas_e6_finalized_baseline
+    )
+    (select * from expected except select * from actual)
+    union all
+    (select * from actual except select * from expected)
+  ) then
+    raise exception 'FAIL: cleanup baseline identities differ from the catalog plus auth.users';
+  end if;
+end;
+$baseline_guard$;
+
+do $$declare r record; n bigint; h text;begin
+  for r in select * from atlas_e6_finalized_baseline order by s,t loop
+    execute format('select count(*),md5(coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]'')::text) from %I.%I q',r.s,r.t) into n,h;
+    if n<>r.n or h is distinct from r.h then
+      raise exception 'FAIL: post-ROLLBACK count/hash mismatch %.%',r.s,r.t;
+    end if;
+  end loop;
+  raise notice 'PASS [ROLLBACK]: 64 public tables plus auth.users restored in counts and full-row hashes';
+end$$;
+drop table atlas_e6_finalized_baseline;

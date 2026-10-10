@@ -31,6 +31,9 @@ insert into atlas_12b2e_manifest values
 ('PE28','list_vehicle_maintenance_records','p_factory_id uuid, p_vehicle_id uuid, p_garage_id uuid','Purchases & Expenses','active membership; optional vehicle and garage IDs AND factory; details delegate factory-scoped');
 create temporary table atlas_12b2e_proven(fn text,args text,module text,primary key(fn,args)) on commit preserve rows;
 insert into atlas_12b2e_proven values
+-- Requires executable TR6 coverage in verify_rpc_isolation_financial_writes.sql.
+-- Manifest inclusion alone is not runtime isolation proof; run that verifier first.
+('create_transport_wage_credit','p_factory_id uuid, p_credit_id uuid, p_transport_worker_id uuid, p_original_work_date date, p_amount numeric, p_reason text','Transport'),
 ('provision_first_factory','p_factory_name text','Auth/Factory'),
 ('resolve_factory_access','','Auth/Factory'),
 ('update_factory_printable_profile','p_factory_id uuid, p_name text, p_business_description text, p_address text, p_mobile text','Auth/Factory'),
@@ -153,8 +156,8 @@ begin
   and not exists(select 1 from pg_depend d where d.classid='pg_proc'::regclass and d.objid=p.oid and d.deptype='e');
  select count(*) into n from atlas_12b2e_inventory i where not exists(
   select 1 from atlas_12b2e_proven p where p.fn=i.fn and p.args=i.args);
- if n<>23 or (select count(*) from atlas_12b2e_inventory)<>122
- or (select count(*) from atlas_12b2e_proven)<>99
+ if n<>23 or (select count(*) from atlas_12b2e_inventory)<>123
+ or (select count(*) from atlas_12b2e_proven)<>100
  or exists(select 1 from atlas_12b2e_proven p where not exists(select 1 from atlas_12b2e_inventory i where i.fn=p.fn and i.args=p.args))
  or exists(select 1 from atlas_12b2e_inventory where module is null)
  or (select count(*) from atlas_12b2e_manifest)<>23 then
@@ -169,7 +172,7 @@ begin
  )) then raise exception 'FAIL grants/security-definer/search_path';end if;
  if exists(
   select * from (values('Auth/Factory',4),('Cash Book',5),('Sales',18),('Production',12),
-  ('Mud',18),('Soil',11),('Staff',9),('Transport',5),('Vehicle Delivery Wages',3),('Purchases & Expenses',37)) e(module,n)
+  ('Mud',18),('Soil',11),('Staff',9),('Transport',6),('Vehicle Delivery Wages',3),('Purchases & Expenses',37)) e(module,n)
   full join (select module,count(*) n from atlas_12b2e_inventory group by module) a using(module)
   where a.n is distinct from e.n
  ) then raise exception 'FAIL module coverage totals';end if;
@@ -178,7 +181,8 @@ begin
   execute format('select count(*),md5(coalesce(jsonb_agg(to_jsonb(q) order by to_jsonb(q)::text),''[]'')::text) from %I.%I q',r.s,r.t) into c,h;
   insert into atlas_12b2e_baseline values(r.s,r.t,c,h);
  end loop;
- if (select count(*) from atlas_12b2e_baseline where s='public')<>63 then raise exception 'FAIL public table count';end if;
+ if (select count(*) from atlas_12b2e_baseline where s='public')<>64
+ or (select count(*) from atlas_12b2e_baseline)<>65 then raise exception 'FAIL 64 public tables plus auth.users';end if;
  if exists(select 1 from auth.users where id in('12a50000-0000-4000-8000-000000000001','12a50000-0000-4000-8000-000000000002'))
  or exists(select 1 from public.factories where name in('Atlas 12B2E A','Atlas 12B2E B')) then raise exception 'FAIL synthetic fixture collision';end if;
 end$$;
@@ -1372,6 +1376,52 @@ rollback;
 
 -- Real post-rollback check of all persistent counts AND full-row hashes.
 -- Hashes stay internal: no user data/credentials are printed.
+-- E7A: validate the preserved baseline before any cleanup comparison.
+do $baseline_guard$
+begin
+  if pg_catalog.to_regclass('pg_temp.atlas_12b2e_baseline') is null then
+    raise exception 'FAIL: preserved cleanup baseline is missing';
+  end if;
+  if exists (select 1 from pg_temp.atlas_12b2e_baseline
+    where s is null or t is null or c is null or h is null) then
+    raise exception 'FAIL: cleanup baseline has NULL identity, count or fingerprint';
+  end if;
+  if exists (select 1 from pg_temp.atlas_12b2e_baseline
+    group by s,t having count(*) > 1) then
+    raise exception 'FAIL: cleanup baseline has duplicate identities';
+  end if;
+  if (select count(*) from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+    where ns.nspname = 'public' and c.relkind in ('r','p')) <> 64 then
+    raise exception 'FAIL: cleanup catalog must contain exactly 64 public tables';
+  end if;
+  if (select count(*) from pg_temp.atlas_12b2e_baseline) <> 65
+    or (select count(distinct t) from pg_temp.atlas_12b2e_baseline
+      where s = 'public') <> 64
+    or (select count(*) from pg_temp.atlas_12b2e_baseline
+      where s = 'auth' and t = 'users') <> 1 then
+    raise exception 'FAIL: cleanup baseline requires 64 public identities plus one auth.users identity';
+  end if;
+  if exists (
+    with expected as (
+      select ns.nspname::text as schema_name,c.relname::text as table_name
+      from pg_catalog.pg_class c
+      join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+      where ns.nspname = 'public' and c.relkind in ('r','p')
+      union all select 'auth','users'
+    ), actual as (
+      select s as schema_name,t as table_name
+      from pg_temp.atlas_12b2e_baseline
+    )
+    (select * from expected except select * from actual)
+    union all
+    (select * from actual except select * from expected)
+  ) then
+    raise exception 'FAIL: cleanup baseline identities differ from the catalog plus auth.users';
+  end if;
+end;
+$baseline_guard$;
+
 do $$
 declare r record;n bigint;h text;
 begin
@@ -1399,8 +1449,8 @@ select
  (select case when is_called then last_value else 0 end from atlas_12b2e_safe_exclusions) as foreign_exclusion_own_result_safe,
  0 as foreign_empty_responses,23 as security_definer,23 as authenticated_execute,0 as anon_execute,0 as public_execute,
  'membership BEFORE controlled P2522 disabled condition; B access rejects 42501; zero mutation' as pr2_result,
- 63 as public_table_count_and_hash_pairs_restored,true as auth_users_restored,true as no_synthetic_fixtures_remain,
- 99 as coverage_before,122 as coverage_after,0 as remaining_authenticated_callable_rpcs,
+ 64 as public_table_count_and_hash_pairs_restored,true as auth_users_restored,true as no_synthetic_fixtures_remain,
+ 100 as coverage_before,123 as coverage_after,0 as remaining_authenticated_callable_rpcs,
  (select jsonb_object_agg(module,n) from (select module,count(*) n from atlas_12b2e_inventory group by module) x) as module_totals,
  (select jsonb_agg(jsonb_build_object('id',m.id,'signature',m.fn||'('||m.args||')',
    'status',case m.id when 'PR2' then 'EXECUTED + BY-DESIGN' else 'EXECUTED + PASSED' end,'barrier',m.barrier) order by m.id)

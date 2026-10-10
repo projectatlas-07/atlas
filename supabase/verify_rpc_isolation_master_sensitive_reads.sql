@@ -74,8 +74,9 @@ begin
       into n,h;
     insert into atlas_12b2d_baseline values(r.s,r.t,n,h);
   end loop;
-  if (select count(*) from atlas_12b2d_baseline where s='public')<>63 then
-    raise exception 'FAIL expected 63 public tables';
+  if (select count(*) from atlas_12b2d_baseline where s='public')<>64
+    or (select count(*) from atlas_12b2d_baseline)<>65 then
+    raise exception 'FAIL expected 64 public tables plus auth.users';
   end if;
   if exists(select 1 from auth.users where id in(
     '12f00000-0000-4000-8000-000000000001','12f00000-0000-4000-8000-000000000002')) then
@@ -142,7 +143,7 @@ insert into atlas_12b2d_plan values
 ('TR5','TR5 B caller A child','REVERSE','select * from public.save_transport_daily_entry(pg_temp.fid(''fb''),pg_temp.fid(''crew_b''),date ''2026-09-22'',4,array[pg_temp.fid(''tw_a'')])','42501','One or more transport workers do not belong to this factory.','ub'),
 ('SO5','SO5 inactive same call','INACTIVE','select * from public.create_soil_worker_with_initial_trolley_rate(pg_temp.fid(''fa''),''Inactive repeat Soil'',21,date ''2026-09-01'')','42501','You do not have access to this factory.','ua'),
 ('ST9','ST9 inactive same call','INACTIVE','select * from public.update_staff_reference_salary(pg_temp.fid(''fa''),pg_temp.fid(''staff_a''),1500)','42501','You do not have access to this factory.','ua'),
-('TR5','TR5 inactive same call','INACTIVE','select * from public.save_transport_daily_entry(pg_temp.fid(''fa''),pg_temp.fid(''crew_a''),date ''2026-09-21'',2,array[pg_temp.fid(''tw_a''),pg_temp.fid(''tw_a2'')])','42501','You do not have access to this factory.','ua'),
+('TR5','TR5 inactive same call','INACTIVE','select * from public.save_transport_daily_entry(pg_temp.fid(''fa''),pg_temp.fid(''crew_a''),date ''2026-09-28'',2,array[pg_temp.fid(''tw_a''),pg_temp.fid(''tw_a2'')])','42501','You do not have access to this factory.','ua'),
 ('PR9','PR9 inactive same call','INACTIVE','select * from public.get_production_labourer_account(pg_temp.fid(''fa''),pg_temp.fid(''prod_a''),date ''2026-09-29'')','42501','You do not have access to this factory.','ua');
 
 -- Only temporary metadata has been created at this point.
@@ -546,13 +547,25 @@ do $$
 declare r record;j jsonb;
 begin
  for r in select * from atlas_12b2d_plan where category='INACTIVE' order by label loop
+  if r.id='TR5' then
+   -- Keep finalized September 21 finances intact; compare authorization in the next writable week.
+   perform pg_temp.check_it(
+    not exists(select 1 from public.transport_weekly_earnings where factory_id=pg_temp.fid('fa') and week_start='2026-09-28')
+    and not exists(select 1 from public.transport_daily_entries where factory_id=pg_temp.fid('fa') and transport_crew_id=pg_temp.fid('crew_a') and work_date='2026-09-28'),
+    'active/inactive daily-entry comparison has an unfinalized, unused source date');
+  end if;
   j:=pg_temp.run(pg_temp.fid('ua'),r.q,r.id<>'PR9');
   if r.id='SO5' then
    perform pg_temp.check_it(exists(select 1 from public.soil_workers where id=(j->0->>'id')::uuid and factory_id=pg_temp.fid('fa') and name='Inactive repeat Soil'),'active Soil repeat succeeds');
   elsif r.id='ST9' then
    perform pg_temp.check_it((select reference_salary=1500 from public.staff_workers where id=pg_temp.fid('staff_a')),'active salary repeat succeeds');
   elsif r.id='TR5' then
-   perform pg_temp.check_it((j->0->>'attendance_count')::integer=2 and (j->0->>'saved_paya_quantity')::numeric=2,'active daily-entry repeat succeeds');
+   perform pg_temp.check_it((j->0->>'attendance_count')::integer=2 and (j->0->>'saved_paya_quantity')::numeric=2
+    and exists(select 1 from public.transport_daily_entries where id=(j->0->>'daily_entry_id')::uuid and factory_id=pg_temp.fid('fa') and transport_crew_id=pg_temp.fid('crew_a') and work_date='2026-09-28' and paya_quantity=2)
+    and (select count(*)=2 from public.transport_daily_attendance where factory_id=pg_temp.fid('fa') and transport_daily_entry_id=(j->0->>'daily_entry_id')::uuid)
+    and not exists(select 1 from public.transport_daily_attendance where transport_daily_entry_id=(j->0->>'daily_entry_id')::uuid
+      and (factory_id<>pg_temp.fid('fa') or transport_crew_id<>pg_temp.fid('crew_a') or work_date<>'2026-09-28' or transport_worker_id<>all(array[pg_temp.fid('tw_a'),pg_temp.fid('tw_a2')]))),
+    'active daily-entry repeat succeeds');
   else
    perform pg_temp.check_it((j->0->>'total_earned')::numeric=300 and (j->0->>'available_balance')::numeric=250,'active account repeat succeeds');
   end if;
@@ -576,7 +589,53 @@ end$$;
 select pg_temp.clear_identity();
 rollback;
 
--- Persistent proof: all 63 public tables AND auth.users unchanged in count AND full-row hash.
+-- Persistent proof: all 64 public tables AND auth.users unchanged in count AND full-row hash.
+-- E7A: validate the preserved baseline before any cleanup comparison.
+do $baseline_guard$
+begin
+  if pg_catalog.to_regclass('pg_temp.atlas_12b2d_baseline') is null then
+    raise exception 'FAIL: preserved cleanup baseline is missing';
+  end if;
+  if exists (select 1 from pg_temp.atlas_12b2d_baseline
+    where s is null or t is null or c is null or h is null) then
+    raise exception 'FAIL: cleanup baseline has NULL identity, count or fingerprint';
+  end if;
+  if exists (select 1 from pg_temp.atlas_12b2d_baseline
+    group by s,t having count(*) > 1) then
+    raise exception 'FAIL: cleanup baseline has duplicate identities';
+  end if;
+  if (select count(*) from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+    where ns.nspname = 'public' and c.relkind in ('r','p')) <> 64 then
+    raise exception 'FAIL: cleanup catalog must contain exactly 64 public tables';
+  end if;
+  if (select count(*) from pg_temp.atlas_12b2d_baseline) <> 65
+    or (select count(distinct t) from pg_temp.atlas_12b2d_baseline
+      where s = 'public') <> 64
+    or (select count(*) from pg_temp.atlas_12b2d_baseline
+      where s = 'auth' and t = 'users') <> 1 then
+    raise exception 'FAIL: cleanup baseline requires 64 public identities plus one auth.users identity';
+  end if;
+  if exists (
+    with expected as (
+      select ns.nspname::text as schema_name,c.relname::text as table_name
+      from pg_catalog.pg_class c
+      join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+      where ns.nspname = 'public' and c.relkind in ('r','p')
+      union all select 'auth','users'
+    ), actual as (
+      select s as schema_name,t as table_name
+      from pg_temp.atlas_12b2d_baseline
+    )
+    (select * from expected except select * from actual)
+    union all
+    (select * from actual except select * from expected)
+  ) then
+    raise exception 'FAIL: cleanup baseline identities differ from the catalog plus auth.users';
+  end if;
+end;
+$baseline_guard$;
+
 do $$
 declare r record;n bigint;h text;
 begin
@@ -603,8 +662,8 @@ select
  (select case when is_called then last_value else 0 end from atlas_12b2d_rejected) as rejected_calls_with_full_a_b_snapshot_proof,
  (select jsonb_object_agg(category,n) from (select category,count(*) n from atlas_12b2d_plan group by category) x) as attack_counts,
  23 as security_definer,23 as authenticated_execute,0 as anon_execute,0 as public_execute,
- 63 as public_tables_restored,true as auth_users_restored,true as full_row_hashes_restored,
- 76 as rpc_coverage_before,99 as rpc_coverage_after,122 as rpc_inventory,23 as remaining,
+ 64 as public_tables_restored,true as auth_users_restored,true as full_row_hashes_restored,
+ 77 as rpc_coverage_before,100 as rpc_coverage_after,123 as rpc_inventory,23 as remaining,
  (select jsonb_agg(jsonb_build_object('id',m.id,'signature',m.fn||'('||m.args||')',
    'status','EXECUTED + PASSED','barrier',m.barrier) order by m.id) from atlas_12b2d_manifest m) as barrier_matrix,
  (select jsonb_agg(jsonb_build_object('id',p.id,'test',p.label,'code',p.code,'class',p.message)
