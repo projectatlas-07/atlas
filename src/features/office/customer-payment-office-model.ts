@@ -180,14 +180,16 @@ function cashBookFetchEligibility(client: QueryClient, factoryId: string, includ
   };
 }
 
-async function refreshFinancialQueryGroups(
+export async function refreshFinancialQueryGroups(
   client: QueryClient,
   financialKeys: readonly (readonly string[])[],
   relatedKeys: readonly (readonly string[])[],
   shouldFetch: (query: Query) => boolean = () => true,
   shouldInvalidate: (query: Query) => boolean = () => true,
+  assertCurrent: () => void = () => {},
 ): Promise<void> {
   const cache = client.getQueryCache();
+  assertCurrent();
   const financialQueries = [...new Map(financialKeys.flatMap((queryKey) =>
     cache.findAll({ queryKey, predicate: shouldInvalidate })).map((query) => [query.queryHash, query])).values()];
 
@@ -195,8 +197,10 @@ async function refreshFinancialQueryGroups(
   // when services ignore AbortSignal. No pre-save request can supply this refresh.
   await Promise.all(financialQueries.map((query) =>
     client.cancelQueries({ queryKey: query.queryKey, exact: true }, { revert: true })));
+  assertCurrent();
   await Promise.all(financialKeys.map((queryKey) =>
     client.invalidateQueries({ queryKey, predicate: shouldInvalidate, refetchType: "none" })));
+  assertCurrent();
 
   const fetchableQueries = financialQueries.filter(shouldFetch);
   const watched = new Set([...fetchableQueries, ...relatedKeys.flatMap((queryKey) => cache.findAll({ queryKey }))]);
@@ -210,6 +214,7 @@ async function refreshFinancialQueryGroups(
   });
   try {
     const reads = fetchableQueries.map((query) => {
+      assertCurrent();
       const before = query.state.dataUpdateCount;
       // Explicit fetch also refreshes registered financial queries behind hidden tabs.
       // Cancellation + forced fetch proves start order; timestamps alone cannot.

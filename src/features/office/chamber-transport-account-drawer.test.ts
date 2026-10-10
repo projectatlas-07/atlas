@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { ATLAS_UI_STRINGS } from "../../lib/strings.ts";
 
 const drawer = readFileSync(
   new URL("./components/chamber-transport-account-drawer.tsx", import.meta.url),
@@ -26,8 +27,9 @@ test("Account & payment opens as a responsive right-side drawer over the overvie
 test("current cumulative account remains independent from selected-period earnings", () => {
   assert.match(drawer, /balanceQueryKey\(factoryId, worker\.id, localToday\)/);
   assert.match(drawer, /periodEarningsQueryKey\([\s\S]*earningsRange\?\.fromDate[\s\S]*earningsRange\?\.toDate/);
-  assert.match(drawer, /Period filters do not change it/);
-  assert.match(drawer, /Total locked earnings/);
+  assert.match(drawer, /ATLAS_UI_STRINGS\.transportCredit\.balanceHelp/);
+  assert.match(ATLAS_UI_STRINGS.transportCredit.balanceHelp, /Period filters do not change it/);
+  assert.match(drawer, /ATLAS_UI_STRINGS\.transportCredit\.total/);
   assert.match(drawer, /Total withdrawn/);
   assert.match(drawer, /sumTransportPeriodEarned\(periodDetails\)/);
 });

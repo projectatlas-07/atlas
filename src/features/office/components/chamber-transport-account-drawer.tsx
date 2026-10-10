@@ -46,6 +46,9 @@ import {
   TRANSPORT_WORKER_LIFECYCLE_STATUS,
 } from "@/lib/statuses";
 import { ATLAS_UI_STRINGS } from "@/lib/strings";
+import { TransportWageCreditPanel } from "./transport-wage-credit-panel";
+import { createTransportCreditGateOwner, deactivateTransportCreditGateOwner, ownsTransportCreditGate, creditFreshnessKey, creditHistoryKey, transportCreditHistoryOptions, isTransportCreditHistoryCurrent, isTransportCreditReadCurrent, refreshTransportCreditQueries, sumPostedTransportCredits, type TransportCreditGateOwner, type TransportCreditRecovery } from "../transport-wage-credit-office-model";
+import { listTransportWageCredits } from "@/features/transport/services/transport-wage-credit-service";
 
 const RANGE_OPTIONS: ReadonlyArray<{ value: WageEarningsDatePreset; label: string }> = [
   { value: "this_week", label: "This week" },
@@ -68,10 +71,12 @@ const periodEarningsQueryKey = (
 export function ChamberTransportAccountDrawer({
   factoryId,
   worker,
+  recovery,
   onClose,
 }: Readonly<{
   factoryId: string;
   worker: TransportWorker;
+  recovery: TransportCreditRecovery;
   onClose: () => void;
 }>) {
   const queryClient = useQueryClient();
@@ -95,6 +100,17 @@ export function ChamberTransportAccountDrawer({
     customFrom,
     customTo,
   );
+  const freshness = useQuery({ queryKey: creditFreshnessKey(factoryId, worker.id), queryFn: () => "current", staleTime: Infinity });
+  const refreshOwner = useRef<TransportCreditGateOwner | null>(null);
+  useEffect(() => {
+    const owner = createTransportCreditGateOwner(recovery.context, worker.id);
+    refreshOwner.current = owner;
+    return () => { deactivateTransportCreditGateOwner(owner); if (refreshOwner.current === owner) refreshOwner.current = null; };
+  }, [recovery.context, worker.id]);
+  const credits = useQuery(transportCreditHistoryOptions(recovery, factoryId, listTransportWageCredits, worker.id));
+  const creditsCurrent = isTransportCreditHistoryCurrent(recovery, factoryId, { ...credits, isInvalidated: queryClient.getQueryState(creditHistoryKey(recovery.context, worker.id))?.isInvalidated });
+  const readCurrent = (query: typeof currentBalanceQuery) => recovery.ready && recovery.factoryId === factoryId && !!recovery.actorId && freshness.data === "current"
+    && isTransportCreditReadCurrent({ ...query, isInvalidated: queryClient.getQueryState(query === currentBalanceQuery ? balanceQueryKey(factoryId, worker.id, localToday) : balanceQueryKey(factoryId, worker.id, paymentDate))?.isInvalidated });
 
   useEffect(() => {
     const previouslyFocused = document.activeElement instanceof HTMLElement
@@ -212,6 +228,7 @@ export function ChamberTransportAccountDrawer({
   async function submitPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isPaying) return;
+    if (!readCurrent(paymentDateBalanceQuery)) { setPaymentError(ATLAS_UI_STRINGS.transportCredit.outdated); return; }
 
     const input = buildTransportWithdrawalInput({
       factoryId,
@@ -257,7 +274,7 @@ export function ChamberTransportAccountDrawer({
 
   function payFullAvailableBalance() {
     const available = paymentDateBalanceQuery.data?.availableBalance;
-    if (available === undefined || available <= 0) return;
+    if (!readCurrent(paymentDateBalanceQuery) || available === undefined || available <= 0) return;
     setPaymentAmount(String(available));
     clearPaymentFeedback();
   }
@@ -307,22 +324,22 @@ export function ChamberTransportAccountDrawer({
             </div>
             {currentBalanceQuery.isLoading ? (
               <p className="mt-atlas-2 text-atlas-sm text-atlas-text-muted">Loading current balance...</p>
-            ) : currentBalanceQuery.error ? (
+            ) : !readCurrent(currentBalanceQuery) ? (
               <p className="mt-atlas-2 text-atlas-sm font-atlas-medium text-atlas-danger-text">Balance unavailable</p>
             ) : (
               <p className="mt-atlas-2 text-atlas-3xl font-atlas-semibold tabular-nums text-atlas-text">
                 {formatIndianCurrency(currentBalanceQuery.data?.availableBalance ?? 0, { maximumFractionDigits: 20 })}
               </p>
             )}
-            <p className="mt-atlas-2 text-atlas-xs text-atlas-text-subtle">Current unpaid balance from locked earnings and real withdrawals. Period filters do not change it.</p>
+            <p className="mt-atlas-2 text-atlas-xs text-atlas-text-subtle">{ATLAS_UI_STRINGS.transportCredit.balanceHelp}</p>
           </Card>
 
           {currentBalanceQuery.error && (
             <Feedback role="alert" tone="danger">{transportWorkerFinanceErrorMessage(currentBalanceQuery.error, "Could not load the current Chamber Transport balance.")}</Feedback>
           )}
-          {currentBalanceQuery.data && (
+          {readCurrent(currentBalanceQuery) && currentBalanceQuery.data && (
             <dl className="grid grid-cols-2 gap-atlas-3 border-b border-atlas-border pb-atlas-4 text-atlas-sm">
-              <div><dt className="text-atlas-xs text-atlas-text-subtle">Total locked earnings</dt><dd className="mt-atlas-1 font-atlas-medium tabular-nums text-atlas-text">{formatIndianCurrency(currentBalanceQuery.data.totalEarned, { maximumFractionDigits: 20 })}</dd></div>
+              <div><dt className="text-atlas-xs text-atlas-text-subtle">{ATLAS_UI_STRINGS.transportCredit.total}</dt><dd className="mt-atlas-1 font-atlas-medium tabular-nums text-atlas-text">{formatIndianCurrency(currentBalanceQuery.data.totalEarned, { maximumFractionDigits: 20 })}</dd></div>
               <div><dt className="text-atlas-xs text-atlas-text-subtle">Total withdrawn</dt><dd className="mt-atlas-1 font-atlas-medium tabular-nums text-atlas-text">{formatIndianCurrency(currentBalanceQuery.data.totalWithdrawn, { maximumFractionDigits: 20 })}</dd></div>
             </dl>
           )}
@@ -341,7 +358,8 @@ export function ChamberTransportAccountDrawer({
             {rangePreset === "custom" && !earningsRange && <div className="mt-atlas-3"><Feedback role="alert" tone="danger">Choose a valid inclusive date range.</Feedback></div>}
             {earningsRange && <dl className="mt-atlas-3 divide-y divide-atlas-border text-atlas-sm">
               <div className="flex items-start justify-between gap-atlas-3 py-atlas-2"><dt className="text-atlas-text-muted">Selected period</dt><dd className="text-right font-atlas-medium text-atlas-text">{formatDateOnly(earningsRange.fromDate)} — {formatDateOnly(earningsRange.toDate)}</dd></div>
-              <div className="flex items-start justify-between gap-atlas-3 py-atlas-2"><dt className="text-atlas-text-muted">Earnings</dt><dd className="font-atlas-semibold tabular-nums text-atlas-text">{periodEarningsQuery.isLoading ? ATLAS_UI_STRINGS.feedback.loading : periodEarningsQuery.error || periodEarned === null ? ATLAS_UI_STRINGS.feedback.unavailable : formatIndianCurrency(periodEarned, { maximumFractionDigits: 20 })}</dd></div>
+              <div className="flex items-start justify-between gap-atlas-3 py-atlas-2"><dt className="text-atlas-text-muted">{ATLAS_UI_STRINGS.transportCredit.weekly}</dt><dd className="font-atlas-semibold tabular-nums text-atlas-text">{periodEarningsQuery.isLoading ? ATLAS_UI_STRINGS.feedback.loading : periodEarningsQuery.error || periodEarned === null ? ATLAS_UI_STRINGS.feedback.unavailable : formatIndianCurrency(periodEarned, { maximumFractionDigits: 20 })}</dd></div>
+              <div className="flex items-start justify-between gap-atlas-3 py-atlas-2"><dt className="text-atlas-text-muted">{ATLAS_UI_STRINGS.transportCredit.credited}</dt><dd className="font-atlas-semibold tabular-nums text-atlas-text">{!creditsCurrent || freshness.data !== "current" || !credits.data ? ATLAS_UI_STRINGS.feedback.unavailable : formatIndianCurrency(sumPostedTransportCredits(credits.data, earningsRange.fromDate, earningsRange.toDate))}</dd></div>
               <div className="flex items-start justify-between gap-atlas-3 py-atlas-2"><dt className="text-atlas-text-muted">Transport Groups in period</dt><dd className="max-w-56 text-right font-atlas-medium text-atlas-text">{periodEarningsQuery.isLoading ? ATLAS_UI_STRINGS.feedback.loading : periodEarningsQuery.error ? ATLAS_UI_STRINGS.feedback.unavailable : periodGroups.length === 0 ? "No locked work" : periodGroups.join(" · ")}</dd></div>
             </dl>}
             <p className="mt-atlas-2 text-atlas-xs text-atlas-text-subtle">Inclusive dates. Earnings use immutable saved worker-share snapshots only.</p>
@@ -352,8 +370,8 @@ export function ChamberTransportAccountDrawer({
           <Card>
             <div className="flex flex-wrap items-center justify-between gap-atlas-2">
               <h3 className="text-atlas-base font-atlas-semibold text-atlas-text">Record payment</h3>
-              <Button variant="ghost" disabled={paymentDateBalanceQuery.isLoading || Boolean(paymentDateBalanceQuery.error) || (paymentDateBalanceQuery.data?.availableBalance ?? 0) <= 0 || isPaying} onClick={payFullAvailableBalance}>
-                Pay full{paymentDateBalanceQuery.data ? ` ${formatIndianCurrency(paymentDateBalanceQuery.data.availableBalance, { maximumFractionDigits: 20 })}` : ""}
+              <Button variant="ghost" disabled={!readCurrent(paymentDateBalanceQuery) || (paymentDateBalanceQuery.data?.availableBalance ?? 0) <= 0 || isPaying} onClick={payFullAvailableBalance}>
+                Pay full{readCurrent(paymentDateBalanceQuery) && paymentDateBalanceQuery.data ? ` ${formatIndianCurrency(paymentDateBalanceQuery.data.availableBalance, { maximumFractionDigits: 20 })}` : ""}
               </Button>
             </div>
             <form id="chamber-transport-payment-form" className="mt-atlas-3 space-y-atlas-3" onSubmit={(event) => void submitPayment(event)}>
@@ -365,13 +383,19 @@ export function ChamberTransportAccountDrawer({
               </FormField>
               <div className="flex items-center justify-between gap-atlas-3 border-t border-atlas-border pt-atlas-2 text-atlas-xs">
                 <span className="text-atlas-text-subtle">Available on payment date</span>
-                <span className="font-atlas-semibold tabular-nums text-atlas-text">{paymentDateBalanceQuery.isLoading ? ATLAS_UI_STRINGS.feedback.loading : paymentDateBalanceQuery.error || !paymentDateBalanceQuery.data ? ATLAS_UI_STRINGS.feedback.unavailable : formatIndianCurrency(paymentDateBalanceQuery.data.availableBalance, { maximumFractionDigits: 20 })}</span>
+                <span className="font-atlas-semibold tabular-nums text-atlas-text">{paymentDateBalanceQuery.isLoading ? ATLAS_UI_STRINGS.feedback.loading : !readCurrent(paymentDateBalanceQuery) || !paymentDateBalanceQuery.data ? ATLAS_UI_STRINGS.feedback.unavailable : formatIndianCurrency(paymentDateBalanceQuery.data.availableBalance, { maximumFractionDigits: 20 })}</span>
               </div>
             </form>
             {paymentDateBalanceQuery.error && <div className="mt-atlas-3"><Feedback role="alert" tone="danger">{transportWorkerFinanceErrorMessage(paymentDateBalanceQuery.error, "Could not load the balance for this payment date.")}</Feedback></div>}
             {paymentError && <div className="mt-atlas-3"><Feedback role="alert" tone="danger">{paymentError}</Feedback></div>}
             {paymentSuccess && <div className="mt-atlas-3"><Feedback role="status" tone="success">{paymentSuccess}</Feedback></div>}
           </Card>
+
+          <TransportWageCreditPanel factoryId={factoryId} worker={worker} recovery={recovery} />
+          {!readCurrent(currentBalanceQuery) && <Button variant="ghost" disabled={freshness.data === "pending" || !recovery.ready} onClick={() => {
+            const owner = refreshOwner.current;
+            if (owner) void refreshTransportCreditQueries(owner).catch(() => { if (ownsTransportCreditGate(owner)) setPaymentError(ATLAS_UI_STRINGS.transportCredit.outdated); });
+          }}>{ATLAS_UI_STRINGS.transportCredit.refresh}</Button>}
 
           <section aria-labelledby="chamber-transport-payment-history-heading">
             <h3 id="chamber-transport-payment-history-heading" className="text-atlas-base font-atlas-semibold text-atlas-text">Recent payments</h3>
@@ -394,7 +418,7 @@ export function ChamberTransportAccountDrawer({
 
         <footer className="border-t border-atlas-border bg-atlas-surface px-atlas-5 py-atlas-4">
           <div className="grid gap-atlas-2">
-            <Button type="submit" form="chamber-transport-payment-form" loading={isPaying} loadingLabel={ATLAS_UI_STRINGS.feedback.saving} disabled={!validPaymentAmount || !paymentDate || paymentDateBalanceQuery.isLoading || Boolean(paymentDateBalanceQuery.error)}>{paymentButtonLabel}</Button>
+            <Button type="submit" form="chamber-transport-payment-form" loading={isPaying} loadingLabel={ATLAS_UI_STRINGS.feedback.saving} disabled={!validPaymentAmount || !paymentDate || !readCurrent(paymentDateBalanceQuery)}>{paymentButtonLabel}</Button>
             <Button variant="ghost" disabled={isPaying} onClick={onClose}>{ATLAS_UI_STRINGS.actions.cancel}</Button>
           </div>
         </footer>

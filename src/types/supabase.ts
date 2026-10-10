@@ -1256,6 +1256,15 @@ export type Database = {
           { foreignKeyName: "transport_weekly_earning_details_rate_factory_fkey"; columns: ["transport_crew_wage_rate_id", "factory_id"]; isOneToOne: false; referencedRelation: "transport_crew_wage_rates"; referencedColumns: ["id", "factory_id"] }
         ];
       };
+      transport_wage_credits: {
+        Row: { id: string; factory_id: string; transport_worker_id: string; original_work_date: string; posting_date: string; amount: number; reason: string; actor_id: string; created_at: string };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          { foreignKeyName: "transport_wage_credits_factory_id_fkey"; columns: ["factory_id"]; isOneToOne: false; referencedRelation: "factories"; referencedColumns: ["id"] },
+          { foreignKeyName: "transport_wage_credits_worker_factory_fkey"; columns: ["transport_worker_id", "factory_id"]; isOneToOne: false; referencedRelation: "transport_workers"; referencedColumns: ["id", "factory_id"] }
+        ];
+      };
       transport_withdrawals: {
         Row: TransportWithdrawalRow;
         Insert: { id?: string; factory_id: string; transport_worker_id: string; withdrawal_date: string; amount: number; created_at?: string };
@@ -2262,6 +2271,10 @@ export type Database = {
       save_transport_daily_entry: {
         Args: { p_factory_id: string; p_transport_crew_id: string; p_work_date: string; p_paya_quantity: number; p_transport_worker_ids: string[] };
         Returns: { daily_entry_id: string; attendance_count: number; saved_paya_quantity: number }[];
+      };
+      create_transport_wage_credit: {
+        Args: { p_factory_id: string; p_credit_id: string; p_transport_worker_id: string; p_original_work_date: string; p_amount: string; p_reason: string };
+        Returns: { credit_id: string; factory_id: string; transport_worker_id: string; original_work_date: string; posting_date: string; amount: number; reason: string; actor_id: string; created_at: string; was_replayed: boolean }[];
       };
       get_transport_worker_available_balance: {
         Args: { p_factory_id: string; p_transport_worker_id: string; p_as_of_date: string };

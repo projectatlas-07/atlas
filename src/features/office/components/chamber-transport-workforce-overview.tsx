@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { creditFreshnessKey, creditHistoryKey, transportCreditHistoryOptions, isTransportCreditHistoryCurrent, isTransportCreditReadCurrent, sumPostedTransportCredits, type TransportCreditRecovery } from "../transport-wage-credit-office-model";
+import { listTransportWageCredits } from "@/features/transport/services/transport-wage-credit-service";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Feedback } from "@/components/ui/feedback";
 import { FormField } from "@/components/ui/form-field";
@@ -61,6 +63,7 @@ export function ChamberTransportWorkforceOverview({
   workersError,
   onManageSetup,
   onOpenAccount,
+  recovery,
 }: Readonly<{
   factoryId: string;
   workers: readonly TransportWorker[];
@@ -68,7 +71,10 @@ export function ChamberTransportWorkforceOverview({
   workersError: Error | null;
   onManageSetup: () => void;
   onOpenAccount: (transportWorkerId: string) => void;
+  recovery: TransportCreditRecovery;
 }>) {
+  const client = useQueryClient();
+  const recoveryReady = recovery.ready && recovery.factoryId === factoryId && !!recovery.actorId;
   const [localToday] = useState(getLocalDate);
   const [rangePreset, setRangePreset] = useState<WageEarningsDatePreset>(
     DEFAULT_WAGE_EARNINGS_DATE_PRESET,
@@ -105,6 +111,11 @@ export function ChamberTransportWorkforceOverview({
     queryFn: () => listLatestTransportWorkerWithdrawalsForFactory(factoryId),
     refetchInterval: 30_000,
   });
+  const credits = useQuery({ ...transportCreditHistoryOptions(recovery, factoryId, listTransportWageCredits), refetchInterval: 30_000 });
+  const creditsCurrent = isTransportCreditHistoryCurrent(recovery, factoryId, { ...credits, isInvalidated: client.getQueryState(creditHistoryKey(recovery.context))?.isInvalidated });
+  const freshness = useQueries({ queries: workers.map((worker) => ({
+    queryKey: creditFreshnessKey(factoryId, worker.id), queryFn: () => "current", staleTime: Infinity,
+  })) });
   const balanceQueries = useQueries({
     queries: workers.map((worker) => ({
       queryKey: ["office-transport-worker-balance", factoryId, worker.id, localToday],
@@ -113,7 +124,7 @@ export function ChamberTransportWorkforceOverview({
         transportWorkerId: worker.id,
         asOfDate: localToday,
       }),
-      enabled: !workersLoading && !workersError,
+      enabled: recoveryReady && !workersLoading && !workersError,
       refetchInterval: 30_000,
     })),
   });
@@ -137,7 +148,9 @@ export function ChamberTransportWorkforceOverview({
   const periodTotal = [...earningsByWorker.values()].reduce((total, amount) => total + amount, 0);
   const balancesLoading = balanceQueries.some((query) => query.isLoading);
   const balancesError = balanceQueries.some((query) => Boolean(query.error));
-  const totalAvailableBalance = balancesLoading || balancesError
+  const balanceIsCurrent = (index: number) => recoveryReady && freshness[index]?.data === "current"
+    && isTransportCreditReadCurrent({ ...balanceQueries[index], isInvalidated: client.getQueryState(["office-transport-worker-balance", factoryId, workers[index].id, localToday])?.isInvalidated });
+  const totalAvailableBalance = !recoveryReady || workersLoading || workersError || balancesLoading || balancesError || workers.some((_, index) => !balanceIsCurrent(index))
     ? null
     : balanceQueries.reduce((total, query) => total + (query.data?.availableBalance ?? 0), 0);
   const periodLabel = RANGE_PRESETS.find((option) => option.value === rangePreset)?.label ?? "Selected period";
@@ -151,8 +164,13 @@ export function ChamberTransportWorkforceOverview({
   function availableBalanceLabel(workerId: string): string {
     const query = balanceStateByWorker.get(workerId);
     if (!query || query.isLoading) return ATLAS_UI_STRINGS.feedback.loading;
-    if (query.error || !query.data) return ATLAS_UI_STRINGS.feedback.unavailable;
+    if (query.error || !query.data || !balanceIsCurrent(workers.findIndex((worker) => worker.id === workerId))) return ATLAS_UI_STRINGS.feedback.unavailable;
     return formatIndianCurrency(query.data.availableBalance);
+  }
+  function creditLabel(workerId?: string) {
+    if (!earningsRange || !credits.data || !creditsCurrent
+      || workers.some((worker, index) => (!workerId || worker.id === workerId) && freshness[index]?.data !== "current")) return ATLAS_UI_STRINGS.feedback.unavailable;
+    return formatIndianCurrency(sumPostedTransportCredits(credits.data, earningsRange.fromDate, earningsRange.toDate, workerId));
   }
 
   function lastPaidLabel(workerId: string): string {
@@ -201,7 +219,7 @@ export function ChamberTransportWorkforceOverview({
             </div>
             <dl className="grid gap-atlas-4 text-atlas-sm sm:grid-cols-3 xl:min-w-max">
               <div>
-                <dt className="text-atlas-text-subtle">Period earnings</dt>
+                <dt className="text-atlas-text-subtle">{ATLAS_UI_STRINGS.transportCredit.weekly}</dt>
                 <dd className="mt-atlas-1 font-atlas-semibold tabular-nums text-atlas-text">
                   {periodEarningsQuery.isLoading
                     ? ATLAS_UI_STRINGS.feedback.loading
@@ -210,6 +228,7 @@ export function ChamberTransportWorkforceOverview({
                       : formatIndianCurrency(periodTotal)}
                 </dd>
               </div>
+              <div><dt className="text-atlas-text-subtle">{ATLAS_UI_STRINGS.transportCredit.credited}</dt><dd className="mt-atlas-1 font-atlas-semibold tabular-nums text-atlas-text">{creditLabel()}</dd></div>
               <div>
                 <dt className="text-atlas-text-subtle">Active workers</dt>
                 <dd className="mt-atlas-1 font-atlas-semibold text-atlas-text">{formatIndianNumber(activeCount)}</dd>
@@ -290,7 +309,8 @@ export function ChamberTransportWorkforceOverview({
                 <TableHeader><TableRow>
                   <TableHeaderCell>Worker</TableHeaderCell>
                   <TableHeaderCell>Transport Groups</TableHeaderCell>
-                  <TableHeaderCell numeric>Earned ({periodLabel})</TableHeaderCell>
+                  <TableHeaderCell numeric>{ATLAS_UI_STRINGS.transportCredit.weekly} ({periodLabel})</TableHeaderCell>
+                  <TableHeaderCell numeric>{ATLAS_UI_STRINGS.transportCredit.history}</TableHeaderCell>
                   <TableHeaderCell numeric>Available (authoritative)</TableHeaderCell>
                   <TableHeaderCell>Last paid</TableHeaderCell>
                   <TableHeaderCell>Action</TableHeaderCell>
@@ -302,6 +322,7 @@ export function ChamberTransportWorkforceOverview({
                     <TableCell><div className="flex flex-wrap items-center gap-atlas-2"><p className="font-atlas-semibold text-atlas-text">{worker.name}</p><StatusPill label={status.label} tone={status.tone} /></div><p className="mt-atlas-1 text-atlas-xs text-atlas-text-subtle">Transport Worker</p></TableCell>
                     <TableCell>{assignmentsQuery.isLoading ? <span className="text-atlas-text-subtle">{ATLAS_UI_STRINGS.feedback.loading}</span> : assignmentsQuery.error ? <span className="text-atlas-text-subtle">{ATLAS_UI_STRINGS.feedback.unavailable}</span> : workerMemberships.length === 0 ? <span className="text-atlas-xs text-atlas-text-subtle">No group assigned</span> : <div className="flex max-w-sm flex-wrap gap-atlas-1">{workerMemberships.map((group) => <span key={group.id} className="rounded-atlas-control border border-atlas-border bg-atlas-surface-muted px-atlas-2 py-atlas-1 text-atlas-xs font-atlas-medium text-atlas-text-muted">{group.name}{group.isActive ? "" : " · Inactive"}</span>)}</div>}</TableCell>
                     <TableCell numeric><span className="font-atlas-medium text-atlas-text-muted">{periodEarningsLabel(worker.id)}</span></TableCell>
+                    <TableCell numeric>{creditLabel(worker.id)}</TableCell>
                     <TableCell numeric><span className="font-atlas-semibold text-atlas-text">{availableBalanceLabel(worker.id)}</span></TableCell>
                     <TableCell><span className="text-atlas-sm font-atlas-medium text-atlas-text-muted">{lastPaidLabel(worker.id)}</span></TableCell>
                     <TableCell><Button onClick={() => onOpenAccount(worker.id)}>Account &amp; payment</Button></TableCell>
@@ -324,6 +345,7 @@ export function ChamberTransportWorkforceOverview({
                 <div className="mt-atlas-3 flex flex-wrap gap-atlas-1">{assignmentsQuery.isLoading ? <span className="text-atlas-xs text-atlas-text-subtle">{ATLAS_UI_STRINGS.feedback.loading}</span> : assignmentsQuery.error ? <span className="text-atlas-xs text-atlas-text-subtle">{ATLAS_UI_STRINGS.feedback.unavailable}</span> : workerMemberships.length === 0 ? <span className="text-atlas-xs text-atlas-text-subtle">No group assigned</span> : workerMemberships.map((group) => <span key={group.id} className="rounded-atlas-control border border-atlas-border bg-atlas-surface-muted px-atlas-2 py-atlas-1 text-atlas-xs font-atlas-medium text-atlas-text-muted">{group.name}{group.isActive ? "" : " · Inactive"}</span>)}</div>
                 <dl className="mt-atlas-3 grid grid-cols-2 gap-atlas-3 text-atlas-sm"><div><dt className="text-atlas-xs text-atlas-text-subtle">Earned · {periodLabel}</dt><dd className="mt-atlas-1 font-atlas-medium tabular-nums text-atlas-text-muted">{periodEarningsLabel(worker.id)}</dd></div><div><dt className="text-right text-atlas-xs text-atlas-text-subtle">Available balance</dt><dd className="mt-atlas-1 text-right font-atlas-semibold tabular-nums text-atlas-text">{availableBalanceLabel(worker.id)}</dd></div></dl>
                 <p className="mt-atlas-3 text-atlas-xs font-atlas-medium text-atlas-text-muted">{lastPaidLabel(worker.id)}</p>
+                <p className="mt-atlas-2 text-atlas-sm tabular-nums text-atlas-text-muted">{ATLAS_UI_STRINGS.transportCredit.credited}: {creditLabel(worker.id)}</p>
                 <div className="mt-atlas-3"><Button onClick={() => onOpenAccount(worker.id)}>Account &amp; payment</Button></div>
               </article>;
             })}

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { ATLAS_UI_STRINGS } from "../../lib/strings.ts";
 
 const component = readFileSync(
   new URL("./components/transport-office-section.tsx", import.meta.url),
@@ -53,7 +54,7 @@ test("period UI is separate from cumulative account and all-time withdrawals", (
   for (const label of [
     "Earnings period",
     "Earnings view",
-    "Total locked earnings",
+    "ATLAS_UI_STRINGS.transportCredit.total",
     "Total withdrawn",
     "Available to pay",
     "Locked contribution details",
@@ -61,6 +62,7 @@ test("period UI is separate from cumulative account and all-time withdrawals", (
   ]) {
     assert.match(accountDrawer, new RegExp(label));
   }
+  assert.equal(ATLAS_UI_STRINGS.transportCredit.total, "Total earnings including credits");
   assert.match(accountDrawer, /sumTransportPeriodEarned\(periodDetails\)/);
   assert.match(accountDrawer, /periodEarningsQueryKey\([\s\S]*earningsRange\?\.fromDate[\s\S]*earningsRange\?\.toDate/);
   assert.match(accountDrawer, /balanceQueryKey\(factoryId, worker\.id, localToday\)/);
