@@ -1,6 +1,8 @@
-import { supabase } from "../../../lib/supabase/client.ts";
-import { createClient, type AuthChangeEvent, type Session, type SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "../../../types/supabase.ts";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { authStorageBoundary } from "../../../lib/supabase/client.ts";
+import { accountCoordinator } from "../../auth/services/shared-account-context.ts";
+import { capturedAccountClient, createAccountCoordinator, transportAccountAdapter, verifyCapturedAccount,
+  type AccountCapture } from "../../auth/services/account-activation.ts";
 import { readAllKeysetPages } from "../../../lib/complete-paginated-read.ts";
 import {
   assertMatchingCredit, creditError, CreditFailure, normalizeCreditAmount,
@@ -22,71 +24,44 @@ function mapCredit(row: CreditRow, wasReplayed = false): WageCredit {
     originalWorkDate: row.original_work_date, postingDate: row.posting_date, amount,
     reason: row.reason, actorId: row.actor_id, createdAt: row.created_at, wasReplayed };
 }
-let verificationSequence = 0;
-// Capture only SDK-delivered session events in memory. getSession() is not a
-// passive capture: it can refresh tokens or remove shared session storage.
-export function createTransportAuthContext(auth: Pick<SupabaseClient["auth"], "onAuthStateChange">) {
-  let current: Readonly<{ actorId: string; token: string }> | null = null;
-  let receivedEvent = false;
-  const listeners = new Set<(event: AuthChangeEvent, actorId: string | null) => void>();
-  const { data } = auth.onAuthStateChange((event, session: Session | null) => {
-    // A delayed INITIAL_SESSION must not overwrite a newer sign-in/out event.
-    if (event === "INITIAL_SESSION" && receivedEvent) return;
-    receivedEvent = true;
-    const actorId = session?.user.id ?? null;
-    const token = session?.access_token ?? null;
-    if (!actorId || !token) current = null;
-    else if (current?.actorId !== actorId || current.token !== token) current = Object.freeze({ actorId, token });
-    listeners.forEach((listener) => listener(event, current?.actorId ?? null));
-  });
-  return {
-    capture: () => current,
-    isCurrent: (captured: typeof current) => captured !== null && captured === current,
-    subscribe(listener: (event: AuthChangeEvent, actorId: string | null) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
-    stop() { current = null; data.subscription.unsubscribe(); listeners.clear(); },
-  };
+export function createTransportAuthContext(auth: Pick<SupabaseClient["auth"], "onAuthStateChange">,
+  boundary: Parameters<typeof createAccountCoordinator>[1] = authStorageBoundary) {
+  return transportAccountAdapter(createAccountCoordinator(auth, boundary));
 }
-const transportAuth = createTransportAuthContext(supabase.auth);
+const transportAuth = transportAccountAdapter(accountCoordinator);
 export const subscribeTransportCreditAuth = transportAuth.subscribe;
-async function verifyCapturedActor(captured: ReturnType<typeof transportAuth.capture>) {
-  if (!captured) throw new CreditFailure("unknown", ATLAS_UI_STRINGS.transportCredit.unauthorized);
+function connection() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) throw new CreditFailure("unknown", ATLAS_UI_STRINGS.transportCredit.unknown);
-  // SDK getUser(jwt) removes its own session on session_not_found. Keep that
-  // side effect away from the shared Auth client (which may now belong to B).
-  // persistSession:false uses SDK memory storage and disables BroadcastChannel.
-  const verifier = createClient<Database>(url, key, { auth: {
-    storageKey: `atlas-transport-credit-verification-${++verificationSequence}`,
-    persistSession: false, autoRefreshToken: false, detectSessionInUrl: false,
-  } });
-  const { data, error } = await verifier.auth.getUser(captured.token);
-  if (error || data.user?.id !== captured.actorId) {
-    // Identity verification is not evidence that an earlier write rolled back.
-    throw new CreditFailure("unknown", ATLAS_UI_STRINGS.transportCredit.unauthorized);
-  }
   return { url, key };
 }
+async function verifyCapturedActor(captured: AccountCapture | null, coordinator = accountCoordinator) {
+  if (!captured) throw new CreditFailure("unknown", ATLAS_UI_STRINGS.transportCredit.unauthorized);
+  try { await verifyCapturedAccount(coordinator, captured, connection()); }
+  catch {
+    // Failed authentication never proves that an earlier financial write rolled back.
+    throw new CreditFailure("unknown", ATLAS_UI_STRINGS.transportCredit.unauthorized);
+  }
+}
 export async function verifyTransportCreditActor(context = transportAuth): Promise<string | null> {
-  const captured = context.capture();
+  // One inspection may explicitly retry recoverable uncertainty. No write is
+  // retried, and the adapter never auto-reinspects on a network failure.
+  const captured = context.capture() ?? context.coordinator.retryVerification();
   try {
-    await verifyCapturedActor(captured);
-    return context.isCurrent(captured) ? captured!.actorId : null;
+    await verifyCapturedActor(captured, context.coordinator);
+    return context.isCurrent(captured) ? captured!.activation.actorId : null;
   } catch { return null; }
 }
 async function actorBoundClient(actorId: string, beforeDispatch?: () => void) {
   const captured = transportAuth.capture();
-  if (!captured || captured.actorId !== actorId) throw new CreditFailure("unknown", ATLAS_UI_STRINGS.transportCredit.unauthorized);
-  const { url, key } = await verifyCapturedActor(captured);
-  // Installed SDK 2.111.0 skips its Auth client entirely with accessToken set.
-  // Every fetch receives this captured token. No session/token persistence or substitution.
-  return createClient<Database>(url, key, {
-    accessToken: async () => captured.token,
-    ...(beforeDispatch ? { global: { fetch: (input: RequestInfo | URL, init?: RequestInit) => {
-      beforeDispatch();
-      return fetch(input, init);
-    } } } : {}),
-  });
+  if (!captured || captured.activation.actorId !== actorId) throw new CreditFailure("unknown", ATLAS_UI_STRINGS.transportCredit.unauthorized);
+  await verifyCapturedActor(captured);
+  const assertCurrent = () => {
+    try { accountCoordinator.assertCredentialCurrent(captured); }
+    catch { throw new CreditFailure("unknown", ATLAS_UI_STRINGS.transportCredit.unauthorized); }
+  };
+  return { client: capturedAccountClient(accountCoordinator, captured, connection(), beforeDispatch), assertCurrent };
 }
 // A timeout means UNKNOWN; the original server request may still commit.
 export async function withCreditTimeout<T>(request: PromiseLike<T>, milliseconds = 20_000): Promise<T> {
@@ -99,13 +74,14 @@ export async function withCreditTimeout<T>(request: PromiseLike<T>, milliseconds
 }
 export async function createTransportWageCredit(intent: CreditIntent, assertActive: () => void = () => {}): Promise<WageCredit> {
   return withCreditTimeout((async () => {
-    const requestClient = await actorBoundClient(intent.actorId);
+    const { client: requestClient, assertCurrent } = await actorBoundClient(intent.actorId);
     assertActive(); // An unmounted producer cannot dispatch after delayed verification.
     const { data, error } = await requestClient.rpc("create_transport_wage_credit", {
       p_factory_id: intent.factoryId, p_credit_id: intent.id,
       p_transport_worker_id: intent.workerId, p_original_work_date: intent.originalWorkDate,
       p_amount: intent.amount, p_reason: intent.reason,
     });
+    assertCurrent();
     if (error) throw creditError(error);
     const row = data?.[0];
     if (!row || data?.length !== 1 || typeof row.was_replayed !== "boolean") {
@@ -121,11 +97,12 @@ export async function findTransportWageCredit(intent: CreditIntent, assertActive
     assertActive();
     // One captured-owner assertion covers verification completion and every SDK HTTP retry.
     const assertLookupDispatch = () => { assertActive(); };
-    const requestClient = await actorBoundClient(intent.actorId, assertLookupDispatch);
+    const { client: requestClient, assertCurrent } = await actorBoundClient(intent.actorId, assertLookupDispatch);
     assertLookupDispatch();
     const { data, error } = await requestClient.from("transport_wage_credits")
       .select("id, factory_id, transport_worker_id, original_work_date, posting_date, amount, reason, actor_id, created_at")
       .eq("factory_id", intent.factoryId).eq("transport_worker_id", intent.workerId).eq("id", intent.id).maybeSingle();
+    assertCurrent();
     if (error) throw creditError(error);
     if (!data) return null;
     const credit = mapCredit(data, true);
@@ -142,7 +119,7 @@ export async function listTransportWageCredits({ actorId, factoryId, workerId, s
     if (signal.aborted) throw new CreditFailure("unknown", ATLAS_UI_STRINGS.transportCredit.outdated);
   };
   assertHistoryDispatch();
-  const requestClient = await actorBoundClient(actorId, assertHistoryDispatch);
+  const { client: requestClient, assertCurrent } = await actorBoundClient(actorId, assertHistoryDispatch);
   assertHistoryDispatch();
   const rows = await readAllKeysetPages(async (after, size) => {
     assertHistoryDispatch();
@@ -152,6 +129,7 @@ export async function listTransportWageCredits({ actorId, factoryId, workerId, s
     if (workerId) query = query.eq("transport_worker_id", workerId);
     if (after) query = query.gt("id", after);
     const { data, error } = await query;
+    assertCurrent();
     assertHistoryDispatch();
     if (error) throw creditError(error);
     return data ?? [];

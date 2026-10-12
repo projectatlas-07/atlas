@@ -11,6 +11,12 @@ export type FactoryResolutionResult =
     };
   };
 
+/**
+ * @deprecated UNRESOLVED LEGACY AUTH: shared getUser() can remove a newer
+ * account's session; subsequent shared queries can substitute its credentials.
+ * Keep the return contract only until F3C migrates every inventoried caller to
+ * captured factory authorization. This API is not an account-switch boundary.
+ */
 export async function resolveAuthenticatedFactoryId(): Promise<FactoryResolutionResult> {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (!user) {

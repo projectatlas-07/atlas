@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
-import { createClient as sdkCreateClient, type AuthChangeEvent, type Session } from "@supabase/supabase-js";
+import { createClient as sdkCreateClient, isAuthApiError, isAuthSessionMissingError, type AuthChangeEvent, type Session } from "@supabase/supabase-js";
 import { createCreditCoordinator, createCreditWorkflow, creditSavedConfirmation, creditStorageKey, readCreditIntent, type CreditIntent } from "../transport-wage-credit-model.ts";
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import { activateTransportCreditContext, bindTransportCreditGate, createTransportCreditGateOwner, creditFreshnessKey, creditHistoryKey, createTransportCreditRecovery, markTransportCreditPending, ownsTransportCreditGate, transportCreditHistoryOptions, isTransportCreditHistoryCurrent, type TransportCreditRecovery } from "../../office/transport-wage-credit-office-model.ts";
@@ -12,15 +12,21 @@ const otherActor = "55555555-5555-4555-8555-555555555555";
 let switchAfterVerification = false;
 let actualSdk = false;
 let sharedAuth: Pick<ReturnType<typeof sdkCreateClient>, "auth"> | null = null;
-const syntheticCredential = (identity: string) => `test-only-${identity}`;
+const testExpiry = Math.floor(Date.now() / 1000) + 3600;
+const syntheticCredential = (identity: string) => [Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"),
+  Buffer.from(JSON.stringify({ sub: identity, session_id: identity, exp: testExpiry, iat: testExpiry - 3600,
+    iss: "https://atlas-test.invalid/auth/v1", aud: "authenticated" })).toString("base64url"), Buffer.alloc(32).toString("base64url")].join(".");
+const credentialActor = (value?: string | null) => value ? JSON.parse(Buffer.from(value.replace(/^Bearer /, "").split(".")[1], "base64url").toString()).sub as string : actor;
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://atlas-test.invalid";
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-only-public-key";
 let response: { data: unknown; error: unknown } = { data: [row], error: null };
 let readResponse: { data: unknown; error: unknown } = { data: row, error: null };
 const calls: unknown[][] = [];
 const authListeners = new Set<(event: AuthChangeEvent, session: Session | null) => void>();
+let storedSession: Session | null = { user: { id: actor }, access_token: syntheticCredential(actor) } as Session;
 function emitAuth(id: string | null, event: AuthChangeEvent = "SIGNED_IN", session?: Session | null) {
   const value = session ?? (id ? { user: { id }, access_token: syntheticCredential(id) } as Session : null);
+  storedSession = value;
   authListeners.forEach((listener) => listener(event, value));
 }
 const fake = {
@@ -32,10 +38,11 @@ const fake = {
     async getSession() { return sharedAuth ? sharedAuth.auth.getSession() : { data: { session: { access_token: syntheticCredential(actor) } }, error: null }; },
     async getUser(token?: string) {
       if (sharedAuth) return sharedAuth.auth.getUser(token);
-      const verifiedActor = token?.replace("test-only-", "") ?? actor;
+      const verifiedActor = credentialActor(token);
       if (switchAfterVerification) actor = otherActor;
       return { data: { user: { id: verifiedActor } }, error: null };
     },
+    dispose() {},
   },
   async rpc(name: string, args: unknown) { calls.push(["rpc", name, args]); return response; },
   from(name: string) {
@@ -53,8 +60,9 @@ const fake = {
     return builder;
   },
 };
-await mock.module("../../../lib/supabase/client.ts", { namedExports: { supabase: fake } });
-await mock.module("@supabase/supabase-js", { namedExports: { createClient: (url: string, key: string, options: Parameters<typeof sdkCreateClient>[2]) => {
+await mock.module("../../../lib/supabase/client.ts", { namedExports: { supabase: fake,
+  authStorageBoundary: { readSession: () => storedSession ? JSON.stringify(storedSession) : null } } });
+await mock.module("@supabase/supabase-js", { namedExports: { isAuthApiError, isAuthSessionMissingError, createClient: (url: string, key: string, options: Parameters<typeof sdkCreateClient>[2]) => {
   if (actualSdk) return sdkCreateClient(url, key, options);
   return fake;
 } } });
@@ -79,6 +87,23 @@ test("changed authenticated actor blocks both writes and reconciliation before R
   reset(); actor = "55555555-5555-4555-8555-555555555555"; emitAuth(actor);
   await assert.rejects(service.createTransportWageCredit(intent), /original account/);
   await assert.rejects(service.findTransportWageCredit(intent), /original account/); assert.equal(calls.length, 0);
+});
+test("Transport verification can recover a transient outage on a later inspection without an automatic retry loop", async (t) => {
+  let clock = Date.now(); t.mock.method(Date, "now", () => clock);
+  reset(); actualSdk = true; const oldFetch = globalThis.fetch; let outage = true, reads = 0, notifications = 0;
+  const stop = service.subscribeTransportCreditAuth(() => { notifications++; });
+  globalThis.fetch = async (_input, init) => {
+    reads++; assert.ok(new Headers(init?.headers).get("Authorization") === `Bearer ${syntheticCredential(originalActor)}`);
+    return new Response(JSON.stringify(outage ? { message: "Synthetic outage" } : { id: originalActor }), {
+      status: outage ? 503 : 200, headers: { "Content-Type": "application/json" },
+    });
+  };
+  try {
+    assert.equal(await service.verifyTransportCreditActor(), null); await Promise.resolve();
+    assert.equal(reads, 1); assert.equal(notifications, 0);
+    clock += 5_000; outage = false; assert.equal(await service.verifyTransportCreditActor(), originalActor);
+    assert.equal(reads, 2); assert.equal(calls.length, 0);
+  } finally { stop(); globalThis.fetch = oldFetch; reset(); }
 });
 test("missing/malformed returned IDs are UNKNOWN; mismatched stored evidence is a hard conflict", async () => {
   for (const data of [[], [{ ...row, credit_id: "bad" }], [{ ...row, was_replayed: null }]]) {
@@ -149,7 +174,7 @@ test("real SDK missing captured-A session cannot sign out B or discard A's recov
       return json({ access_token: syntheticCredential(identity), refresh_token: `test-only-refresh-${identity}`,
         token_type: "bearer", expires_in: 3600, user: { id: identity, aud: "authenticated" } });
     }
-    const identity = new Headers(init?.headers).get("Authorization")?.replace("Bearer test-only-", "");
+    const identity = credentialActor(new Headers(init?.headers).get("Authorization"));
     if (url.includes("/auth/v1/user")) {
       if (identity === originalActor && holdA) { holdA = false; verificationStarted(); return held; }
       return json({ id: identity });
@@ -211,7 +236,7 @@ test("Office readiness: delayed missing A session cannot sign out B, and B needs
       return json({ access_token: syntheticCredential(id), refresh_token: `test-only-refresh-${id}`, token_type: "bearer", expires_in: 3600, user: { id, aud: "authenticated" } });
     }
     assert.ok(String(input).includes("/auth/v1/user"));
-    const id = new Headers(init?.headers).get("Authorization")?.replace("Bearer test-only-", "");
+    const id = credentialActor(new Headers(init?.headers).get("Authorization"));
     if (id === originalActor) { startA(); return aRead; }
     assert.equal(id, otherActor); startB(); return bRead;
   };
