@@ -1,71 +1,44 @@
 import { supabase } from "../../../lib/supabase/client.ts";
-import { ATLAS_UI_STRINGS } from "../../../lib/strings.ts";
-import {
-  resolveAuthenticatedFactoryId,
-  type FactoryResolutionResult,
-} from "./factory-access-service.ts";
+import { authConnection, resolveAuthDestination, unavailableDestination, type AuthDestinationResult, type AuthNavigationOperation } from "./auth-navigation.ts";
+import type { AccountConnection, AccountSnapshot } from "./account-activation.ts";
 
 export type LoginCredentials = Readonly<{
   email: string;
   password: string;
 }>;
 
-export type LoginDestinationResult =
-  | { ok: true; destination: "/office" | "/onboarding"; needsOnboarding: boolean }
-  | { ok: false; message: string };
-
-type LoginDependencies = Readonly<{
-  signInWithPassword: (
-    credentials: LoginCredentials,
-  ) => PromiseLike<{ error: unknown | null }>;
-  resolveFactoryAccess: () => Promise<FactoryResolutionResult>;
-}>;
-
-const productionDependencies: LoginDependencies = {
-  async signInWithPassword(credentials) {
-    const { error } = await supabase.auth.signInWithPassword(credentials);
-    return { error };
-  },
-  resolveFactoryAccess: resolveAuthenticatedFactoryId,
-};
-
-function mapFactoryAccessToDestination(
-  factoryAccess: FactoryResolutionResult,
-): LoginDestinationResult {
-  if (factoryAccess.ok) {
-    return { ok: true, destination: "/office", needsOnboarding: false };
-  }
-
-  if (factoryAccess.error.code === "access_denied") {
-    return { ok: true, destination: "/onboarding", needsOnboarding: true };
-  }
-
-  return { ok: false, message: ATLAS_UI_STRINGS.auth.workspaceError };
-}
+export type LoginDestinationResult = AuthDestinationResult;
 
 export async function resolvePostLoginDestination(
-  resolveFactoryAccess: LoginDependencies["resolveFactoryAccess"] =
-    productionDependencies.resolveFactoryAccess,
+  operation: AuthNavigationOperation,
+  connection: AccountConnection = authConnection(),
+  retrySnapshot?: AccountSnapshot,
 ): Promise<LoginDestinationResult> {
-  try {
-    return mapFactoryAccessToDestination(await resolveFactoryAccess());
-  } catch {
-    return { ok: false, message: ATLAS_UI_STRINGS.auth.workspaceError };
+  const captured = await operation.currentCapture(2_000, retrySnapshot);
+  if (!captured) {
+    if (!operation.canPublish(unavailableDestination("uncertain"))) return unavailableDestination("superseded");
+    const snapshot = operation.coordinator.getSnapshot();
+    return unavailableDestination(snapshot.reason === "authentication" ? "authentication_failed" : snapshot.status === "signed_out" ? "signed_out" : "uncertain");
   }
+  return resolveAuthDestination(operation, captured, connection);
 }
 
 export async function loginWithPassword(
   credentials: LoginCredentials,
-  dependencies: LoginDependencies = productionDependencies,
+  operation: AuthNavigationOperation,
+  connection: AccountConnection = authConnection(),
 ): Promise<LoginDestinationResult> {
+  if (!operation.live()) return unavailableDestination("superseded");
   try {
-    const { error } = await dependencies.signInWithPassword(credentials);
-    if (error) {
-      return { ok: false, message: ATLAS_UI_STRINGS.auth.invalidCredentials };
-    }
+    // KNOWN-OPEN: supported SDK sign-in can install a late A session over B.
+    // Application ownership checks do NOT fix or undo that SDK side effect.
+    const { data, error } = await supabase.auth.signInWithPassword(credentials);
+    if (!operation.live()) return unavailableDestination("superseded");
+    if (error) return unavailableDestination(operation.unchanged() ? "invalid_credentials" : "superseded");
+    const captured = await operation.observeExpectedSession(data.session);
+    if (!captured) return unavailableDestination(operation.unchanged() ? "uncertain" : "superseded");
+    return resolveAuthDestination(operation, captured, connection);
   } catch {
-    return { ok: false, message: ATLAS_UI_STRINGS.auth.workspaceError };
+    return unavailableDestination(operation.unchanged() ? "request_error" : "superseded");
   }
-
-  return resolvePostLoginDestination(dependencies.resolveFactoryAccess);
 }

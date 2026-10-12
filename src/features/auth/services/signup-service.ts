@@ -1,22 +1,19 @@
 import { supabase } from "../../../lib/supabase/client.ts";
 import { ATLAS_UI_STRINGS } from "../../../lib/strings.ts";
-import {
-  resolveAuthenticatedFactoryId,
-  type FactoryResolutionResult,
-} from "./factory-access-service.ts";
+import { authConnection, resolveAuthDestination, unavailableDestination, type AuthDestinationResult, type AuthNavigationOperation } from "./auth-navigation.ts";
+import type { AccountConnection } from "./account-activation.ts";
 import { AUTH_EMAIL_OTP_LENGTH } from "./auth-config.ts";
+import type { Session } from "@supabase/supabase-js";
 
 export const SIGNUP_RESEND_COOLDOWN_SECONDS = 60;
 
 type AuthErrorLike = Readonly<{ code?: string }>;
 
 export type SignupResult =
-  | { ok: true }
-  | { ok: false; reason: "configuration" | "request"; message: string };
+  | { ok: true; kind: "verification_required" }
+  | { ok: false; kind: "configuration_error" | "request_error" | "superseded"; reason: "configuration" | "request"; message: string };
 
-export type VerificationDestinationResult =
-  | { ok: true; destination: "/office" | "/onboarding" }
-  | { ok: false; reason: "otp" | "identity" | "workspace"; message: string };
+export type VerificationDestinationResult = AuthDestinationResult & { otpAccepted?: true };
 
 export type ResendResult =
   | { ok: true }
@@ -24,21 +21,9 @@ export type ResendResult =
 
 type SignupDependencies = Readonly<{
   signUp: (credentials: Readonly<{ email: string; password: string }>) => PromiseLike<{
-    data: { session: unknown | null };
+    data: { session: Session | null };
     error: AuthErrorLike | null;
   }>;
-  signOut: () => PromiseLike<unknown>;
-}>;
-
-type VerificationDependencies = Readonly<{
-  verifyOtp: (params: Readonly<{ email: string; token: string; type: "signup" }>) => PromiseLike<{
-    error: unknown | null;
-  }>;
-  getUser: () => PromiseLike<{
-    data: { user: unknown | null };
-    error: unknown | null;
-  }>;
-  resolveFactoryAccess: () => Promise<FactoryResolutionResult>;
 }>;
 
 type ResendDependencies = Readonly<{
@@ -49,19 +34,6 @@ type ResendDependencies = Readonly<{
 
 const productionSignupDependencies: SignupDependencies = {
   signUp: (credentials) => supabase.auth.signUp(credentials),
-  signOut: () => supabase.auth.signOut({ scope: "local" }),
-};
-
-const productionVerificationDependencies: VerificationDependencies = {
-  async verifyOtp(params) {
-    const { error } = await supabase.auth.verifyOtp(params);
-    return { error };
-  },
-  async getUser() {
-    const { data, error } = await supabase.auth.getUser();
-    return { data, error };
-  },
-  resolveFactoryAccess: resolveAuthenticatedFactoryId,
 };
 
 const productionResendDependencies: ResendDependencies = {
@@ -79,78 +51,56 @@ const EXISTING_ACCOUNT_ERROR_CODES = new Set([
 
 export async function signupWithPassword(
   credentials: Readonly<{ email: string; password: string }>,
+  operation: AuthNavigationOperation,
   dependencies: SignupDependencies = productionSignupDependencies,
 ): Promise<SignupResult> {
+  if (!operation.live()) return { ok: false, kind: "superseded", reason: "request", message: ATLAS_UI_STRINGS.auth.signupError };
   try {
     const { data, error } = await dependencies.signUp(credentials);
+    const superseded: SignupResult = { ok: false, kind: "superseded", reason: "request", message: ATLAS_UI_STRINGS.auth.signupError };
+    if (!operation.live()) return superseded;
+    if (data.session) {
+      if (!await operation.observeExpectedSession(data.session)) return superseded;
+      // No shared logout cleanup: it could remove a replacement account.
+      return { ok: false, kind: "configuration_error", reason: "configuration", message: ATLAS_UI_STRINGS.auth.signupConfigurationError };
+    }
+    if (!operation.unchanged()) return superseded;
 
     // Supabase normally obscures an existing account as a successful response.
     // Treat known legacy/error variants the same so Atlas never enumerates email addresses.
     if (error) {
       if (error.code && EXISTING_ACCOUNT_ERROR_CODES.has(error.code)) {
-        return { ok: true };
+        return { ok: true, kind: "verification_required" };
       }
-      return { ok: false, reason: "request", message: ATLAS_UI_STRINGS.auth.signupError };
+      return { ok: false, kind: "request_error", reason: "request", message: ATLAS_UI_STRINGS.auth.signupError };
     }
 
-    if (data.session) {
-      try {
-        await dependencies.signOut();
-      } catch {
-        // The visible configuration error still blocks the flow if local sign-out fails.
-      }
-      return {
-        ok: false,
-        reason: "configuration",
-        message: ATLAS_UI_STRINGS.auth.signupConfigurationError,
-      };
-    }
-
-    return { ok: true };
+    return { ok: true, kind: "verification_required" };
   } catch {
-    return { ok: false, reason: "request", message: ATLAS_UI_STRINGS.auth.signupError };
+    return { ok: false, kind: operation.unchanged() ? "request_error" : "superseded", reason: "request", message: ATLAS_UI_STRINGS.auth.signupError };
   }
 }
 
 export async function verifySignupOtp(
   email: string,
   token: string,
-  dependencies: VerificationDependencies = productionVerificationDependencies,
+  operation: AuthNavigationOperation,
+  connection: AccountConnection = authConnection(),
 ): Promise<VerificationDestinationResult> {
+  if (!operation.live()) return unavailableDestination("superseded");
   try {
-    const { error: otpError } = await dependencies.verifyOtp({ email, token, type: "signup" });
+    // KNOWN-OPEN: verifyOtp may install a late session. This migration guards
+    // application publication, not the SDK's session-installation side effect.
+    const { data, error: otpError } = await supabase.auth.verifyOtp({ email, token, type: "signup" });
+    if (!operation.live()) return unavailableDestination("superseded");
     if (otpError) {
-      return { ok: false, reason: "otp", message: ATLAS_UI_STRINGS.auth.otpInvalid };
+      return unavailableDestination(operation.unchanged() ? "otp" : "superseded");
     }
-
-    const { data, error: userError } = await dependencies.getUser();
-    if (userError || !data.user) {
-      return {
-        ok: false,
-        reason: "identity",
-        message: ATLAS_UI_STRINGS.auth.verificationError,
-      };
-    }
-
-    const factoryAccess = await dependencies.resolveFactoryAccess();
-    if (factoryAccess.ok) {
-      return { ok: true, destination: "/office" };
-    }
-    if (factoryAccess.error.code === "access_denied") {
-      return { ok: true, destination: "/onboarding" };
-    }
-
-    return {
-      ok: false,
-      reason: "workspace",
-      message: ATLAS_UI_STRINGS.auth.workspaceError,
-    };
+    const captured = await operation.observeExpectedSession(data.session);
+    if (!captured) return { ...unavailableDestination(operation.unchanged() ? "uncertain" : "superseded"), otpAccepted: true };
+    return { ...await resolveAuthDestination(operation, captured, connection), otpAccepted: true };
   } catch {
-    return {
-      ok: false,
-      reason: "identity",
-      message: ATLAS_UI_STRINGS.auth.verificationError,
-    };
+    return unavailableDestination(operation.unchanged() ? "request_error" : "superseded");
   }
 }
 

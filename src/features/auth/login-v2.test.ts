@@ -51,8 +51,10 @@ test("login navigation points to the staged recovery route and implemented signu
 });
 
 test("signed-in login access uses session plus authoritative factory resolution", () => {
-  assert.match(loginPage, /supabase\.auth\.getSession\(\)/);
-  assert.match(loginPage, /resolvePostLoginDestination\(\)/);
+  assert.match(loginPage, /useAuthNavigation\(\)/);
+  assert.doesNotMatch(loginPage, /supabase\.auth\.(getSession|getUser)\(/);
+  assert.match(loginPage, /resolvePostLoginDestination\(operation\)/);
+  assert.match(loginPage, /operation\.canPublish\(result\)[\s\S]*router\.replace\(result\.destination\)/);
   assert.match(loginPage, /router\.replace\(result\.destination\)/);
   assert.doesNotMatch(loginPage, /getOfficeProductionHref|#brick-production/);
 });

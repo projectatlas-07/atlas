@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Feedback } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/form-controls";
 import { AuthShell } from "@/features/auth/components/auth-shell";
+import { useAuthNavigation } from "@/features/auth/components/auth-access-feedback";
+import type { AuthNavigationOperation } from "@/features/auth/services/auth-navigation";
 import { PasswordField } from "@/features/auth/components/password-field";
 import {
   markSignupOtpRecentlySent,
   savePendingSignupEmail,
 } from "@/features/auth/services/pending-signup-state";
-import { signupWithPassword } from "@/features/auth/services/signup-service";
+import { signupWithPassword, type SignupResult } from "@/features/auth/services/signup-service";
 import {
   signupFormSchema,
   type SignupFormValues,
@@ -22,6 +24,8 @@ import { ATLAS_UI_STRINGS } from "@/lib/strings";
 
 export default function SignupPage() {
   const router = useRouter();
+  const { scope } = useAuthNavigation();
+  const [outcome, setOutcome] = useState<{ result: SignupResult; operation: AuthNavigationOperation }>();
   const isCreatingRef = useRef(false);
   const [signupError, setSignupError] = useState("");
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -30,7 +34,7 @@ export default function SignupPage() {
   });
 
   async function createAccount(values: SignupFormValues) {
-    if (isCreatingRef.current) return;
+    if (!scope.isActive() || isCreatingRef.current) return;
 
     const parsed = signupFormSchema.safeParse(values);
     if (!parsed.success) {
@@ -44,13 +48,16 @@ export default function SignupPage() {
     }
 
     isCreatingRef.current = true;
+    const operation = scope.begin();
     let keepSubmissionLocked = false;
     setSignupError("");
     try {
       const result = await signupWithPassword({
         email: parsed.data.email,
         password: parsed.data.password,
-      });
+      }, operation);
+      if (!operation.canPublish(result)) return;
+      setOutcome({ result, operation });
       if (!result.ok) {
         setSignupError(result.message);
         return;
@@ -63,6 +70,7 @@ export default function SignupPage() {
       router.push("/signup/verify");
     } finally {
       if (!keepSubmissionLocked) isCreatingRef.current = false;
+      operation.dispose();
     }
   }
 
@@ -72,7 +80,7 @@ export default function SignupPage() {
       description={ATLAS_UI_STRINGS.auth.signupDescription}
     >
       <form className="flex flex-col" noValidate onSubmit={handleSubmit(createAccount)}>
-        {signupError && (
+        {signupError && outcome && outcome.operation.canPublish(outcome.result) && (
           <Feedback role="alert" tone="danger">
             {signupError}
           </Feedback>

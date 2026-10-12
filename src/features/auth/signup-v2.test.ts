@@ -61,7 +61,8 @@ test("verification effects restore state and decrement UI time only; they never 
 });
 
 test("verified users follow the service destination into the guarded onboarding flow", () => {
-  assert.match(verifyPage, /verifySignupOtp\(pendingEmail, token\)/);
+  assert.match(verifyPage, /verifySignupOtp\(pendingEmail, token, operation\)/);
+  assert.match(verifyPage, /operation\.canPublish\(result\)[\s\S]*router\.replace\(result\.destination\)/);
   assert.match(verifyPage, /router\.replace\(result\.destination\)/);
   assert.match(onboardingPage, /function OnboardingPage/);
   assert.match(onboardingPage, /resolveOnboardingAccess\(\)/);

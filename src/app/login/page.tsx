@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Feedback } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/form-controls";
 import { AuthShell } from "@/features/auth/components/auth-shell";
+import { AuthAccessFeedback, useAuthNavigation } from "@/features/auth/components/auth-access-feedback";
+import type { AuthNavigationOperation } from "@/features/auth/services/auth-navigation";
 import { readPendingRecoverySession } from "@/features/auth/services/pending-recovery-state";
 import {
   loginWithPassword,
@@ -16,7 +18,6 @@ import {
   type LoginDestinationResult,
 } from "@/features/auth/services/login-service";
 import { ATLAS_UI_STRINGS } from "@/lib/strings";
-import { supabase } from "@/lib/supabase/client";
 
 const loginFormSchema = z.object({
   email: z.string().trim()
@@ -29,6 +30,8 @@ type LoginFormValues = z.infer<typeof loginFormSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const { scope, snapshot } = useAuthNavigation();
+  const [access, setAccess] = useState<{ result: LoginDestinationResult; operation: AuthNavigationOperation }>();
   const isSigningInRef = useRef(false);
   const [authenticationError, setAuthenticationError] = useState("");
   const [isCheckingSession, setIsCheckingSession] = useState(true);
@@ -39,9 +42,11 @@ export default function LoginPage() {
     defaultValues: { email: "", password: "" },
   });
 
-  const followDestination = useCallback((result: LoginDestinationResult) => {
+  const followDestination = useCallback((result: LoginDestinationResult, operation: AuthNavigationOperation) => {
+    if (!operation.canPublish(result)) return;
+    setAccess({ result, operation });
     if (!result.ok) {
-      setAuthenticationError(result.message);
+      if (result.kind !== "signed_out" && result.kind !== "superseded") setAuthenticationError(result.message);
       return;
     }
 
@@ -51,7 +56,7 @@ export default function LoginPage() {
   }, [router]);
 
   useEffect(() => {
-    let isCancelled = false;
+    const operation = scope.begin();
 
     async function redirectExistingSession() {
       if (readPendingRecoverySession()) {
@@ -60,27 +65,20 @@ export default function LoginPage() {
         return;
       }
 
-      const { data, error } = await supabase.auth.getSession();
-      if (isCancelled) return;
-
-      if (error || !data.session) {
-        setIsCheckingSession(false);
-        return;
-      }
-
-      const destination = await resolvePostLoginDestination();
-      if (isCancelled) return;
+      const destination = await resolvePostLoginDestination(operation);
+      if (!operation.live()) return;
       setIsCheckingSession(false);
-      followDestination(destination);
+      followDestination(destination, operation);
+      operation.dispose();
     }
 
     void redirectExistingSession();
     setPasswordUpdated(new URLSearchParams(window.location.search).get("password") === "updated");
-    return () => { isCancelled = true; };
-  }, [followDestination, router]);
+    return () => { scope.cancel(); };
+  }, [followDestination, router, scope]);
 
   async function signIn(values: LoginFormValues) {
-    if (isSigningInRef.current) return;
+    if (!scope.isActive() || isSigningInRef.current) return;
 
     const parsed = loginFormSchema.safeParse(values);
     if (!parsed.success) {
@@ -91,13 +89,26 @@ export default function LoginPage() {
     }
 
     isSigningInRef.current = true;
+    const operation = scope.begin();
     setAuthenticationError("");
     try {
-      followDestination(await loginWithPassword(parsed.data));
+      followDestination(await loginWithPassword(parsed.data, operation), operation);
     } finally {
       isSigningInRef.current = false;
+      operation.dispose();
     }
   }
+
+  async function retryAccess() {
+    if (!scope.isActive() || isSigningInRef.current) return;
+    isSigningInRef.current = true;
+    const operation = scope.begin();
+    try { followDestination(await resolvePostLoginDestination(operation, undefined, snapshot), operation); }
+    finally { isSigningInRef.current = false; operation.dispose(); }
+  }
+
+  const currentAccess = access && access.operation.canPublish(access.result) ? access.result : undefined;
+  const visibleError = currentAccess && !currentAccess.ok ? currentAccess.kind === "signed_out" ? "" : currentAccess.message : "";
 
   const isBusy = isCheckingSession || isSubmitting || isRedirecting;
   const passwordToggleLabel = showPassword
@@ -110,15 +121,16 @@ export default function LoginPage() {
       description={ATLAS_UI_STRINGS.auth.loginDescription}
     >
       <form className="flex flex-col" noValidate onSubmit={handleSubmit(signIn)}>
+        <AuthAccessFeedback result={currentAccess} onRetry={() => { void retryAccess(); }} />
         {passwordUpdated && (
           <Feedback role="status" tone="success">
             {ATLAS_UI_STRINGS.auth.passwordUpdated}
           </Feedback>
         )}
-        {authenticationError && (
+        {authenticationError && visibleError && (
           <div className={passwordUpdated ? "mt-atlas-3" : undefined}>
             <Feedback role="alert" tone="danger">
-              {authenticationError}
+              {visibleError}
             </Feedback>
           </div>
         )}

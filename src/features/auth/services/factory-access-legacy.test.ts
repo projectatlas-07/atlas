@@ -11,11 +11,13 @@ test("legacy factory API stays visibly unresolved and cannot acquire new product
   const callers = readdirSync(root, { recursive: true }).filter((path) => /\.tsx?$/.test(String(path)) && !/\.test\./.test(String(path)))
     .map(String).filter((path) => path !== "features/auth/services/factory-access-service.ts" && readFileSync(new URL(path, root), "utf8").includes("resolveAuthenticatedFactoryId"));
   assert.deepEqual(callers.sort(), [
-    "features/auth/services/login-service.ts", "features/auth/services/signup-service.ts",
     "features/office/components/office-dashboard.tsx", "features/production/components/production-entry-screen.tsx",
     "features/sales/components/challan-print-screen.tsx", "features/sales/components/payment-receipt-screen.tsx",
     "features/soil/components/soil-daily-entry-screen.tsx", "features/transport/components/transport-daily-entry-screen.tsx",
   ].sort());
+  for (const path of ["features/auth/services/login-service.ts", "features/auth/services/signup-service.ts"]) {
+    assert.doesNotMatch(readFileSync(new URL(path, root), "utf8"), /\bresolveAuthenticatedFactoryId\b/, `Migrated service restored a legacy reference: ${path}`);
+  }
   // Each approved file has one import and one existing use. Also reject new
   // legacy uses inside a previously approved file, not just brand-new files.
   for (const path of callers) {

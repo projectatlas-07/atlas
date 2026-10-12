@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Feedback } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/form-controls";
 import { AuthShell } from "@/features/auth/components/auth-shell";
+import { AuthAccessFeedback, useAuthNavigation } from "@/features/auth/components/auth-access-feedback";
+import type { AuthNavigationOperation } from "@/features/auth/services/auth-navigation";
+import { resolvePostLoginDestination, type LoginDestinationResult } from "@/features/auth/services/login-service";
 import { SignupOtpInput } from "@/features/auth/components/signup-otp-input";
 import { AUTH_EMAIL_OTP_LENGTH } from "@/features/auth/services/auth-config";
 import {
@@ -28,8 +31,12 @@ type PendingEmailState = string | null | undefined;
 
 export default function VerifySignupEmailPage() {
   const router = useRouter();
+  const { scope, snapshot } = useAuthNavigation();
+  const [access, setAccess] = useState<{ result: LoginDestinationResult; operation: AuthNavigationOperation }>();
+  const [otpAccepted, setOtpAccepted] = useState(false);
   const isVerifyingRef = useRef(false);
   const isResendingRef = useRef(false);
+  const accessOperationRef = useRef<AuthNavigationOperation | null>(null);
   const [pendingEmail, setPendingEmail] = useState<PendingEmailState>(undefined);
   const [emailEntry, setEmailEntry] = useState("");
   const [emailError, setEmailError] = useState("");
@@ -75,46 +82,68 @@ export default function VerifySignupEmailPage() {
 
   async function verifyEmail(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!pendingEmail || isVerifyingRef.current) return;
+    if (!scope.isActive() || !pendingEmail || isVerifyingRef.current || isResendingRef.current || otpAccepted) return;
     if (token.length !== AUTH_EMAIL_OTP_LENGTH) {
       setVerificationError(ATLAS_UI_STRINGS.auth.otpRequired);
       return;
     }
 
     isVerifyingRef.current = true;
+    const operation = scope.begin();
+    accessOperationRef.current = operation;
     let keepSubmissionLocked = false;
     setIsVerifying(true);
     setVerificationError("");
     setResendFeedback(null);
     try {
-      const result = await verifySignupOtp(pendingEmail, token);
-      if (!result.ok) {
-        setVerificationError(result.message);
-        return;
-      }
-
-      clearPendingSignupEmail();
-      keepSubmissionLocked = true;
-      setIsRedirecting(true);
-      router.replace(result.destination);
-      router.refresh();
+      const result = await verifySignupOtp(pendingEmail, token, operation);
+      if (!operation.canPublish(result)) return;
+      if (result.otpAccepted) setOtpAccepted(true);
+      keepSubmissionLocked = followDestination(result, operation);
     } finally {
       if (!keepSubmissionLocked) {
         isVerifyingRef.current = false;
-        setIsVerifying(false);
+        if (operation.live()) setIsVerifying(false);
       }
+      // Keep observing replacements through read-only recovery. The scope
+      // unsubscribes on the next operation or unmount; A1 cannot revive as A2.
     }
   }
 
+  function followDestination(result: LoginDestinationResult, operation: AuthNavigationOperation): boolean {
+    if (!operation.canPublish(result)) return false;
+    setAccess({ result, operation });
+    if (!result.ok) { setVerificationError(result.message); return false; }
+    clearPendingSignupEmail(); setIsRedirecting(true);
+    router.replace(result.destination); router.refresh();
+    return true;
+  }
+
+  async function retryAccess() {
+    if (!scope.isActive() || isVerifyingRef.current || isResendingRef.current ||
+      (accessOperationRef.current && !accessOperationRef.current.canPublish({ kind: "uncertain" }))) return;
+    isVerifyingRef.current = true;
+    const operation = scope.begin();
+    accessOperationRef.current = operation;
+    setIsVerifying(true);
+    try { followDestination(await resolvePostLoginDestination(operation, undefined, snapshot), operation); }
+    finally { isVerifyingRef.current = false; if (operation.live()) setIsVerifying(false); }
+  }
+
+  const currentAccess = access && access.operation.canPublish(access.result) ? access.result : undefined;
+
   async function resendCode() {
-    if (!pendingEmail || resendSeconds > 0 || isResendingRef.current) return;
+    if (!scope.isActive() || !pendingEmail || resendSeconds > 0 || isResendingRef.current || isVerifyingRef.current || otpAccepted) return;
 
     isResendingRef.current = true;
+    const operation = scope.begin();
+    accessOperationRef.current = operation;
     setIsResending(true);
     setVerificationError("");
     setResendFeedback(null);
     try {
       const result = await resendSignupOtp(pendingEmail);
+      if (!operation.canPublish(result)) return;
       if (!result.ok) {
         setResendFeedback({ tone: "danger", message: result.message });
         return;
@@ -125,11 +154,13 @@ export default function VerifySignupEmailPage() {
       setResendFeedback({ tone: "success", message: ATLAS_UI_STRINGS.auth.resendSuccess });
     } finally {
       isResendingRef.current = false;
-      setIsResending(false);
+      if (operation.live()) setIsResending(false);
+      operation.dispose();
     }
   }
 
   function changeEmail() {
+    scope.cancel();
     clearPendingSignupEmail();
     router.push("/signup");
   }
@@ -197,7 +228,9 @@ export default function VerifySignupEmailPage() {
       )}
     >
       <form className="flex flex-col" noValidate onSubmit={verifyEmail}>
-        {verificationError && (
+        <AuthAccessFeedback result={currentAccess} onRetry={() => { void retryAccess(); }}
+          disabled={isResending || isVerifying || isRedirecting || Boolean(accessOperationRef.current && !accessOperationRef.current.canPublish({ kind: "uncertain" }))} />
+        {verificationError && (!access || currentAccess) && (
           <Feedback role="alert" tone="danger">
             {verificationError}
           </Feedback>
@@ -210,7 +243,7 @@ export default function VerifySignupEmailPage() {
           </div>
         )}
 
-        <div className={verificationError || resendFeedback ? "mt-atlas-5" : undefined}>
+        <fieldset disabled={isVerifying || isResending || isRedirecting || otpAccepted} className={verificationError || resendFeedback ? "mt-atlas-5" : undefined}>
           <label htmlFor="signup-verification-code" className="mb-atlas-2 block text-atlas-sm font-atlas-medium text-atlas-text">
             {ATLAS_UI_STRINGS.auth.verificationCode}
           </label>
@@ -227,13 +260,13 @@ export default function VerifySignupEmailPage() {
           <p className="mt-atlas-2 text-atlas-sm text-atlas-text-muted">
             {AUTH_EMAIL_OTP_LENGTH}-digit code
           </p>
-        </div>
+        </fieldset>
 
         <div className="mt-atlas-6">
           <Button
             type="submit"
             fullWidth
-            disabled={isVerifying || isRedirecting}
+            disabled={isVerifying || isResending || isRedirecting || otpAccepted}
             loading={isVerifying || isRedirecting}
             loadingLabel={ATLAS_UI_STRINGS.auth.verifyingEmail}
           >
@@ -246,7 +279,7 @@ export default function VerifySignupEmailPage() {
           <Button
             type="button"
             variant="ghost"
-            disabled={resendSeconds > 0 || isResending}
+            disabled={resendSeconds > 0 || isResending || isVerifying || otpAccepted}
             loading={isResending}
             loadingLabel={ATLAS_UI_STRINGS.auth.resendingCode}
             onClick={resendCode}

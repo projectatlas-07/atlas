@@ -31,6 +31,9 @@ const loginServiceSource = readFileSync(
   new URL("../auth/services/login-service.ts", import.meta.url),
   "utf8",
 );
+const capturedLoginAccessSource = readFileSync(
+  new URL("../auth/services/auth-navigation.ts", import.meta.url), "utf8",
+);
 
 test("retired root recording hashes redirect to matching Office Production tabs", () => {
   assert.equal(resolveLegacyProductionRedirect("#brick-production"), "/office#brick-production");
@@ -72,8 +75,10 @@ test("Office retains real session and factory loading with explicit failure hand
 
 test("successful sign-in enters the canonical Office default without a root redirect hop", () => {
   assert.match(loginPageSource, /router\.replace\(result\.destination\)/);
-  assert.match(loginServiceSource, /destination: "\/office"/);
-  assert.match(loginServiceSource, /resolveAuthenticatedFactoryId/);
+  assert.match(loginServiceSource, /resolveAuthDestination/);
+  assert.match(capturedLoginAccessSource, /destination: "\/office"/);
+  assert.match(capturedLoginAccessSource, /resolveCapturedFactoryAccess/);
+  assert.doesNotMatch(loginServiceSource, /resolveAuthenticatedFactoryId/);
   assert.doesNotMatch(loginPageSource, /getOfficeProductionHref|#brick-production/);
   assert.doesNotMatch(loginPageSource, /router\.replace\("\/"\)/);
 });
