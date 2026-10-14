@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import {
   markRecoveryOtpRecentlySent,
   savePendingRecoveryEmail,
 } from "@/features/auth/services/pending-recovery-state";
-import { requestPasswordRecovery } from "@/features/auth/services/recovery-service";
+import { captureRecoveryAction, requestPasswordRecovery } from "@/features/auth/services/recovery-service";
 import { recoveryEmailSchema } from "@/features/auth/services/recovery-validation";
 import { ATLAS_UI_STRINGS } from "@/lib/strings";
 
@@ -20,10 +20,15 @@ type ForgotPasswordForm = { email: string };
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const isRequestingRef = useRef(false);
+  const lifetimeRef = useRef(0);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<ForgotPasswordForm>({
     defaultValues: { email: "" },
   });
+  useEffect(() => {
+    const lifetime = ++lifetimeRef.current;
+    return () => { if (lifetimeRef.current === lifetime) lifetimeRef.current += 1; };
+  }, []);
 
   async function sendRecoveryCode(values: ForgotPasswordForm) {
     if (isRequestingRef.current) return;
@@ -34,7 +39,11 @@ export default function ForgotPasswordPage() {
     }
 
     isRequestingRef.current = true;
+    const lifetime = lifetimeRef.current;
+    const active = await captureRecoveryAction(() => lifetimeRef.current === lifetime);
+    if (!active()) { isRequestingRef.current = false; return; }
     await requestPasswordRecovery(parsed.data);
+    if (!active()) { isRequestingRef.current = false; return; }
     savePendingRecoveryEmail(parsed.data);
     markRecoveryOtpRecentlySent();
     setIsRedirecting(true);

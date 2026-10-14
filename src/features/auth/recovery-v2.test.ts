@@ -12,6 +12,7 @@ const otpInput = readFileSync(new URL("./components/signup-otp-input.tsx", impor
 const recoveryService = readFileSync(new URL("./services/recovery-service.ts", import.meta.url), "utf8");
 const recoveryState = readFileSync(new URL("./services/pending-recovery-state.ts", import.meta.url), "utf8");
 const recoveryValidation = readFileSync(new URL("./services/recovery-validation.ts", import.meta.url), "utf8");
+const recoverySession = readFileSync(new URL("./services/recovery-session.ts", import.meta.url), "utf8");
 
 test("forgot-password renders the V2 email form and requests a reset code once", () => {
   assert.match(forgotPage, /function ForgotPasswordPage/);
@@ -23,6 +24,7 @@ test("forgot-password renders the V2 email form and requests a reset code once",
   assert.equal((forgotPage.match(/requestPasswordRecovery\(/g) ?? []).length, 1);
   assert.match(forgotPage, /savePendingRecoveryEmail\(parsed\.data\)/);
   assert.match(forgotPage, /router\.push\("\/recover\/verify"\)/);
+  assert.match(forgotPage, /captureRecoveryAction[\s\S]*await requestPasswordRecovery\(parsed\.data\);\s*if \(!active\(\)\)/);
 });
 
 test("public recovery request is neutral and cannot expose account existence", () => {
@@ -38,10 +40,10 @@ test("recovery code uses the adaptable numeric OTP control and recovery verifica
   assert.match(otpInput, /inputMode="numeric"/);
   assert.match(otpInput, /autoComplete="one-time-code"/);
   assert.match(otpInput, /maxLength=\{length\}/);
-  assert.match(recoveryService, /type: "recovery"/);
-  assert.match(recoveryService, /dependencies\.verifyOtp\(\{[\s\S]*type: "recovery"/);
-  assert.match(recoveryService, /dependencies\.getUser\(\)/);
-  assert.match(verifyPage, /savePendingRecoverySession\(result\.userId\)/);
+  assert.match(recoverySession, /auth\.verifyOtp\(\{ email, token, type: "recovery" \}\)/);
+  assert.match(recoverySession, /auth\.getUser\(intent\.token\)/);
+  assert.match(recoverySession, /options\.saveMarker\(intent\.handle\.userId\)/);
+  assert.match(verifyPage, /canPublishRecovery\(result\.context\)/);
   assert.match(verifyPage, /router\.replace\("\/recover\/new-password"\)/);
 });
 
@@ -66,20 +68,23 @@ test("missing recovery email has a validated explicit resend path without URL st
 });
 
 test("wrong or expired OTP and resend failures use stable Atlas messages", () => {
-  assert.match(recoveryService, /recoveryOtpInvalid/);
+  assert.match(recoverySession, /recoveryOtpInvalid/);
   assert.match(recoveryService, /recoveryResendError/);
   assert.doesNotMatch(verifyPage, /error\.message|otpError\.message|result\.error/);
 });
 
 test("new-password validates recovery context before rendering or updating", () => {
-  const contextRead = newPasswordPage.indexOf("readPendingRecoverySession()");
-  const contextValidation = newPasswordPage.indexOf("validateRecoverySession(savedContext.userId)");
-  const update = newPasswordPage.indexOf("updateRecoveryPassword(parsed.data.password)");
+  const contextRead = newPasswordPage.indexOf("getRecoveryContext()");
+  const contextValidation = newPasswordPage.indexOf("validateRecoverySession(savedContext, active)");
+  const update = newPasswordPage.indexOf("updateRecoveryPassword(recoveryContext, parsed.data.password");
   assert.ok(contextRead > -1 && contextValidation > contextRead && update > contextValidation);
   assert.match(newPasswordPage, /if \(recoveryContext === null\)/);
   assert.match(newPasswordPage, /recoverySessionError/);
   assert.match(newPasswordPage, /router\.replace\("\/forgot-password"\)/);
-  assert.match(newPasswordPage, /await signOutAfterRecovery\(\)/);
+  assert.match(newPasswordPage, /await signOutAfterRecovery\(recoveryContext,/);
+  assert.doesNotMatch(newPasswordPage, /clearPendingRecoveryState|readPendingRecoverySession|savePendingRecoverySession/);
+  const restart = newPasswordPage.slice(newPasswordPage.indexOf("async function restartRecovery"), newPasswordPage.indexOf("if (completion)"));
+  assert.doesNotMatch(restart, /signOutAfterRecovery|\.auth\./);
 });
 
 test("new-password uses two password-manager-compatible fields and current Atlas policy", () => {
@@ -92,14 +97,18 @@ test("new-password uses two password-manager-compatible fields and current Atlas
   assert.match(recoveryValidation, /passwordMismatch/);
 });
 
-test("successful password update clears state, signs out globally, then returns to login", () => {
-  const update = newPasswordPage.indexOf("await updateRecoveryPassword(parsed.data.password)");
-  const clear = newPasswordPage.indexOf("clearPendingRecoveryState();", update);
-  const signOut = newPasswordPage.indexOf("await signOutAfterRecovery();", clear);
-  const route = newPasswordPage.indexOf('router.replace("/login?password=updated")', signOut);
-  assert.ok(update > -1 && clear > update && signOut > clear && route > signOut);
-  assert.match(recoveryService, /updateUser\(attributes\)/);
-  assert.match(recoveryService, /signOut\(\{ scope: "global" \}\)|signOut\(options\)/);
+test("successful password update stays confirmed and shows recovery-local fallback without login auto-redirect", () => {
+  const update = newPasswordPage.indexOf("await updateRecoveryPassword(recoveryContext, parsed.data.password");
+  const publish = newPasswordPage.indexOf("canPublishRecovery(recoveryContext)", update);
+  const completion = newPasswordPage.indexOf("setCompletion(updateResult.completion)", publish);
+  assert.ok(update > -1 && publish > update && completion > publish);
+  assert.match(newPasswordPage, /recoveryCompleted[\s\S]*recoveryRevocationUnknown/);
+  assert.match(newPasswordPage, /recoveryLocalSessionNotice/);
+  assert.match(newPasswordPage, /setOutcomeLocked\(true\)/);
+  assert.doesNotMatch(newPasswordPage, /router\.replace\("\/login\?password=updated"\)/);
+  assert.match(recoverySession, /client\.auth\.updateUser\(\{ password \}\)/);
+  assert.match(recoverySession, /client\.auth\.signOut\(\{ scope: "global" \}\)/);
+  assert.doesNotMatch(recoveryService, /supabase\.auth\.(?:getUser|getSession|verifyOtp|updateUser|signOut)\(/);
 });
 
 test("recovery sessions cannot fall through Login or AuthGuard into Office", () => {
@@ -122,4 +131,22 @@ test("all recovery screens share one responsive shell without separate mobile DO
   assert.doesNotMatch(sources, /md:hidden|lg:hidden|hidden md:|hidden lg:/);
   assert.doesNotMatch(sources, /overflow-x|w-screen|min-w-/);
   assert.doesNotMatch(sources, /(?:#[0-9a-f]{3,8}|(?:bg|text|border)-(?:slate|stone|red|amber|emerald|blue|cyan|orange)-|-\[[^\]]+\])/i);
+});
+
+test("new-password captures an effect lease instead of reviving a shared mounted boolean", () => {
+  assert.match(newPasswordPage, /const lifetime = \{ active: true \}/);
+  assert.match(newPasswordPage, /return \(\) => \{ lifetime\.active = false; unsubscribe\(\); \}/);
+  assert.match(newPasswordPage, /const lifetime = lifetimeRef\.current/);
+  assert.match(newPasswordPage, /updateRecoveryPassword\(recoveryContext, parsed\.data\.password, \(\) => lifetime\?\.active === true\)/);
+  assert.doesNotMatch(newPasswordPage, /mountedRef/);
+  assert.doesNotMatch(recoverySession, /intent\.active|unsafeUpdateLifetime|unsafeEffectLifetime/);
+});
+
+test("remounted new-password uses stored pending and terminal attempt evidence without a new write", () => {
+  assert.match(newPasswordPage, /getRecoveryAttemptState\(savedContext\)/);
+  assert.match(newPasswordPage, /setCompletion\(latest\.completion\)/);
+  assert.match(newPasswordPage, /latest\.status === "unknown" \|\| latest\.status === "complete"/);
+  assert.match(newPasswordPage, /attemptState\?\.status === "updating"/);
+  const effect = newPasswordPage.slice(newPasswordPage.indexOf("useEffect(() =>"), newPasswordPage.indexOf("async function setNewPassword"));
+  assert.doesNotMatch(effect, /updateRecoveryPassword|signOutAfterRecovery|router\./);
 });

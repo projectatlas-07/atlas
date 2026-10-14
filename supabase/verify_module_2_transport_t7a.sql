@@ -279,9 +279,9 @@ begin
   values (brick_type_id, factory_a_id, 'T7A production regression brick');
 
   insert into public.labourers (
-    id, factory_id, name, assigned_brick_type_id
+    id, factory_id, name
   ) values (
-    labourer_id, factory_a_id, 'T7A production regression labourer', brick_type_id
+    labourer_id, factory_a_id, 'T7A production regression labourer'
   );
 
   insert into public.labour_groups (id, factory_id, name)
@@ -296,9 +296,9 @@ begin
   );
 
   insert into public.production_entries (
-    id, factory_id, labourer_id, brick_type_id, production_date, quantity
+    id, factory_id, labourer_id, production_date, quantity
   ) values (
-    gen_random_uuid(), factory_a_id, labourer_id, brick_type_id, date '2026-08-01', 100
+    gen_random_uuid(), factory_a_id, labourer_id, date '2026-08-01', 100
   );
 
   insert into public.wage_rates (

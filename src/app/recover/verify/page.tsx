@@ -16,13 +16,14 @@ import {
   markRecoveryOtpRecentlySent,
   readPendingRecoveryEmail,
   savePendingRecoveryEmail,
-  savePendingRecoverySession,
 } from "@/features/auth/services/pending-recovery-state";
 import {
   RECOVERY_RESEND_COOLDOWN_SECONDS,
   requestPasswordRecovery,
   resendRecoveryCode,
   verifyRecoveryOtp,
+  canPublishRecovery,
+  captureRecoveryAction,
 } from "@/features/auth/services/recovery-service";
 import { recoveryEmailSchema } from "@/features/auth/services/recovery-validation";
 import { ATLAS_UI_STRINGS } from "@/lib/strings";
@@ -34,6 +35,7 @@ export default function RecoveryCodePage() {
   const isVerifyingRef = useRef(false);
   const isResendingRef = useRef(false);
   const isRecoveringEmailRef = useRef(false);
+  const pageLifetimeRef = useRef(0);
   const [pendingEmail, setPendingEmail] = useState<PendingEmailState>(undefined);
   const [emailEntry, setEmailEntry] = useState("");
   const [emailError, setEmailError] = useState("");
@@ -47,12 +49,14 @@ export default function RecoveryCodePage() {
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
+    const lifetime = ++pageLifetimeRef.current;
     const savedEmail = readPendingRecoveryEmail();
     setPendingEmail(savedEmail);
     if (savedEmail && consumeRecoveryOtpRecentlySent()) {
       setResendSeconds(RECOVERY_RESEND_COOLDOWN_SECONDS);
       setFeedback({ tone: "neutral", message: ATLAS_UI_STRINGS.auth.recoveryRequestSuccess });
     }
+    return () => { if (pageLifetimeRef.current === lifetime) pageLifetimeRef.current += 1; };
   }, []);
 
   useEffect(() => {
@@ -74,7 +78,11 @@ export default function RecoveryCodePage() {
 
     isRecoveringEmailRef.current = true;
     setIsRecoveringEmail(true);
+    const lifetime = pageLifetimeRef.current;
+    const active = await captureRecoveryAction(() => pageLifetimeRef.current === lifetime);
+    if (!active()) { isRecoveringEmailRef.current = false; if (pageLifetimeRef.current === lifetime) setIsRecoveringEmail(false); return; }
     await requestPasswordRecovery(parsed.data);
+    if (!active()) { isRecoveringEmailRef.current = false; if (pageLifetimeRef.current === lifetime) setIsRecoveringEmail(false); return; }
     savePendingRecoveryEmail(parsed.data);
     markRecoveryOtpRecentlySent();
     setPendingEmail(parsed.data);
@@ -99,13 +107,17 @@ export default function RecoveryCodePage() {
     setVerificationError("");
     setFeedback(null);
     try {
-      const result = await verifyRecoveryOtp(pendingEmail, token);
+      const lifetime = pageLifetimeRef.current;
+      const active = await captureRecoveryAction(() => pageLifetimeRef.current === lifetime);
+      if (!active()) return;
+      const result = await verifyRecoveryOtp(pendingEmail, token, active);
+      if (!active()) return;
       if (!result.ok) {
         setVerificationError(result.message);
         return;
       }
 
-      savePendingRecoverySession(result.userId);
+      if (!canPublishRecovery(result.context)) return;
       clearPendingRecoveryEmail();
       keepSubmissionLocked = true;
       setIsRedirecting(true);
@@ -126,7 +138,11 @@ export default function RecoveryCodePage() {
     setVerificationError("");
     setFeedback(null);
     try {
+      const lifetime = pageLifetimeRef.current;
+      const active = await captureRecoveryAction(() => pageLifetimeRef.current === lifetime);
+      if (!active()) return;
       const result = await resendRecoveryCode(pendingEmail);
+      if (!active()) return;
       if (!result.ok) {
         setFeedback({ tone: "danger", message: result.message });
         return;
@@ -141,6 +157,7 @@ export default function RecoveryCodePage() {
   }
 
   function changeEmail() {
+    pageLifetimeRef.current += 1;
     clearPendingRecoveryState();
     router.push("/forgot-password");
   }

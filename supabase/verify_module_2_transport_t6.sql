@@ -224,12 +224,12 @@ begin
   set factory_id = factory_a_id, is_active = true
   where id = mapping_id;
 
-  insert into public.transport_crews (id, factory_id, name, work_direction)
+  insert into public.transport_crews (id, factory_id, name)
   values
-    (field_crew_id, factory_a_id, 'T6 field crew', 'FIELD_TO_KILN'),
-    (kiln_crew_id, factory_a_id, 'T6 kiln crew', 'KILN_TO_FIELD'),
-    (missing_crew_id, factory_a_id, 'T6 missing-rate crew', 'FIELD_TO_KILN'),
-    (crew_b_id, factory_b_id, 'T6 Factory B crew', 'FIELD_TO_KILN');
+    (field_crew_id, factory_a_id, 'T6 field crew'),
+    (kiln_crew_id, factory_a_id, 'T6 kiln crew'),
+    (missing_crew_id, factory_a_id, 'T6 missing-rate crew'),
+    (crew_b_id, factory_b_id, 'T6 Factory B crew');
 
   insert into public.transport_workers (id, factory_id, name)
   select supplied.worker_id, factory_a_id,

@@ -1,34 +1,13 @@
 import { supabase } from "../../../lib/supabase/client.ts";
 import { ATLAS_UI_STRINGS } from "../../../lib/strings.ts";
+import { createRecoveryFlow, recoverySharedIdentity, type RecoveryContext } from "./recovery-session.ts";
+import type { Session } from "@supabase/supabase-js";
+import { readPendingRecoverySession, savePendingRecoverySession, clearPendingRecoveryState } from "./pending-recovery-state.ts";
 
 export const RECOVERY_RESEND_COOLDOWN_SECONDS = 60;
 
 type ResetDependencies = Readonly<{
   resetPasswordForEmail: (email: string) => PromiseLike<{ error: unknown | null }>;
-}>;
-
-type VerifyDependencies = Readonly<{
-  verifyOtp: (params: Readonly<{
-    email: string;
-    token: string;
-    type: "recovery";
-  }>) => PromiseLike<{ error: unknown | null }>;
-  getUser: () => PromiseLike<{
-    data: { user: { id: string } | null };
-    error: unknown | null;
-  }>;
-}>;
-
-type UpdateDependencies = Readonly<{
-  updateUser: (attributes: Readonly<{ password: string }>) => PromiseLike<{
-    error: unknown | null;
-  }>;
-}>;
-
-type SignOutDependencies = Readonly<{
-  signOut: (options: Readonly<{ scope: "global" }>) => PromiseLike<{
-    error: unknown | null;
-  }>;
 }>;
 
 const productionResetDependencies: ResetDependencies = {
@@ -38,30 +17,36 @@ const productionResetDependencies: ResetDependencies = {
   },
 };
 
-const productionVerifyDependencies: VerifyDependencies = {
-  async verifyOtp(params) {
-    const { error } = await supabase.auth.verifyOtp(params);
-    return { error };
-  },
-  async getUser() {
-    const { data, error } = await supabase.auth.getUser();
-    return { data, error };
-  },
-};
-
-const productionUpdateDependencies: UpdateDependencies = {
-  async updateUser(attributes) {
-    const { error } = await supabase.auth.updateUser(attributes);
-    return { error };
-  },
-};
-
-const productionSignOutDependencies: SignOutDependencies = {
-  async signOut(options) {
-    const { error } = await supabase.auth.signOut(options);
-    return { error };
-  },
-};
+let recoveryFlow: ReturnType<typeof createRecoveryFlow> | undefined;
+function flow() {
+  if (recoveryFlow) return recoveryFlow;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) throw new Error("Missing Atlas Auth configuration.");
+  // Matches the installed SDK default and the existing shared createClient
+  // configuration. Read only the actor for ownership, never recover credentials.
+  const sharedStorageKey = `sb-${new URL(url).hostname.split(".")[0]}-auth-token`;
+  recoveryFlow = createRecoveryFlow({ sharedAuth: supabase.auth, url, key,
+    readMarker: readPendingRecoverySession, saveMarker: savePendingRecoverySession,
+    clearMarker: clearPendingRecoveryState,
+    readSharedIdentity() {
+      if (typeof window === "undefined") return undefined;
+      try {
+        const value = window.localStorage.getItem(sharedStorageKey);
+        if (!value) return null;
+        return recoverySharedIdentity(JSON.parse(value) as Session);
+      } catch { return undefined; }
+    },
+  });
+  return recoveryFlow;
+}
+export const getRecoveryContext = () => flow().context();
+export const getRecoveryCompletion = (context: RecoveryContext) => flow().completion(context);
+export const getRecoveryAttemptState = (context: RecoveryContext) => flow().state(context);
+export const canPublishRecovery = (context: RecoveryContext) => flow().canPublish(context);
+export const subscribeRecoveryOwnership = (listener: () => void) => flow().subscribe(listener);
+export const captureRecoveryAction = (active: () => boolean) => flow().captureAction(active);
+export type { RecoveryContext, RecoveryCompletion, RecoveryAttemptState } from "./recovery-session.ts";
 
 /** Always returns the same public result so the request cannot enumerate accounts. */
 export async function requestPasswordRecovery(
@@ -92,63 +77,29 @@ export async function resendRecoveryCode(
 export async function verifyRecoveryOtp(
   email: string,
   token: string,
-  dependencies: VerifyDependencies = productionVerifyDependencies,
-): Promise<
-  | { ok: true; userId: string }
-  | { ok: false; message: string }
-> {
-  try {
-    const { error: otpError } = await dependencies.verifyOtp({
-      email,
-      token,
-      type: "recovery",
-    });
-    if (otpError) return { ok: false, message: ATLAS_UI_STRINGS.auth.recoveryOtpInvalid };
-
-    const { data, error: userError } = await dependencies.getUser();
-    if (userError || !data.user) {
-      return { ok: false, message: ATLAS_UI_STRINGS.auth.recoverySessionError };
-    }
-
-    return { ok: true, userId: data.user.id };
-  } catch {
-    return { ok: false, message: ATLAS_UI_STRINGS.auth.recoverySessionError };
-  }
+  active: () => boolean = () => true,
+) {
+  return flow().verify(email, token, active);
 }
 
 export async function validateRecoverySession(
-  expectedUserId: string,
-  dependencies: Pick<VerifyDependencies, "getUser"> = productionVerifyDependencies,
+  context: RecoveryContext,
+  active: () => boolean = () => true,
 ): Promise<boolean> {
-  try {
-    const { data, error } = await dependencies.getUser();
-    return !error && Boolean(data.user) && data.user?.id === expectedUserId;
-  } catch {
-    return false;
-  }
+  return flow().validate(context, active);
 }
 
 export async function updateRecoveryPassword(
+  context: RecoveryContext,
   password: string,
-  dependencies: UpdateDependencies = productionUpdateDependencies,
-): Promise<{ ok: true } | { ok: false; message: string }> {
-  try {
-    const { error } = await dependencies.updateUser({ password });
-    if (error) return { ok: false, message: ATLAS_UI_STRINGS.auth.passwordUpdateError };
-    return { ok: true };
-  } catch {
-    return { ok: false, message: ATLAS_UI_STRINGS.auth.passwordUpdateError };
-  }
+  active: () => boolean = () => true,
+) {
+  return flow().update(context, password, active);
 }
 
 export async function signOutAfterRecovery(
-  dependencies: SignOutDependencies = productionSignOutDependencies,
-): Promise<{ ok: true } | { ok: false; message: string }> {
-  try {
-    const { error } = await dependencies.signOut({ scope: "global" });
-    if (error) return { ok: false, message: ATLAS_UI_STRINGS.auth.recoverySignOutError };
-    return { ok: true };
-  } catch {
-    return { ok: false, message: ATLAS_UI_STRINGS.auth.recoverySignOutError };
-  }
+  context: RecoveryContext,
+  active: () => boolean = () => true,
+): Promise<boolean> {
+  return flow().leave(context, active);
 }
