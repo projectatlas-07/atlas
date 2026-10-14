@@ -149,9 +149,9 @@ export default function LoginPage() {
             <label htmlFor="login-password" className="text-atlas-sm font-atlas-medium text-atlas-text">
               {ATLAS_UI_STRINGS.auth.password}
             </label>
-            <Link href="/forgot-password" className="inline-flex min-h-atlas-12 items-center rounded-atlas-control text-atlas-sm font-atlas-medium text-atlas-primary hover:text-atlas-primary-hover hover:underline focus-visible:outline-none focus-visible:ring-atlas-focus focus-visible:ring-offset-atlas-focus">
-              {ATLAS_UI_STRINGS.auth.forgotPassword}
-            </Link>
+            <a href="mailto:work.projectatlas@gmail.com?subject=Atlas%20-%20Account%20Access%20Help" className="inline-flex min-h-atlas-12 items-center rounded-atlas-control text-atlas-sm font-atlas-medium text-atlas-primary hover:text-atlas-primary-hover hover:underline focus-visible:outline-none focus-visible:ring-atlas-focus focus-visible:ring-offset-atlas-focus">
+              {ATLAS_UI_STRINGS.auth.contactSupport}
+            </a>
           </div>
           <div className="relative">
             <Input

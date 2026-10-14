@@ -84,6 +84,7 @@ const ENGLISH_SHARED_STRINGS = {
     email: "Email",
     password: "Password",
     forgotPassword: "Forgot password?",
+    contactSupport: "Contact Support",
     showPassword: "Show password",
     hidePassword: "Hide password",
     login: "Log in",

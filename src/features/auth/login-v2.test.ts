@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { ATLAS_UI_STRINGS } from "../../lib/strings.ts";
 
 const loginPage = readFileSync(
   new URL("../../app/login/page.tsx", import.meta.url),
@@ -41,13 +42,27 @@ test("password visibility is an accessible single-field toggle", () => {
   assert.match(loginPage, /setShowPassword\(\(isVisible\) => !isVisible\)/);
 });
 
-test("login navigation points to the staged recovery route and implemented signup route", () => {
-  assert.match(loginPage, /<Link href="\/forgot-password"/);
+test("login offers Contact Support while preserving Signup and direct Recovery routes", () => {
+  assert.match(loginPage, /<a href="mailto:work\.projectatlas@gmail\.com\?subject=/);
+  assert.match(loginPage, /ATLAS_UI_STRINGS\.auth\.contactSupport/);
+  assert.doesNotMatch(loginPage, /href="\/forgot-password"|ATLAS_UI_STRINGS\.auth\.forgotPassword/);
   assert.match(loginPage, /<Link href="\/signup"/);
   assert.match(forgotPasswordPage, /function ForgotPasswordPage/);
   assert.match(signupPage, /function SignupPage/);
   assert.match(forgotPasswordPage, /<Link href="\/login"/);
   assert.match(signupPage, /<Link href="\/login"/);
+});
+
+test("Contact Support is a static native mailto with the approved subject and no recovery action", () => {
+  const anchor = loginPage.match(/<a href="(mailto:[^"]+)"[^>]*>\s*\{ATLAS_UI_STRINGS\.auth\.contactSupport\}\s*<\/a>/);
+  assert.ok(anchor);
+  const url = new URL(anchor[1]);
+  assert.equal(ATLAS_UI_STRINGS.auth.contactSupport, "Contact Support");
+  assert.equal(url.protocol, "mailto:");
+  assert.equal(url.pathname, "work.projectatlas@gmail.com");
+  assert.deepEqual([...url.searchParams], [["subject", "Atlas - Account Access Help"]]);
+  assert.doesNotMatch(anchor[0], /onClick|onSubmit|onMouse|onKey|action=/);
+  assert.doesNotMatch(loginPage, /requestPasswordRecovery|resetPasswordForEmail|recovery-service/);
 });
 
 test("signed-in login access uses session plus authoritative factory resolution", () => {

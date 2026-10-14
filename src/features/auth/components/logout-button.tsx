@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Feedback } from "@/components/ui/feedback";
 import { ATLAS_UI_STRINGS } from "@/lib/strings";
@@ -11,7 +10,6 @@ export function LogoutButton({
   v2 = false,
   fullWidth = false,
 }: Readonly<{ v2?: boolean; fullWidth?: boolean }>) {
-  const router = useRouter();
   const isLoggingOutRef = useRef(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
@@ -26,12 +24,15 @@ export function LogoutButton({
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        setLogoutError(ATLAS_UI_STRINGS.auth.logoutError);
-        return;
+        // Local retirement only; this does not confirm remote/global revocation.
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError !== null || data?.session !== null) {
+          setLogoutError(ATLAS_UI_STRINGS.auth.logoutError);
+          return;
+        }
       }
 
-      router.replace("/login");
-      router.refresh();
+      window.location.assign("/login");
     } catch {
       setLogoutError(ATLAS_UI_STRINGS.auth.logoutError);
     } finally {

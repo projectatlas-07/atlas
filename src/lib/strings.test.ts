@@ -102,6 +102,7 @@ test("shared strings expose stable namespaced wording", () => {
       email: "Email",
       password: "Password",
       forgotPassword: "Forgot password?",
+      contactSupport: "Contact Support",
       showPassword: "Show password",
       hidePassword: "Hide password",
       login: "Log in",
